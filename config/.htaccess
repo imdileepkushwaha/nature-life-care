@@ -1,0 +1,4 @@
+# Protect config if Apache serves this folder
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>

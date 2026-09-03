@@ -1,0 +1,290 @@
+/* Contact page — extends landing theme */
+
+.lp-contact .lp-header {
+    background: rgba(7, 16, 24, 0.88);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.lp-contact-hero {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    padding: clamp(7rem, 12vw, 9rem) 0 clamp(3rem, 6vw, 4.25rem);
+    color: #f4f7fa;
+}
+
+.lp-contact-hero-stage {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: linear-gradient(145deg, #050a10 0%, #0b1722 42%, #123041 78%, #0d2a28 100%);
+}
+
+.lp-contact-hero-wash {
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(70% 60% at 82% 30%, rgba(18, 129, 122, 0.36), transparent 58%),
+        radial-gradient(50% 45% at 12% 85%, rgba(225, 29, 72, 0.2), transparent 55%),
+        radial-gradient(40% 35% at 50% 0%, rgba(255, 255, 255, 0.07), transparent 60%);
+}
+
+.lp-contact-hero-inner {
+    position: relative;
+    z-index: 1;
+    max-width: 40rem;
+}
+
+.lp-contact-kicker {
+    color: #5eead4;
+}
+
+.lp-contact-hero h1 {
+    margin: 0 0 0.85rem;
+    font-family: var(--lp-display);
+    font-size: clamp(2.2rem, 5vw, 3.4rem);
+    font-weight: 750;
+    letter-spacing: -0.045em;
+    line-height: 1.05;
+    color: #fff;
+}
+
+.lp-contact-lead {
+    margin: 0;
+    font-family: var(--lp-serif);
+    font-size: clamp(1.08rem, 2vw, 1.3rem);
+    line-height: 1.45;
+    color: rgba(244, 247, 250, 0.7);
+    max-width: 34rem;
+}
+
+.lp-contact-body {
+    background:
+        linear-gradient(180deg, #edf2f5 0%, var(--lp-paper) 40%, #fff 100%);
+    padding-top: clamp(2.5rem, 5vw, 3.75rem);
+    padding-bottom: clamp(3.5rem, 7vw, 5rem);
+}
+
+.lp-contact-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.2fr);
+    gap: clamp(2rem, 5vw, 3.75rem);
+    align-items: start;
+}
+
+.lp-contact-reach h2,
+.lp-contact-form-panel h2 {
+    margin: 0 0 0.55rem;
+    font-family: var(--lp-display);
+    font-size: clamp(1.55rem, 2.8vw, 2rem);
+    font-weight: 750;
+    letter-spacing: -0.035em;
+    line-height: 1.1;
+    color: var(--lp-ink);
+}
+
+.lp-contact-reach-sub {
+    margin: 0 0 1.75rem;
+    color: var(--lp-muted);
+    font-size: 1.02rem;
+    line-height: 1.5;
+    max-width: 28rem;
+}
+
+.lp-contact-rows {
+    display: grid;
+    gap: 0;
+}
+
+.lp-contact-row {
+    display: grid;
+    gap: 0.2rem;
+    padding: 1rem 0;
+    border-top: 1px solid var(--lp-line);
+    color: inherit;
+}
+
+.lp-contact-row:first-child {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.lp-contact-row-label {
+    font-family: var(--lp-display);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--lp-muted);
+}
+
+.lp-contact-row-value {
+    font-family: var(--lp-display);
+    font-size: 1.05rem;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    color: var(--lp-ink);
+    word-break: break-word;
+}
+
+a.lp-contact-row:hover .lp-contact-row-value {
+    color: var(--lp-teal);
+}
+
+.lp-contact-map {
+    margin-top: 0.35rem;
+    width: fit-content;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--lp-teal);
+}
+
+.lp-contact-map:hover {
+    color: var(--lp-ink);
+}
+
+.lp-contact-social {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem 1.15rem;
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--lp-line);
+}
+
+.lp-contact-social a {
+    font-family: var(--lp-display);
+    font-size: 0.9rem;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    color: var(--lp-muted);
+    border-bottom: 1px solid transparent;
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.lp-contact-social a:hover {
+    color: var(--lp-ink);
+    border-bottom-color: var(--lp-teal);
+}
+
+/* Form panel — interaction surface */
+.lp-contact-form-panel {
+    padding: clamp(1.5rem, 3vw, 2.15rem);
+    border-radius: 24px;
+    border: 1px solid var(--lp-line);
+    background: #fff;
+    box-shadow: 0 20px 50px rgba(8, 16, 24, 0.06);
+}
+
+.lp-contact-form-panel > .lp-kicker {
+    margin-bottom: 0.55rem;
+}
+
+.lp-contact-form-panel > h2 {
+    margin-bottom: 1.35rem;
+}
+
+.lp-contact-form {
+    display: grid;
+    gap: 1rem;
+}
+
+.lp-contact-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.lp-field {
+    display: grid;
+    gap: 0.4rem;
+}
+
+.lp-field span {
+    font-family: var(--lp-display);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--lp-muted);
+}
+
+.lp-field input,
+.lp-field textarea {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--lp-line);
+    border-radius: 14px;
+    font: inherit;
+    color: var(--lp-ink);
+    background: var(--lp-fog);
+    transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.lp-field textarea {
+    resize: vertical;
+    min-height: 140px;
+    line-height: 1.5;
+}
+
+.lp-field input:focus,
+.lp-field textarea:focus {
+    outline: none;
+    background: #fff;
+    border-color: rgba(18, 129, 122, 0.45);
+    box-shadow: 0 0 0 3px rgba(18, 129, 122, 0.12);
+}
+
+.lp-contact-form .lp-btn {
+    justify-self: start;
+    margin-top: 0.25rem;
+    border: 0;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.lp-alert {
+    margin: 0 0 1.15rem;
+    padding: 0.9rem 1rem;
+    border-radius: 14px;
+    font-size: 0.95rem;
+    line-height: 1.45;
+    border: 1px solid transparent;
+}
+
+.lp-alert-ok {
+    background: rgba(18, 129, 122, 0.1);
+    border-color: rgba(18, 129, 122, 0.22);
+    color: #0f5c57;
+}
+
+.lp-alert-err {
+    background: rgba(225, 29, 72, 0.08);
+    border-color: rgba(225, 29, 72, 0.2);
+    color: #9f1239;
+}
+
+.lp-alert-info {
+    background: rgba(8, 16, 24, 0.04);
+    border-color: var(--lp-line);
+    color: var(--lp-ink-2);
+}
+
+@media (max-width: 900px) {
+    .lp-contact-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .lp-contact-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .lp-contact-form .lp-btn {
+        width: 100%;
+        justify-self: stretch;
+    }
+}
