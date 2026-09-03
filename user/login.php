@@ -34,18 +34,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Portal is under maintenance. Login is temporarily disabled.';
         $maintenanceOn = true;
     } else {
-        $login = trim($_POST['login'] ?? '');
+        $login = strtoupper(trim($_POST['login'] ?? ''));
         $password = $_POST['password'] ?? '';
 
         if ($login === '' || $password === '') {
-            $error = 'Username / email and password are required.';
+            $error = 'Member ID and password are required.';
+        } elseif (!preg_match('/^[A-Z]{2,10}\d{3,8}$/', $login)) {
+            $error = 'Enter a valid Member ID, like BS000002.';
         } else {
             $stmt = $pdo->prepare('
                 SELECT * FROM members
-                WHERE (username = ? OR email = ? OR member_id = ?)
+                WHERE member_id = ?
                 LIMIT 1
             ');
-            $stmt->execute([$login, $login, $login]);
+            $stmt->execute([$login]);
             $member = $stmt->fetch();
 
             clear_setting_cache('maintenance_mode');
@@ -67,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     exit;
                 }
             } else {
-                $error = 'Invalid username or password.';
+                $error = 'Invalid Member ID or password.';
             }
         }
     }
@@ -148,7 +150,7 @@ if ($flash && $flash['type'] === 'error' && (
         <?php endif; ?>
         <!-- <p class="ulog-brand"><?= e($company) ?></p> -->
         <h1 class="ulog-title">Sign in to your account</h1>
-        <p class="ulog-lead">Continue with your member ID, username, or email.</p>
+        <p class="ulog-lead">Continue with your Member ID only.</p>
 
         <?php if ($flash):
             $ftype = $flash['type'] === 'success' ? 'ok' : ($flash['type'] === 'error' ? 'err' : 'info');
@@ -162,8 +164,8 @@ if ($flash && $flash['type'] === 'error' && (
 
         <form method="post" class="ulog-form" autocomplete="off"<?= $portalLocked ? ' inert' : '' ?>>
             <div class="ulog-field">
-                <label for="login">Username / Email / Member ID</label>
-                <input type="text" id="login" name="login" value="<?= e($_POST['login'] ?? '') ?>" placeholder="member001 or you@email.com" required<?= $portalLocked ? ' disabled' : ' autofocus' ?>>
+                <label for="login">Member ID</label>
+                <input type="text" id="login" name="login" value="<?= e(strtoupper((string) ($_POST['login'] ?? ''))) ?>" placeholder="BS000002" required<?= $portalLocked ? ' disabled' : ' autofocus' ?> style="text-transform:uppercase">
             </div>
 
             <div class="ulog-field">

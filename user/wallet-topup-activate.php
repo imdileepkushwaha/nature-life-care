@@ -43,7 +43,7 @@ $selfPackages = $selfNeeds
     : ($selfUpgrade ? activation_upgrade_packages($pdo, (float) (activation_member_package($pdo, $user)['amount'] ?? 0)) : []);
 
 $targetType = (string) ($_POST['target_type'] ?? ($selfNeeds || $selfUpgrade ? 'self' : 'downline'));
-$memberCode = trim((string) ($_POST['member_code'] ?? ''));
+$memberCode = strtoupper(trim((string) ($_POST['member_code'] ?? '')));
 $packageId = (int) ($_POST['package_id'] ?? 0);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -53,9 +53,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         if ($memberCode === '') {
             $errors[] = 'Enter or select the member ID to activate.';
+        } elseif (!preg_match('/^[A-Z]{2,10}\d{3,8}$/', $memberCode)) {
+            $errors[] = 'Enter a valid Member ID (example: BS000002).';
         } else {
-            $lookup = $pdo->prepare('SELECT * FROM members WHERE member_id = ? OR username = ? LIMIT 1');
-            $lookup->execute([$memberCode, $memberCode]);
+            $lookup = $pdo->prepare('SELECT * FROM members WHERE member_id = ? LIMIT 1');
+            $lookup->execute([$memberCode]);
             $target = $lookup->fetch() ?: null;
             if (!$target) {
                 $errors[] = 'Member not found.';

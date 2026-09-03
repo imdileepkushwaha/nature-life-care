@@ -4,10 +4,14 @@
  * Run once, then DELETE this file.
  * Safe to re-run if tables already exist (only resets admin password).
  */
-$host = 'localhost';
-$user = 'root';
-$pass = '';
-$dbName = 'bharatseva_db';
+require_once __DIR__ . '/config/env.php';
+
+$env = app_env_name();
+$savedDb = app_db_config_for_current();
+$host = $savedDb['host'];
+$user = $savedDb['user'];
+$pass = $savedDb['pass'];
+$dbName = $savedDb['name'];
 $adminUser = 'admin';
 $adminPass = 'admin123';
 $adminEmail = 'admin@binarymlm.com';
@@ -28,6 +32,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $pdo = new PDO("mysql:host=$host;dbname=$dbName;charset=utf8mb4", $user, $pass, [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        ]);
+
+        app_write_db_credentials($env, [
+            'host' => $host,
+            'name' => $dbName,
+            'user' => $user,
+            'pass' => $pass,
         ]);
 
         require_once __DIR__ . '/includes/schema_setup.php';
@@ -58,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $success = '1';
-        $setupMessage = $setup['message'] ?? 'Database setup complete.';
+        $setupMessage = ($setup['message'] ?? 'Database setup complete.') . ' Environment saved: ' . strtoupper($env) . '.';
     } catch (Exception $e) {
         $error = $e->getMessage();
     }
@@ -143,6 +154,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
 
             <?php if ($error): ?><div class="alert alert-error auth-alert"><?= htmlspecialchars($error) ?></div><?php endif; ?>
+            <div class="alert alert-info auth-alert">
+                Running in <strong><?= htmlspecialchars(strtoupper($env)) ?></strong> mode.
+                This installer saves only the <?= htmlspecialchars($env) ?> database settings, so local and live stay separate.
+            </div>
 
             <form method="post" autocomplete="off" class="auth-form">
                 <section class="install-section">
@@ -152,7 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </span>
                         <div>
                             <h3>Database connection</h3>
-                            <p>Local MySQL / XAMPP credentials</p>
+                            <p><?= $env === 'local' ? 'Local MySQL / XAMPP credentials' : 'Live server MySQL credentials' ?></p>
                         </div>
                     </header>
                     <div class="install-grid">

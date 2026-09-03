@@ -20,6 +20,7 @@ if (!empty($user['sponsor_id'])) {
 }
 
 $company = setting('company_name', 'Binary MLM');
+$logoUrl = company_logo_url();
 $supportEmail = setting('support_email', setting('contact_email', ''));
 $supportPhone = setting('contact_phone', '');
 $signatureUrl = company_signature_url();
@@ -53,10 +54,18 @@ $firstName = trim(explode(' ', (string) $user['full_name'])[0] ?: (string) $user
                 <div class="wl-frame">
                     <div class="wl-frame-inner">
                         <header class="wl-head">
-                            <div class="wl-seal" aria-hidden="true">
+                            <!-- <div class="wl-seal" aria-hidden="true">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                            </div>
+                            </div> -->
                             <div class="wl-head-text">
+                                <?php if ($logoUrl): ?>
+                                    <img
+                                        src="<?= e($logoUrl) ?>"
+                                        alt="<?= e($company) ?>"
+                                        style="max-width: 120px; height: auto; display:block; margin: 0 auto 0.55rem; object-fit: contain"
+                                        class="wl-logo"
+                                    >
+                                <?php endif; ?>
                                 <p class="wl-eyebrow">Certificate of Welcome</p>
                                 <h1><?= e($company) ?></h1>
                                 <p class="wl-tagline">Empowering Independent Sellers</p>

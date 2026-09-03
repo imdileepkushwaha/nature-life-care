@@ -2,6 +2,7 @@
 $pageTitle = 'Dashboard';
 require_once __DIR__ . '/../includes/closing.php';
 require_once __DIR__ . '/../includes/activation.php';
+require_once __DIR__ . '/../includes/income.php';
 require_once __DIR__ . '/includes/header.php';
 
 $showBinaryUi = plan_uses_binary();
@@ -55,6 +56,41 @@ $pairBv = closing_pair_bv();
 $flush = max(0, (int) setting('binary_flush_pairs', '0'));
 $openMatch = closing_compute_match($leftBv, $rightBv, $pairBv, $flush);
 $openPairs = (float) ($openMatch['pairs'] ?? 0);
+
+$uid = (int) ($user['id'] ?? 0);
+$pendingIncome = 0.0;
+try {
+    // Pending commissions exist in `commissions` but are not yet credited to `members.wallet_balance`.
+    // Add them to show "all income" on the dashboard overview.
+    $pendingIncome = income_sum($pdo, $uid, null, 'pending');
+} catch (Throwable $e) {
+    $pendingIncome = 0.0;
+}
+
+$incomeTypeCards = [];
+try {
+    // Show per-income-type totals in dashboard tiles.
+    // This follows the same enabled types used in income-summary.php.
+    $incomeTypes = income_types();
+    foreach ($incomeTypes as $key => $meta) {
+        $paid = income_sum($pdo, $uid, $key, 'paid');
+        $pending = income_sum($pdo, $uid, $key, 'pending');
+        $tone = (string) ($meta['tone'] ?? 'orange');
+        $g = in_array($tone, ['blue', 'green', 'orange', 'purple', 'mint', 'coral', 'teal', 'slate'], true)
+            ? $tone
+            : 'orange';
+        $incomeTypeCards[] = [
+            'key' => (string) $key,
+            'meta' => $meta,
+            'paid' => (float) $paid,
+            'pending' => (float) $pending,
+            'total' => (float) ($paid + $pending),
+            'g' => $g,
+        ];
+    }
+} catch (Throwable $e) {
+    $incomeTypeCards = [];
+}
 
 $newsItems = [];
 try {
@@ -159,8 +195,8 @@ try {
             </span>
             <div class="up-stat-copy">
                 <div class="up-stat-label">Income Wallet</div>
-                <div class="up-stat-value"><?= currency((float) $user['wallet_balance']) ?></div>
-                <div class="up-stat-foot"><a href="wallet.php">All wallets</a> · Available payout</div>
+                <div class="up-stat-value"><?= currency((float) $user['wallet_balance'] + (float) $pendingIncome) ?></div>
+                <div class="up-stat-foot"><a href="wallet.php">All wallets</a> · Available payout + pending</div>
             </div>
         </div>
     </article>
@@ -174,8 +210,8 @@ try {
             </span>
             <div class="up-stat-copy">
                 <div class="up-stat-label">Total Earnings</div>
-                <div class="up-stat-value"><?= currency((float) $user['total_earnings']) ?></div>
-                <div class="up-stat-foot"><span>+ income</span> Lifetime total</div>
+                <div class="up-stat-value"><?= currency((float) $user['total_earnings'] + (float) $pendingIncome) ?></div>
+                <div class="up-stat-foot"><span>+ income</span> Lifetime total + pending</div>
             </div>
         </div>
     </article>
@@ -226,6 +262,36 @@ try {
         </div>
     </article>
 </div>
+
+<?php if (!empty($incomeTypeCards)): ?>
+<div class="up-stats up-stats-income-types">
+    <?php foreach ($incomeTypeCards as $c):
+        $meta = $c['meta'] ?? [];
+        $label = (string) ($meta['label'] ?? ucfirst((string) $c['key']));
+        $g = (string) ($c['g'] ?? 'orange');
+        $paid = (float) ($c['paid'] ?? 0);
+        $pending = (float) ($c['pending'] ?? 0);
+        ?>
+        <article class="up-stat g-<?= e($g) ?>">
+            <div class="up-stat-inner">
+                <span class="up-stat-ico" aria-hidden="true">
+                    <?= income_type_icon((string) $c['key']) ?>
+                </span>
+                <div class="up-stat-copy">
+                    <div class="up-stat-label"><?= e($label) ?></div>
+                    <div class="up-stat-value"><?= currency((float) ($c['total'] ?? 0)) ?></div>
+                    <div class="up-stat-foot">
+                        <span>paid</span> <?= currency($paid) ?>
+                        <?php if ($pending > 0): ?>
+                            · <span>pending</span> <?= currency($pending) ?>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </article>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>
 
 <?php if ($showBinaryUi): ?>
 <div class="up-stats up-stats-bv">

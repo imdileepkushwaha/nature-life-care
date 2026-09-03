@@ -3,14 +3,19 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/team.php';
 $pageTitle = 'Level Tree';
 
-$search = trim($_GET['q'] ?? '');
+$search = strtoupper(trim($_GET['q'] ?? ''));
 $maxLevel = max(1, min(20, (int) ($_GET['max'] ?? 10)));
 
 $root = null;
+ $searchError = '';
 if ($search !== '') {
-    $stmt = $pdo->prepare('SELECT id, member_id, full_name, username, status FROM members WHERE member_id = ? OR username = ? LIMIT 1');
-    $stmt->execute([$search, $search]);
-    $root = $stmt->fetch() ?: null;
+    $stmt = $pdo->prepare('SELECT id, member_id, full_name, username, status FROM members WHERE member_id = ? LIMIT 1');
+    if (!preg_match('/^[A-Z]{2,10}\d{3,8}$/', $search)) {
+        $searchError = 'Enter a valid Member ID (example: BS000002).';
+    } else {
+        $stmt->execute([$search]);
+        $root = $stmt->fetch() ?: null;
+    }
 } else {
     $root = $pdo->query('SELECT id, member_id, full_name, username, status FROM members ORDER BY id ASC LIMIT 1')->fetch() ?: null;
     if ($root) {
@@ -41,8 +46,8 @@ require_once __DIR__ . '/../includes/header.php';
     <div class="panel-body members-filters">
         <form class="members-filter-form" method="get">
             <div class="form-group">
-                <label>Member ID / Username</label>
-                <input type="text" name="q" value="<?= e($search) ?>" placeholder="<?= e(member_id_prefix() . str_pad('1', member_id_pad(), '0', STR_PAD_LEFT)) ?>">
+                <label>Member ID</label>
+                <input type="text" name="q" value="<?= e($search) ?>" placeholder="<?= e(member_id_prefix() . str_pad('1', member_id_pad(), '0', STR_PAD_LEFT)) ?>" style="text-transform:uppercase">
             </div>
             <div class="form-group">
                 <label>Max level</label>
@@ -105,7 +110,10 @@ require_once __DIR__ . '/../includes/header.php';
             </thead>
             <tbody>
             <?php if (!$root): ?>
-                <tr><td colspan="8"><div class="empty-state"><strong>No member found</strong><span>Search by Member ID or username.</span></div></td></tr>
+                <tr><td colspan="8"><div class="empty-state">
+                    <strong><?= $searchError !== '' ? 'Invalid Member ID' : 'No member found' ?></strong>
+                    <span><?= $searchError !== '' ? e($searchError) : 'Search by Member ID only.' ?></span>
+                </div></td></tr>
             <?php elseif (!$downline): ?>
                 <tr><td colspan="8"><div class="empty-state"><strong>No sponsor downline</strong><span><?= e($root['full_name']) ?> has no referred generations yet.</span></div></td></tr>
             <?php else: foreach ($downline as $i => $m): ?>

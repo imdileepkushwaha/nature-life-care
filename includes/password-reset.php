@@ -29,19 +29,19 @@ function ensure_password_resets_table(PDO $pdo): void
     $done = true;
 }
 
-function pw_reset_find_member(PDO $pdo, string $login): ?array
+function pw_reset_find_member(PDO $pdo, string $memberId): ?array
 {
-    $login = trim($login);
-    if ($login === '') {
+    $memberId = strtoupper(trim($memberId));
+    if ($memberId === '') {
         return null;
     }
     $stmt = $pdo->prepare('
         SELECT id, member_id, username, email, full_name, status
         FROM members
-        WHERE username = ? OR email = ? OR member_id = ?
+        WHERE member_id = ?
         LIMIT 1
     ');
-    $stmt->execute([$login, $login, $login]);
+    $stmt->execute([$memberId]);
     $row = $stmt->fetch();
     if (!$row) {
         return null;

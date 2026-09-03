@@ -5,17 +5,22 @@ $pageTitle = 'Downline';
 
 $useBinary = plan_uses_binary();
 $useMatrix = plan_uses_matrix();
-$search = trim($_GET['q'] ?? '');
+$search = strtoupper(trim($_GET['q'] ?? ''));
 $leg = $_GET['leg'] ?? 'all';
 if (!in_array($leg, ['all', 'left', 'right'], true)) {
     $leg = 'all';
 }
 
 $root = null;
+$searchError = '';
 if ($search !== '') {
-    $stmt = $pdo->prepare('SELECT id, member_id, full_name, username, status, left_count, right_count, join_date FROM members WHERE member_id = ? OR username = ? LIMIT 1');
-    $stmt->execute([$search, $search]);
-    $root = $stmt->fetch() ?: null;
+    if (!preg_match('/^[A-Z]{2,10}\d{3,8}$/', $search)) {
+        $searchError = 'Enter a valid Member ID (example: BS000002).';
+    } else {
+        $stmt = $pdo->prepare('SELECT id, member_id, full_name, username, status, left_count, right_count, join_date FROM members WHERE member_id = ? LIMIT 1');
+        $stmt->execute([$search]);
+        $root = $stmt->fetch() ?: null;
+    }
 } else {
     $root = $pdo->query('SELECT id, member_id, full_name, username, status, left_count, right_count, join_date FROM members ORDER BY id ASC LIMIT 1')->fetch() ?: null;
     if ($root) {
@@ -65,8 +70,8 @@ require_once __DIR__ . '/../includes/header.php';
     <div class="panel-body members-filters">
         <form class="members-filter-form" method="get">
             <div class="form-group">
-                <label>Member ID / Username</label>
-                <input type="text" name="q" value="<?= e($search) ?>" placeholder="<?= e(member_id_prefix() . str_pad('1', member_id_pad(), '0', STR_PAD_LEFT)) ?>">
+                <label>Member ID</label>
+                <input type="text" name="q" value="<?= e($search) ?>" placeholder="<?= e(member_id_prefix() . str_pad('1', member_id_pad(), '0', STR_PAD_LEFT)) ?>" style="text-transform:uppercase">
             </div>
             <?php if ($useBinary): ?>
             <div class="form-group">
@@ -156,8 +161,8 @@ require_once __DIR__ . '/../includes/header.php';
                 <tr>
                     <td colspan="<?= $colspan ?>">
                         <div class="empty-state">
-                            <strong>No member found</strong>
-                            <span>Search by Member ID or username.</span>
+                            <strong><?= $searchError !== '' ? 'Invalid Member ID' : 'No member found' ?></strong>
+                            <span><?= $searchError !== '' ? e($searchError) : 'Search by Member ID only.' ?></span>
                         </div>
                     </td>
                 </tr>

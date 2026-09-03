@@ -17,10 +17,12 @@ $done = false;
 $devLink = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $login = trim($_POST['login'] ?? '');
+    $login = strtoupper(trim($_POST['login'] ?? ''));
 
     if ($login === '') {
-        $error = 'Enter your username, email, or Member ID.';
+        $error = 'Enter your Member ID.';
+    } elseif (!preg_match('/^[A-Z]{2,10}\d{3,8}$/', $login)) {
+        $error = 'Enter a valid Member ID, like BS000002.';
     } else {
         $member = pw_reset_find_member($pdo, $login);
 
@@ -102,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <img class="ulog-logo" src="<?= e($logoUrl) ?>" alt="<?= e($company) ?>">
         <?php endif; ?>
         <h1 class="ulog-title">Recover your password</h1>
-        <p class="ulog-lead">Enter your member ID, username, or email. We’ll send a reset link if the account exists.</p>
+        <p class="ulog-lead">Enter your Member ID. We will send a reset link if the account exists.</p>
 
         <?php if ($error): ?>
             <div class="up-alert up-alert-err"><?= e($error) ?></div>
@@ -128,8 +130,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php else: ?>
             <form method="post" class="ulog-form" autocomplete="off">
                 <div class="ulog-field">
-                    <label for="login">Username / Email / Member ID</label>
-                    <input type="text" id="login" name="login" value="<?= e($_POST['login'] ?? '') ?>" placeholder="member001 or you@email.com" required autofocus>
+                    <label for="login">Member ID</label>
+                    <input type="text" id="login" name="login" value="<?= e(strtoupper((string) ($_POST['login'] ?? ''))) ?>" placeholder="BS000002" required autofocus style="text-transform:uppercase">
                 </div>
                 <button type="submit" class="ulog-submit">
                     <span>Send reset link</span>

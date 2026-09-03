@@ -6081,6 +6081,48 @@ a.ulog-submit {
     color: #64748b;
 }
 
+/* Hover tooltip for user binary tree nodes */
+.ut-tooltip {
+    position: fixed;
+    z-index: 1200;
+    background: #0f172a;
+    color: #ffffff;
+    border-radius: 14px;
+    padding: 0.9rem 1rem;
+    font-size: 0.8rem;
+    line-height: 1.35;
+    min-width: 240px;
+    max-width: 300px;
+    white-space: pre-line;
+    pointer-events: none;
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.35);
+}
+
+.ut-tooltip[hidden] { display: none !important; }
+
+.ut-tooltip .tt-name {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 0.15rem;
+}
+
+.ut-tooltip .tt-id {
+    color: #94a3b8;
+    margin-bottom: 0.65rem;
+    font-size: 0.75rem;
+}
+
+.ut-tooltip .tt-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.28rem 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ut-tooltip .tt-row span:first-child { color: #94a3b8; }
+.ut-tooltip .tt-row span:last-child { font-weight: 600; text-align: right; }
+
 .ut-modal {
     position: fixed;
     inset: 0;
@@ -11592,7 +11634,7 @@ body.is-maintenance .ulog {
 .idc-meta {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 0.35rem 0.6rem;
+    gap: 0.6rem 0.6rem;
 }
 
 .idc-meta > div { min-width: 0; }
@@ -11663,7 +11705,7 @@ body.is-maintenance .ulog {
     flex-shrink: 0;
     background: var(--idc-dark);
     color: #fff;
-    padding: 0.55rem 1.15rem 0.7rem 1.25rem;
+    padding: 1rem 1.15rem 1rem 1.25rem;
 }
 
 .idc-magstripe {
@@ -11671,8 +11713,8 @@ body.is-maintenance .ulog {
     left: auto;
     right: auto;
     top: auto;
-    height: 28px;
-    margin: 0 -1.15rem 0.55rem -1.25rem;
+    height: auto;
+    /* margin: 0 -1.15rem 0.55rem -1.25rem; */
     width: calc(100% + 2.4rem);
     background: linear-gradient(180deg, #1a1a1a, #050505 40%, #171717);
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
@@ -11688,7 +11730,7 @@ body.is-maintenance .ulog {
 
 .idc-back-head-text small {
     display: block;
-    margin-top: 0.1rem;
+    margin-top: 0.3rem;
     font-size: 0.62rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -11713,7 +11755,7 @@ body.is-maintenance .ulog {
 .idc-back-grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 0.4rem 0.7rem;
+    gap: 0.6rem 0.7rem;
 }
 
 .idc-back-grid > div { min-width: 0; }
@@ -11866,7 +11908,7 @@ body.is-maintenance .ulog {
     border: 1.5px solid #c9a227;
     padding: 10mm 12mm;
     background:
-        radial-gradient(circle at 50% 0%, rgba(201, 162, 39, 0.08), transparent 42%),
+        radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 1), transparent 42%),
         #fffef9;
     display: flex;
     flex-direction: column;
@@ -11962,7 +12004,7 @@ body.is-maintenance .ulog {
 
 .wl-ornament::before,
 .wl-ornament::after {
-    content: '?';
+    content: '';
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
@@ -13711,8 +13753,8 @@ body.is-maintenance .ulog {
     align-items: center;
 }
 .shop-inv-logo {
-    width: 56px;
-    height: 56px;
+    width: 100px;
+    height: auto;
     object-fit: contain;
     border-radius: 12px;
     background: #f8fafc;

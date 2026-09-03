@@ -119,7 +119,7 @@ if (!$invalid && $_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         <?php else: ?>
             <h1 class="ulog-title">Choose a new password</h1>
-            <p class="ulog-lead">Hi <?= e($reset['full_name'] ?? 'Member') ?> — updating password for <strong>@<?= e($reset['username'] ?? '') ?></strong>. This link works once and expires in 1 hour.</p>
+            <p class="ulog-lead">Hi <?= e($reset['full_name'] ?? 'Member') ?> - updating password for <strong><?= e($reset['member_id'] ?? '') ?></strong>. This link works once and expires in 1 hour.</p>
             <?php foreach ($errors as $err): ?>
                 <div class="up-alert up-alert-err"><?= e($err) ?></div>
             <?php endforeach; ?>

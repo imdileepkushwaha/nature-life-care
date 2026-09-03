@@ -4,20 +4,16 @@
  * Local (localhost) → XAMPP defaults
  * Live server → online DB credentials
  */
-$hostName = $_SERVER['HTTP_HOST'] ?? 'localhost';
-$isLocal = (bool) preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/i', $hostName);
+require_once __DIR__ . '/env.php';
 
-if ($isLocal) {
-    define('DB_HOST', 'localhost');
-    define('DB_NAME', 'bharatseva_db');
-    define('DB_USER', 'root');
-    define('DB_PASS', '');
-} else {
-    define('DB_HOST', 'localhost');
-    define('DB_NAME', 'mlmplan_db');
-    define('DB_USER', 'mlmplan_db');
-    define('DB_PASS', 'Tf&pW4vhzxMf2%6j');
-}
+$hostName = app_http_host();
+$isLocal = app_is_local();
+$dbConfig = app_db_config_for_current();
+
+define('DB_HOST', $dbConfig['host']);
+define('DB_NAME', $dbConfig['name']);
+define('DB_USER', $dbConfig['user']);
+define('DB_PASS', $dbConfig['pass']);
 define('DB_CHARSET', 'utf8mb4');
 
 $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';

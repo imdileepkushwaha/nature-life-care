@@ -446,6 +446,8 @@ $featTpin = feature_module_allowed('tpin');
     </div>
 </div>
 
+<div class="ut-tooltip" id="utTooltip" hidden></div>
+
 <script>
 (function () {
     var modal = document.getElementById('utAddModal');
@@ -527,6 +529,127 @@ $featTpin = feature_module_allowed('tpin');
         fillPlacement(reopenParentName || '', reopenParentCode || '', pos, '');
         modal.hidden = false;
         document.body.classList.add('ut-modal-open');
+    }
+
+    // Member hover tooltip (admin-like details)
+    var tooltip = document.getElementById('utTooltip');
+    if (tooltip) {
+        var tipTimer = null;
+        var hideTip = function () {
+            tipTimer = setTimeout(function () {
+                tooltip.hidden = true;
+                tooltip.textContent = '';
+            }, 120);
+        };
+
+        var positionTip = function (node) {
+            var rect = node.getBoundingClientRect();
+            var tipW = tooltip.offsetWidth;
+            var tipH = tooltip.offsetHeight;
+
+            var left = rect.left + rect.width / 2 - tipW / 2;
+            var top = rect.top - tipH - 10;
+
+            if (top < 8) top = rect.bottom + 10;
+            if (left < 8) left = 8;
+            if (left + tipW > window.innerWidth - 8) left = window.innerWidth - tipW - 8;
+
+            tooltip.style.left = left + 'px';
+            tooltip.style.top = top + 'px';
+        };
+
+        var showTip = function (node) {
+            clearTimeout(tipTimer);
+            renderTooltip(node);
+            positionTip(node);
+            tooltip.hidden = false;
+        };
+
+        var renderTooltip = function (el) {
+            var raw = el.getAttribute('data-ut-tooltip') || '';
+            if (!raw) return;
+
+            var data = null;
+            try {
+                data = JSON.parse(raw);
+            } catch (err) {
+                data = null;
+            }
+
+            tooltip.hidden = false;
+            tooltip.textContent = '';
+
+            if (!data || typeof data !== 'object') {
+                tooltip.textContent = String(raw);
+                return;
+            }
+
+            // Build tooltip UI (similar to admin tree-view)
+            var name = data.name || '';
+            var memberId = data.member_id || '';
+            if (name) {
+                var nm = document.createElement('div');
+                nm.className = 'tt-name';
+                nm.textContent = name;
+                tooltip.appendChild(nm);
+            }
+            if (memberId) {
+                var mid = document.createElement('div');
+                mid.className = 'tt-id';
+                mid.textContent = memberId;
+                tooltip.appendChild(mid);
+            }
+
+            function addRow(label, value) {
+                if (value === null || value === undefined) return;
+                var v = String(value).trim();
+                if (v === '') return;
+                var row = document.createElement('div');
+                row.className = 'tt-row';
+                var s1 = document.createElement('span');
+                s1.textContent = label;
+                var s2 = document.createElement('span');
+                s2.textContent = v;
+                row.appendChild(s1);
+                row.appendChild(s2);
+                tooltip.appendChild(row);
+            }
+
+            addRow('Username', data.username);
+            addRow('Status', data.status);
+            addRow('Package', data.package);
+            addRow('Sponsor', data.sponsor);
+            addRow('Email', data.email);
+            addRow('Phone', data.phone);
+
+            if (data.team_left !== null || data.team_right !== null) {
+                var L = data.team_left !== null && data.team_left !== undefined ? data.team_left : '0';
+                var R = data.team_right !== null && data.team_right !== undefined ? data.team_right : '0';
+                addRow('Team', 'L ' + L + ' · R ' + R);
+            }
+            addRow('Wallet', data.wallet);
+            addRow('Joined', data.joined);
+        };
+
+        document.querySelectorAll('.ut-node.filled').forEach(function (a) {
+            a.addEventListener('mouseenter', function () {
+                showTip(a);
+            });
+            a.addEventListener('mouseleave', function () {
+                hideTip();
+            });
+            a.addEventListener('focus', function () {
+                showTip(a);
+            });
+            a.addEventListener('blur', function () {
+                hideTip();
+            });
+        });
+
+        tooltip.addEventListener('mouseenter', function () {
+            clearTimeout(tipTimer);
+        });
+        tooltip.addEventListener('mouseleave', hideTip);
     }
 })();
 </script>

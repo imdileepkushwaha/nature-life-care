@@ -1530,8 +1530,8 @@ body.lp-menu-open { overflow: hidden; }
     }
     .lp-topbar-web { display: none; }
     .lp-brand-logo {
-        height: 28px;
-        max-width: min(128px, 56vw);
+        height: auto;
+        max-width: min(80px, 56vw);
     }
     .lp-steps,
     .lp-product-grid,

@@ -7,7 +7,8 @@ feature_guard_admin_page('tree-view');
 $pageTitle = 'Tree View';
 
 $rootId = (int) ($_GET['root'] ?? 0);
-$search = trim($_GET['q'] ?? '');
+$search = strtoupper(trim($_GET['q'] ?? ''));
+$searchError = '';
 // Always show exactly 4 levels like attachment (LVL 1 → LVL 4)
 $maxDepth = 4;
 
@@ -158,11 +159,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'tree_
 }
 
 if ($search !== '') {
-    $stmt = $pdo->prepare('SELECT id FROM members WHERE member_id = ? OR username = ? LIMIT 1');
-    $stmt->execute([$search, $search]);
-    $found = $stmt->fetch();
-    if ($found) {
-        $rootId = (int) $found['id'];
+    if (!preg_match('/^[A-Z]{2,10}\d{3,8}$/', $search)) {
+        $searchError = 'Enter a valid Member ID (example: BS000002).';
+    } else {
+        $stmt = $pdo->prepare('SELECT id FROM members WHERE member_id = ? LIMIT 1');
+        $stmt->execute([$search]);
+        $found = $stmt->fetch();
+        if ($found) {
+            $rootId = (int) $found['id'];
+        }
     }
 }
 
@@ -360,8 +365,8 @@ require_once __DIR__ . '/../includes/header.php';
     <div class="panel-body">
         <form class="filters" method="get">
             <div class="form-group">
-                <label>Member ID / Username</label>
-                <input type="text" name="q" value="<?= e($search) ?>" placeholder="<?= e(member_id_prefix() . str_pad('1', member_id_pad(), '0', STR_PAD_LEFT)) ?>">
+                <label>Member ID</label>
+                <input type="text" name="q" value="<?= e($search) ?>" placeholder="<?= e(member_id_prefix() . str_pad('1', member_id_pad(), '0', STR_PAD_LEFT)) ?>" style="text-transform:uppercase">
             </div>
             <button type="submit" class="btn btn-primary">Show Tree</button>
             <a href="tree-view.php" class="btn btn-outline">Reset</a>
@@ -371,8 +376,12 @@ require_once __DIR__ . '/../includes/header.php';
     <div class="tv-board">
         <?php if (!$root): ?>
             <div class="empty-state" style="padding:2rem">
-                <strong>No members yet</strong>
-                <span><a href="member-add.php">Add first member</a> to start the tree.</span>
+                <strong><?= $searchError !== '' ? 'Invalid Member ID' : 'No members yet' ?></strong>
+                <?php if ($searchError !== ''): ?>
+                    <span><?= e($searchError) ?></span>
+                <?php else: ?>
+                    <span><a href="member-add.php">Add first member</a> to start the tree.</span>
+                <?php endif; ?>
             </div>
         <?php else: ?>
             <div class="tv-scroll">

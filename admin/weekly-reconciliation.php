@@ -120,14 +120,8 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
 
     <section class="rpt-panel">
-        <div class="rpt-panel-head is-blue">
-            <div class="rpt-panel-main">
-                <span class="rpt-panel-ico"><?= $icoCal ?></span>
-                <div>
-                    <span class="rpt-kicker">Daily recording</span>
-                    <h2>Sun–Sat ledger</h2>
-                </div>
-            </div>
+        <div class="panel-header">
+            <h2>Daily recording · Sun–Sat ledger</h2>
         </div>
         <div class="rpt-panel-body rpt-table-wrap">
             <table class="rpt-table">
@@ -174,14 +168,8 @@ require_once __DIR__ . '/../includes/header.php';
 
     <div class="cls-grid">
         <section class="rpt-panel">
-            <div class="rpt-panel-head is-gold">
-                <div class="rpt-panel-main">
-                    <span class="rpt-panel-ico"><?= $icoCheck ?></span>
-                    <div>
-                        <span class="rpt-kicker">Sign-off</span>
-                        <h2>Reconcile this week</h2>
-                    </div>
-                </div>
+            <div class="panel-header">
+                <h2>Reconcile this week</h2>
             </div>
             <div class="rpt-panel-body cls-actions">
                 <p class="cls-help">
@@ -216,14 +204,8 @@ require_once __DIR__ . '/../includes/header.php';
         </section>
 
         <section class="rpt-panel">
-            <div class="rpt-panel-head is-green">
-                <div class="rpt-panel-main">
-                    <span class="rpt-panel-ico"><?= $icoClose ?></span>
-                    <div>
-                        <span class="rpt-kicker">History</span>
-                        <h2>Saved weeks</h2>
-                    </div>
-                </div>
+            <div class="panel-header">
+                <h2>Saved weeks</h2>
             </div>
             <div class="rpt-panel-body rpt-table-wrap">
                 <table class="rpt-table">
@@ -254,14 +236,8 @@ require_once __DIR__ . '/../includes/header.php';
 
     <?php if ($cronLogs): ?>
     <section class="rpt-panel">
-        <div class="rpt-panel-head is-coral">
-            <div class="rpt-panel-main">
-                <span class="rpt-panel-ico"><?= $icoCal ?></span>
-                <div>
-                    <span class="rpt-kicker">Automation</span>
-                    <h2>Cron log</h2>
-                </div>
-            </div>
+        <div class="panel-header">
+            <h2>Cron log</h2>
         </div>
         <div class="rpt-panel-body rpt-table-wrap">
             <table class="rpt-table">

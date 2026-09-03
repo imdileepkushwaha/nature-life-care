@@ -11,6 +11,7 @@ $phone = trim((string) ($user['phone'] ?? ''));
 $email = trim((string) ($user['email'] ?? ''));
 $username = (string) ($user['username'] ?? '');
 $company = setting('company_name', 'Binary MLM');
+$logoUrl = company_logo_url();
 $support = setting('support_email', setting('contact_email', ''));
 $supportPhone = setting('contact_phone', '');
 
@@ -54,9 +55,17 @@ $validThru = !empty($user['join_date'])
 
                     <header class="idc-head">
                         <div class="idc-brand">
-                            <span class="idc-brand-mark" aria-hidden="true">
+                            <!-- <span class="idc-brand-mark" aria-hidden="true">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                            </span>
+                            </span> -->
+                            <?php if ($logoUrl): ?>
+                                <img
+                                    src="<?= e($logoUrl) ?>"
+                                    alt="<?= e($company) ?>"
+                                    style="width:44px;height:44px;object-fit:contain;display:block"
+                                    class="idc-logo"
+                                >
+                            <?php endif; ?>
                             <div>
                                 <strong><?= e($company) ?></strong>
                                 <small>Authorized Seller</small>

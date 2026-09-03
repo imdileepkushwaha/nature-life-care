@@ -337,16 +337,72 @@ function team_render_node(array $member, int $level, bool $isRoot, int $viewRoot
         $cls .= ' is-inactive';
     }
 
-    $titleBits = [$member['full_name'], $member['member_id']];
-    if ($noPlan) {
-        $titleBits[] = 'No plan';
-    }
-    if ($isInactive) {
-        $titleBits[] = ucfirst((string) ($member['status'] ?? 'inactive'));
+    $fullName = (string) ($member['full_name'] ?? '');
+    $memberId = (string) ($member['member_id'] ?? '');
+    $username = (string) ($member['username'] ?? '');
+    $packageName = (string) ($member['package_name'] ?? '');
+    $sponsorName = (string) ($member['sponsor_name'] ?? '');
+    $sponsorMid = (string) ($member['sponsor_mid'] ?? '');
+    $email = trim((string) ($member['email'] ?? ''));
+    $phone = trim((string) ($member['phone'] ?? ''));
+    $wallet = (string) ($member['wallet_balance'] ?? '');
+    $joinedRaw = (string) ($member['join_date'] ?? '');
+
+    $joined = '';
+    if ($joinedRaw !== '') {
+        $ts = strtotime($joinedRaw);
+        if ($ts !== false) {
+            $joined = date('d M Y', $ts);
+        }
     }
 
+    $leftCount = isset($member['left_count']) ? (string) $member['left_count'] : '';
+    $rightCount = isset($member['right_count']) ? (string) $member['right_count'] : '';
+
+    $titleBits = array_values(array_filter([
+        $fullName !== '' ? $fullName : '',
+        $memberId !== '' ? $memberId : '',
+        $username !== '' ? '@' . $username : '',
+        $noPlan ? 'No plan' : ($packageName !== '' ? 'Package: ' . $packageName : ''),
+        $isInactive ? ucfirst((string) ($member['status'] ?? 'inactive')) : '',
+        ($sponsorName !== '' || $sponsorMid !== '')
+            ? ('Sponsor: ' . ($sponsorName !== '' ? $sponsorName : '—') . ($sponsorMid !== '' ? ' (' . $sponsorMid . ')' : ''))
+            : '',
+        $phone !== '' ? ('Phone: ' . $phone) : '',
+        $email !== '' ? ('Email: ' . $email) : '',
+        ($leftCount !== '' || $rightCount !== '') ? ('Team: ' . trim($leftCount . ' / ' . $rightCount, ' /')) : '',
+        $wallet !== '' ? ('Wallet: ' . $wallet) : '',
+        $joined !== '' ? ('Joined: ' . $joined) : '',
+    ], static fn ($s) => trim((string) $s) !== ''));
+
     $href = 'my-treeview.php?root=' . (int) $member['id'];
-    echo '<a href="' . $href . '" class="' . $cls . '" title="' . e(implode(' · ', $titleBits)) . '">';
+
+    $tooltipData = [
+        'name' => $fullName,
+        'member_id' => $memberId,
+        'username' => $username,
+        'package' => $packageName !== '' ? $packageName : 'No plan',
+        'status' => $isInactive ? ucfirst((string) ($member['status'] ?? 'inactive')) : 'Active',
+        'sponsor' => $sponsorName !== '' ? $sponsorName : null,
+        'sponsor_id' => $sponsorMid !== '' ? $sponsorMid : null,
+        'email' => $email !== '' ? $email : null,
+        'phone' => $phone !== '' ? $phone : null,
+        'team_left' => $leftCount !== '' ? $leftCount : null,
+        'team_right' => $rightCount !== '' ? $rightCount : null,
+        'wallet' => $wallet !== '' ? $wallet : null,
+        'joined' => $joined !== '' ? $joined : null,
+    ];
+    $tooltipJson = json_encode($tooltipData, JSON_UNESCAPED_UNICODE);
+
+    $shortTitleBits = array_values(array_filter([
+        $fullName !== '' ? $fullName : null,
+        $memberId !== '' ? $memberId : null,
+    ], static fn ($v) => $v !== null && trim((string) $v) !== ''));
+    $shortTitle = implode(' · ', $shortTitleBits);
+
+    echo '<a href="' . $href . '" class="' . $cls . '"'
+        . ' data-ut-tooltip="' . e($tooltipJson) . '"'
+        . ' title="' . e($shortTitle) . '">';
     echo '<span class="ut-avatar">';
     echo '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
     echo '</span>';
