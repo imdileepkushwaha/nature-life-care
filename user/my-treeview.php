@@ -292,13 +292,23 @@ $featTpin = feature_module_allowed('tpin');
 <div class="ut-modal" id="utAddModal" hidden>
     <div class="ut-modal-backdrop" data-ut-close></div>
     <div class="ut-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="utModalTitle">
-        <div class="ut-modal-head">
-            <div>
-                <h3 id="utModalTitle">Add Member</h3>
-                <p class="ut-modal-sub" id="utModalSub">Place under selected vacant slot</p>
+        <header class="ut-modal-hero">
+            <span class="ut-modal-hero-glow" aria-hidden="true"></span>
+            <div class="ut-modal-hero-main">
+                <span class="ut-modal-hero-ico" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M16 11h6"/></svg>
+                </span>
+                <div>
+                    <p class="ut-modal-kicker">Binary placement</p>
+                    <h3 id="utModalTitle">Add Member</h3>
+                    <p class="ut-modal-sub" id="utModalSub">Register a new member on a vacant slot. You will be the sponsor.</p>
+                </div>
             </div>
-            <button type="button" class="ut-modal-x" data-ut-close aria-label="Close">&times;</button>
-        </div>
+            <button type="button" class="ut-modal-x" data-ut-close aria-label="Close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+        </header>
+
         <form method="post" class="ut-modal-body" id="utAddForm" autocomplete="off">
             <input type="hidden" name="action" value="tree_add">
             <input type="hidden" name="parent_id" id="utParentId" value="<?= $reopenModal ? (int) ($_POST['parent_id'] ?? 0) : '' ?>">
@@ -307,52 +317,130 @@ $featTpin = feature_module_allowed('tpin');
             <input type="hidden" name="parent_code" id="utParentCode" value="<?= $reopenModal ? e((string) ($_POST['parent_code'] ?? '')) : '' ?>">
             <input type="hidden" name="return_root" value="<?= (int) $viewRootId ?>">
 
-            <div class="ut-slot-chip" id="utSlotChip">—</div>
-
-            <div class="ut-form-grid">
-                <div class="form-group">
-                    <label for="ut_full_name">Full Name *</label>
-                    <input type="text" name="full_name" id="ut_full_name" required value="<?= e($formValues['full_name']) ?>">
+            <div class="ut-place" id="utPlaceCard">
+                <div class="ut-place-parent">
+                    <span class="ut-place-avatar" aria-hidden="true" id="utPlaceAvatar">+</span>
+                    <div>
+                        <small>Place under</small>
+                        <strong id="utPlaceParent">—</strong>
+                        <span id="utPlaceCode">Vacant slot</span>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="ut_username">Username</label>
-                    <input type="text" name="username" id="ut_username" value="<?= e($formValues['username']) ?>" placeholder="Auto from name if blank" maxlength="40">
+                <div class="ut-place-meta">
+                    <span class="ut-place-side is-left" id="utPlaceSide">LEFT</span>
+                    <span class="ut-place-lvl" id="utPlaceLevel">LVL —</span>
                 </div>
-                <div class="form-group">
-                    <label for="ut_email">Email *</label>
-                    <input type="email" name="email" id="ut_email" required value="<?= e($formValues['email']) ?>">
-                </div>
-                <div class="form-group">
-                    <label for="ut_phone">Phone</label>
-                    <input type="text" name="phone" id="ut_phone" value="<?= e($formValues['phone']) ?>">
-                </div>
-                <div class="form-group">
-                    <label for="ut_password">Password *</label>
-                    <input type="password" name="password" id="ut_password" required minlength="6" autocomplete="new-password">
-                </div>
-                <?php if ($featTpin): ?>
-                <div class="form-group">
-                    <label for="ut_tpin">T-Pin (optional activate)</label>
-                    <?php if ($myPins): ?>
-                        <select name="tpin_code" id="ut_tpin">
-                            <option value="">— Register only —</option>
-                            <?php foreach ($myPins as $p): ?>
-                                <option value="<?= e(tpin_format_code((string) $p['pin_code'])) ?>" <?= ($reopenModal && trim((string) ($_POST['tpin_code'] ?? '')) === tpin_format_code((string) $p['pin_code'])) ? 'selected' : '' ?>>
-                                    <?= e(tpin_format_code((string) $p['pin_code'])) ?> · <?= e($p['package_name']) ?> (<?= currency((float) $p['package_amount']) ?>)
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    <?php else: ?>
-                        <input type="text" name="tpin_code" id="ut_tpin" value="<?= $reopenModal ? e((string) ($_POST['tpin_code'] ?? '')) : '' ?>" placeholder="No unused pins in wallet" maxlength="20">
-                        <small class="ut-field-hint">You have no unused T-Pins. Member can be registered without activation.</small>
-                    <?php endif; ?>
-                </div>
-                <?php endif; ?>
             </div>
+            <p class="ut-place-sponsor">Sponsor: <strong><?= e((string) ($user['full_name'] ?? '')) ?></strong> · <?= e((string) ($user['member_id'] ?? '')) ?></p>
+
+            <div class="ut-sec">
+                <div class="ut-sec-head">
+                    <span class="ut-sec-ico" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    </span>
+                    <div>
+                        <h4>Personal details</h4>
+                        <p>Name and contact for the new ID</p>
+                    </div>
+                </div>
+                <div class="ut-form-grid">
+                    <label class="ut-field ut-span-2">
+                        <span>Full name <em>*</em></span>
+                        <span class="ut-input">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            <input type="text" name="full_name" id="ut_full_name" required value="<?= e($formValues['full_name']) ?>" placeholder="Member full name">
+                        </span>
+                    </label>
+                    <label class="ut-field">
+                        <span>Email <em>*</em></span>
+                        <span class="ut-input">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
+                            <input type="email" name="email" id="ut_email" required value="<?= e($formValues['email']) ?>" placeholder="name@email.com">
+                        </span>
+                    </label>
+                    <label class="ut-field">
+                        <span>Phone</span>
+                        <span class="ut-input">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0122 16.92z"/></svg>
+                            <input type="text" name="phone" id="ut_phone" value="<?= e($formValues['phone']) ?>" placeholder="Optional">
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="ut-sec">
+                <div class="ut-sec-head">
+                    <span class="ut-sec-ico is-lock" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                    </span>
+                    <div>
+                        <h4>Login credentials</h4>
+                        <p>Username auto-fills from name if left blank</p>
+                    </div>
+                </div>
+                <div class="ut-form-grid">
+                    <label class="ut-field">
+                        <span>Username</span>
+                        <span class="ut-input">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 7h16M4 12h10M4 17h7"/></svg>
+                            <input type="text" name="username" id="ut_username" value="<?= e($formValues['username']) ?>" placeholder="Auto from name" maxlength="40">
+                        </span>
+                    </label>
+                    <label class="ut-field">
+                        <span>Password <em>*</em></span>
+                        <span class="ut-input has-eye up-password-wrap">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                            <input type="password" name="password" id="ut_password" required minlength="6" autocomplete="new-password" placeholder="Min. 6 characters">
+                            <button type="button" class="up-eye" data-password-toggle aria-label="Show password">
+                                <svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                <svg class="eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                            </button>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <?php if ($featTpin): ?>
+            <div class="ut-sec ut-sec-pin">
+                <div class="ut-sec-head">
+                    <span class="ut-sec-ico is-gold" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+                    </span>
+                    <div>
+                        <h4>T-Pin activate</h4>
+                        <p>Optional — register now, activate later if you skip</p>
+                    </div>
+                </div>
+                <label class="ut-field">
+                    <span>Unused pin from your wallet</span>
+                    <span class="ut-input">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h4M7 13h10"/></svg>
+                        <?php if ($myPins): ?>
+                            <select name="tpin_code" id="ut_tpin">
+                                <option value="">Register only — no activation</option>
+                                <?php foreach ($myPins as $p): ?>
+                                    <option value="<?= e(tpin_format_code((string) $p['pin_code'])) ?>" <?= ($reopenModal && trim((string) ($_POST['tpin_code'] ?? '')) === tpin_format_code((string) $p['pin_code'])) ? 'selected' : '' ?>>
+                                        <?= e(tpin_format_code((string) $p['pin_code'])) ?> · <?= e($p['package_name']) ?> (<?= strip_tags(currency((float) $p['package_amount'])) ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php else: ?>
+                            <input type="text" name="tpin_code" id="ut_tpin" value="<?= $reopenModal ? e((string) ($_POST['tpin_code'] ?? '')) : '' ?>" placeholder="No unused pins in wallet" maxlength="20">
+                        <?php endif; ?>
+                    </span>
+                    <?php if (!$myPins): ?>
+                        <small class="ut-field-hint">You have no unused T-Pins. The member can still be registered without a package.</small>
+                    <?php endif; ?>
+                </label>
+            </div>
+            <?php endif; ?>
 
             <div class="ut-modal-foot">
                 <button type="button" class="up-btn up-btn-outline" data-ut-close>Cancel</button>
-                <button type="submit" class="up-btn up-btn-primary">Save Member</button>
+                <button type="submit" class="up-btn up-btn-primary ut-save-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                    Save Member
+                </button>
             </div>
         </form>
     </div>
@@ -367,6 +455,34 @@ $featTpin = feature_module_allowed('tpin');
     var reopenParentName = <?= json_encode((string) ($_POST['parent_name'] ?? ''), JSON_UNESCAPED_UNICODE) ?>;
     var reopenParentCode = <?= json_encode((string) ($_POST['parent_code'] ?? ''), JSON_UNESCAPED_UNICODE) ?>;
 
+    function fillPlacement(parentName, parentCode, position, level) {
+        var side = String(position || '').toUpperCase();
+        var isRight = side === 'RIGHT';
+        var parentEl = document.getElementById('utPlaceParent');
+        var codeEl = document.getElementById('utPlaceCode');
+        var sideEl = document.getElementById('utPlaceSide');
+        var lvlEl = document.getElementById('utPlaceLevel');
+        var av = document.getElementById('utPlaceAvatar');
+        var sub = document.getElementById('utModalSub');
+        if (parentEl) parentEl.textContent = parentName || 'Selected parent';
+        if (codeEl) codeEl.textContent = parentCode || 'Vacant slot';
+        if (sideEl) {
+            sideEl.textContent = side || '—';
+            sideEl.classList.toggle('is-right', isRight);
+            sideEl.classList.toggle('is-left', !isRight);
+        }
+        if (lvlEl) lvlEl.textContent = level ? ('LVL ' + level) : 'LVL —';
+        if (av) {
+            var initial = (parentName || parentCode || '+').replace(/^\s+/, '').charAt(0);
+            av.textContent = initial ? initial.toUpperCase() : '+';
+        }
+        if (sub) {
+            sub.textContent = 'Register under ' + (parentName || 'this member')
+                + (side ? (' · ' + side + ' side') : '')
+                + '. You remain the sponsor.';
+        }
+    }
+
     function openModal(btn) {
         var parentId = btn.getAttribute('data-parent-id') || '';
         var position = btn.getAttribute('data-position') || '';
@@ -377,10 +493,7 @@ $featTpin = feature_module_allowed('tpin');
         document.getElementById('utPosition').value = position;
         document.getElementById('utParentName').value = parentName;
         document.getElementById('utParentCode').value = parentCode;
-        document.getElementById('utSlotChip').textContent =
-            'Under ' + (parentCode || parentName) + ' · ' + String(position).toUpperCase() + ' · LVL ' + level;
-        document.getElementById('utModalSub').textContent =
-            'Register under ' + parentName + ' (' + String(position).toUpperCase() + ' side). You will be the sponsor.';
+        fillPlacement(parentName, parentCode, position, level);
         if (!reopen) {
             var form = document.getElementById('utAddForm');
             if (form) form.reset();
@@ -388,6 +501,7 @@ $featTpin = feature_module_allowed('tpin');
             document.getElementById('utPosition').value = position;
             document.getElementById('utParentName').value = parentName;
             document.getElementById('utParentCode').value = parentCode;
+            fillPlacement(parentName, parentCode, position, level);
         }
         modal.hidden = false;
         document.body.classList.add('ut-modal-open');
@@ -410,10 +524,7 @@ $featTpin = feature_module_allowed('tpin');
 
     if (reopen) {
         var pos = document.getElementById('utPosition').value || '';
-        var code = reopenParentCode || '';
-        var name = reopenParentName || '';
-        document.getElementById('utSlotChip').textContent =
-            'Under ' + (code || name || 'selected slot') + (pos ? (' · ' + String(pos).toUpperCase()) : '');
+        fillPlacement(reopenParentName || '', reopenParentCode || '', pos, '');
         modal.hidden = false;
         document.body.classList.add('ut-modal-open');
     }

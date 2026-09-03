@@ -72,8 +72,8 @@ function status_badge(string $status): string
 function member_effective_status(array $member): string
 {
     $status = strtolower(trim((string) ($member['status'] ?? 'inactive')));
-    if ($status === 'blocked') {
-        return 'blocked';
+    if ($status === 'blocked' || $status === 'deceased') {
+        return $status;
     }
     if (empty($member['package_id'])) {
         return 'inactive';
@@ -87,6 +87,22 @@ function member_effective_status(array $member): string
 function member_is_active(array $member): bool
 {
     return member_effective_status($member) === 'active';
+}
+
+/** Login / portal lock: blocked or deceased (nominee settlement). */
+function member_is_login_blocked(array $member): bool
+{
+    $status = strtolower(trim((string) ($member['status'] ?? '')));
+    return $status === 'blocked' || $status === 'deceased';
+}
+
+function member_login_block_message(array $member): string
+{
+    $status = strtolower(trim((string) ($member['status'] ?? '')));
+    if ($status === 'deceased') {
+        return 'This membership is closed under the nominee settlement process. Contact support for the nominee case.';
+    }
+    return 'Your account has been blocked. Contact support.';
 }
 
 function icon_svg(string $name): string
@@ -195,6 +211,14 @@ function products_ensure_columns(PDO $pdo): void
         $pkgCol = $pdo->query("SHOW COLUMNS FROM products LIKE 'package_id'")->fetch();
         if (!$pkgCol) {
             $pdo->exec('ALTER TABLE products ADD COLUMN package_id INT NULL DEFAULT NULL AFTER bv');
+        }
+    } catch (Throwable $e) {
+        // ignore
+    }
+    try {
+        $taxCol = $pdo->query("SHOW COLUMNS FROM products LIKE 'tax_percent'")->fetch();
+        if (!$taxCol) {
+            $pdo->exec('ALTER TABLE products ADD COLUMN tax_percent DECIMAL(8,2) NOT NULL DEFAULT 0 AFTER mrp');
         }
     } catch (Throwable $e) {
         // ignore

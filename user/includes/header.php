@@ -7,7 +7,7 @@ require_user();
 feature_guard_user_page();
 
 $user = current_user($pdo);
-if (!$user || ($user['status'] ?? '') === 'blocked') {
+if (!$user || member_is_login_blocked($user)) {
     unset($_SESSION['user_id'], $_SESSION['user_name'], $_SESSION['user_code']);
     header('Location: login.php');
     exit;
@@ -28,12 +28,16 @@ $featActivations = feature_module_allowed('activations');
 $featWalletTopup = feature_module_allowed('wallet_topup');
 $featWalletActivate = feature_module_allowed('wallet_activate');
 $featProducts = feature_module_allowed('products');
+$featWalletTransfer = $featWalletTopup || $featProducts;
 $featWithdrawals = feature_module_allowed('withdrawals');
 $featKyc = feature_module_allowed('kyc');
 $featIncomeBinary = feature_module_allowed('income_binary');
 $featIncomeLevel = feature_module_allowed('income_level');
 $featIncomeReferral = feature_module_allowed('income_referral');
 $featIncomeMatching = feature_module_allowed('income_matching');
+$featIncomeDsi = feature_module_allowed('income_dsi');
+$featRanks = feature_module_allowed('ranks');
+$featRewards = feature_module_allowed('rewards');
 $productActivatesNav = feature_enabled('feature_product_activates_package');
 $productMinActivate = product_activate_min_amount();
 
@@ -50,7 +54,7 @@ $isDash = ($currentPage === 'index');
 $isActivate = ($currentPage === 'activate');
 $isTpin = ($currentPage === 'tpin');
 $isSupport = ($currentPage === 'support');
-$profilePages = ['profile', 'edit-profile', 'change-password', 'upload-photo', 'id-card', 'welcome-letter'];
+$profilePages = ['profile', 'edit-profile', 'change-password', 'upload-photo', 'id-card', 'welcome-letter', 'kit-invoice'];
 $profileOpen = in_array($currentPage, $profilePages, true);
 $profileBadge = count($profilePages);
 $kycPages = ['kyc-pan', 'kyc-bank', 'kyc-aadhar', 'kyc-upi'];
@@ -78,7 +82,7 @@ $wdOpen = in_array($currentPage, $wdPages, true);
 $wdPendingBadge = $featWithdrawals ? wd_pending_count($pdo, (int) $user['id']) : 0;
 $wdBadge = $wdPendingBadge > 0 ? $wdPendingBadge : count($wdPages);
 $wdBadgeAlert = $wdPendingBadge > 0;
-$walletPages = ['wallet', 'wallet-income', 'wallet-transfer'];
+$walletPages = ['wallet', 'wallet-income'];
 if ($featWalletTopup) {
     $walletPages[] = 'wallet-topup';
 }
@@ -87,6 +91,9 @@ if ($featWalletActivate) {
 }
 if ($featProducts) {
     $walletPages[] = 'wallet-shopping';
+}
+if ($featWalletTransfer) {
+    $walletPages[] = 'wallet-transfer';
 }
 $walletOpen = in_array($currentPage, $walletPages, true);
 $walletBadge = count($walletPages);
@@ -103,8 +110,26 @@ if ($featIncomeMatching) {
 if ($featIncomeLevel) {
     $incomePages[] = 'income-level';
 }
+if ($featIncomeDsi) {
+    $incomePages[] = 'income-dsi';
+}
+if ($featRanks) {
+    $incomePages[] = 'income-rank';
+}
+if ($featRewards) {
+    $incomePages[] = 'income-reward';
+}
 $incomeOpen = in_array($currentPage, $incomePages, true);
 $incomeBadge = count($incomePages);
+$careerPages = [];
+if ($featRanks) {
+    $careerPages[] = 'rank';
+}
+if ($featRewards) {
+    $careerPages[] = 'rewards';
+}
+$careerOpen = in_array($currentPage, $careerPages, true);
+$careerBadge = count($careerPages);
 $reportPages = ['transaction-report'];
 $reportOpen = in_array($currentPage, $reportPages, true);
 $reportBadge = count($reportPages);
@@ -259,6 +284,7 @@ $chevron = '<svg class="up-nav-chevron" viewBox="0 0 24 24" fill="none" stroke="
                             <a href="upload-photo.php" class="up-nav-sublink<?= $currentPage === 'upload-photo' ? ' is-active' : '' ?>">Upload Photo</a>
                             <a href="id-card.php" class="up-nav-sublink<?= $currentPage === 'id-card' ? ' is-active' : '' ?>">ID Card</a>
                             <a href="welcome-letter.php" class="up-nav-sublink<?= $currentPage === 'welcome-letter' ? ' is-active' : '' ?>">Welcome Letter</a>
+                            <a href="kit-invoice.php" class="up-nav-sublink<?= $currentPage === 'kit-invoice' ? ' is-active' : '' ?>">Kit Invoice</a>
                             <a href="change-password.php" class="up-nav-sublink<?= $currentPage === 'change-password' ? ' is-active' : '' ?>">Change Password</a>
                         </div>
                     </div>
@@ -326,13 +352,43 @@ $chevron = '<svg class="up-nav-chevron" viewBox="0 0 24 24" fill="none" stroke="
                             <?php if ($featIncomeMatching): ?>
                             <a href="income-matching.php" class="up-nav-sublink<?= $currentPage === 'income-matching' ? ' is-active' : '' ?>">Matching Income</a>
                             <?php endif; ?>
+                            <?php if ($featIncomeDsi): ?>
+                            <a href="income-dsi.php" class="up-nav-sublink<?= $currentPage === 'income-dsi' ? ' is-active' : '' ?>">DSI Income</a>
+                            <?php endif; ?>
                             <?php if ($featIncomeLevel): ?>
                             <a href="income-level.php" class="up-nav-sublink<?= $currentPage === 'income-level' ? ' is-active' : '' ?>">Level Income</a>
+                            <?php endif; ?>
+                            <?php if ($featRanks): ?>
+                            <a href="income-rank.php" class="up-nav-sublink<?= $currentPage === 'income-rank' ? ' is-active' : '' ?>">Rank Incentive</a>
+                            <?php endif; ?>
+                            <?php if ($featRewards): ?>
+                            <a href="income-reward.php" class="up-nav-sublink<?= $currentPage === 'income-reward' ? ' is-active' : '' ?>">Reward Benefit</a>
                             <?php endif; ?>
                             <a href="income-other.php" class="up-nav-sublink<?= $currentPage === 'income-other' ? ' is-active' : '' ?>">Other Income</a>
                         </div>
                     </div>
-                </div> 
+                </div>
+
+                <?php if ($careerBadge > 0): ?>
+                <div class="up-nav-group<?= $careerOpen ? ' is-open' : '' ?>" data-up-nav-group>
+                    <button type="button" class="up-nav-item up-nav-toggle<?= $careerOpen ? ' is-active' : '' ?>" data-up-nav-toggle aria-expanded="<?= $careerOpen ? 'true' : 'false' ?>">
+                        <span class="up-nav-ico"><?= $icoKyc ?></span>
+                        <span class="up-nav-text">Rank &amp; Rewards</span>
+                        <span class="up-nav-badge"><?= (int) $careerBadge ?></span>
+                        <?= $chevron ?>
+                    </button>
+                    <div class="up-nav-sub" id="upNavSubCareer">
+                        <div class="up-nav-sub-inner">
+                            <?php if ($featRanks): ?>
+                            <a href="rank.php" class="up-nav-sublink<?= $currentPage === 'rank' ? ' is-active' : '' ?>">My Rank</a>
+                            <?php endif; ?>
+                            <?php if ($featRewards): ?>
+                            <a href="rewards.php" class="up-nav-sublink<?= $currentPage === 'rewards' ? ' is-active' : '' ?>">My Rewards</a>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?> 
 
             </div>
 
@@ -358,7 +414,9 @@ $chevron = '<svg class="up-nav-chevron" viewBox="0 0 24 24" fill="none" stroke="
                             <?php if ($featProducts): ?>
                             <a href="wallet-shopping.php" class="up-nav-sublink<?= $currentPage === 'wallet-shopping' ? ' is-active' : '' ?>">Shopping Wallet</a>
                             <?php endif; ?>
+                            <?php if ($featWalletTransfer): ?>
                             <a href="wallet-transfer.php" class="up-nav-sublink<?= $currentPage === 'wallet-transfer' ? ' is-active' : '' ?>">Transfer</a>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -449,9 +507,10 @@ $chevron = '<svg class="up-nav-chevron" viewBox="0 0 24 24" fill="none" stroke="
                 <div class="up-search-drop" id="upSearchDrop" hidden>
                     <a href="index.php" data-search="dashboard home">Dashboard</a>
                     <a href="profile.php" data-search="profile account">My Profile</a>
-                    <a href="edit-profile.php" data-search="edit profile">Edit Profile</a>
+                    <a href="edit-profile.php" data-search="edit profile nominee">Edit Profile</a>
                     <a href="id-card.php" data-search="id card identity membership">ID Card</a>
                     <a href="welcome-letter.php" data-search="welcome letter certificate seller">Welcome Letter</a>
+                    <a href="kit-invoice.php" data-search="kit invoice mrp tax customer value package products">Kit Invoice</a>
                     <a href="my-direct.php" data-search="direct team">My Direct</a>
                     <a href="my-downline.php" data-search="downline team">My Downline</a>
                     <?php if ($featBinary): ?>
@@ -473,8 +532,19 @@ $chevron = '<svg class="up-nav-chevron" viewBox="0 0 24 24" fill="none" stroke="
                     <?php if ($featIncomeMatching): ?>
                     <a href="income-matching.php" data-search="matching income">Matching Income</a>
                     <?php endif; ?>
+                    <?php if ($featIncomeDsi): ?>
+                    <a href="income-dsi.php" data-search="dsi direct sponsor incentive">DSI Income</a>
+                    <?php endif; ?>
                     <?php if ($featIncomeLevel): ?>
                     <a href="income-level.php" data-search="level income">Level Income</a>
+                    <?php endif; ?>
+                    <?php if ($featRanks): ?>
+                    <a href="income-rank.php" data-search="rank incentive promotion">Rank Incentive</a>
+                    <a href="rank.php" data-search="my rank pairs executive director">My Rank</a>
+                    <?php endif; ?>
+                    <?php if ($featRewards): ?>
+                    <a href="income-reward.php" data-search="reward benefit cash">Reward Benefit</a>
+                    <a href="rewards.php" data-search="business rewards gifts bag car">My Rewards</a>
                     <?php endif; ?>
                     <a href="income-other.php" data-search="other income">Other Income</a>
                     <a href="wallet.php" data-search="wallet income">My Wallets</a>
@@ -493,7 +563,9 @@ $chevron = '<svg class="up-nav-chevron" viewBox="0 0 24 24" fill="none" stroke="
                     <a href="purchase-report.php" data-search="purchase report orders history">Purchase Report</a>
                     <a href="purchase-invoice.php" data-search="purchase invoice bill">Purchase Invoice</a>
                     <?php endif; ?>
+                    <?php if ($featWalletTransfer): ?>
                     <a href="wallet-transfer.php" data-search="wallet transfer fund">Wallet Transfer</a>
+                    <?php endif; ?>
                     <?php if ($featKyc): ?>
                     <a href="kyc-pan.php" data-search="kyc pan card">Pan Card KYC</a>
                     <a href="kyc-bank.php" data-search="kyc bank detail account">Bank Detail KYC</a>
@@ -581,6 +653,10 @@ $chevron = '<svg class="up-nav-chevron" viewBox="0 0 24 24" fill="none" stroke="
                         <a href="welcome-letter.php" class="up-user-item" role="menuitem">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
                             Welcome Letter
+                        </a>
+                        <a href="kit-invoice.php" class="up-user-item" role="menuitem">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h6"/></svg>
+                            Kit Invoice
                         </a>
                         <a href="change-password.php" class="up-user-item" role="menuitem">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>

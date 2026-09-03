@@ -235,7 +235,7 @@ try {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
             </span>
             <div class="up-stat-copy">
-                <div class="up-stat-label">Left BV</div>
+                <div class="up-stat-label">Left PV</div>
                 <div class="up-stat-value"><?= number_format($leftBv, 0) ?></div>
                 <div class="up-stat-foot"><span>volume</span> Left leg</div>
             </div>
@@ -247,7 +247,7 @@ try {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             </span>
             <div class="up-stat-copy">
-                <div class="up-stat-label">Right BV</div>
+                <div class="up-stat-label">Right PV</div>
                 <div class="up-stat-value"><?= number_format($rightBv, 0) ?></div>
                 <div class="up-stat-foot"><span>volume</span> Right leg</div>
             </div>
@@ -261,7 +261,7 @@ try {
             <div class="up-stat-copy">
                 <div class="up-stat-label">Open Pairs</div>
                 <div class="up-stat-value"><?= number_format($openPairs, $openPairs == floor($openPairs) ? 0 : 2) ?></div>
-                <div class="up-stat-foot"><span>match</span> BV <?= number_format((float) ($openMatch['matched_bv'] ?? 0), 0) ?></div>
+                <div class="up-stat-foot"><span>match</span> PV <?= number_format((float) ($openMatch['matched_bv'] ?? 0), 0) ?></div>
             </div>
         </div>
     </article>
@@ -273,11 +273,25 @@ try {
             <div class="up-stat-copy">
                 <div class="up-stat-label">Pair Size</div>
                 <div class="up-stat-value"><?= number_format($pairBv, 0) ?></div>
-                <div class="up-stat-foot"><span>BV</span> Per pair</div>
+                <div class="up-stat-foot"><span>1:2 / 2:1</span> Eligible PV</div>
             </div>
         </div>
     </article>
 </div>
+<?php endif; ?>
+
+<?php if ($showBinaryUi && feature_module_allowed('ranks')):
+    $rkDash = plan_member_rank_progress($pdo, $user);
+    $rkNext = $rkDash['next'];
+?>
+<section class="rk-dash">
+    <div>
+        <span class="rk-dash-kicker">Rank</span>
+        <strong><?= e($rkDash['rank']['title'] ?? 'Associate') ?></strong>
+        <small><?= number_format((float) $rkDash['pairs'], 0) ?> lifetime pairs<?= $rkNext ? ' · next ' . e($rkNext['title']) . ' at ' . number_format((int) $rkNext['pairs_required']) : '' ?></small>
+    </div>
+    <a href="rank.php" class="up-btn up-btn-outline">View ladder</a>
+</section>
 <?php endif; ?>
 
 <section class="up-card up-panel-card up-referral" aria-labelledby="referralTitle">

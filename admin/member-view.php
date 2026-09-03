@@ -3,7 +3,10 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/activation.php';
 require_once __DIR__ . '/../includes/closing.php';
 require_once __DIR__ . '/../includes/withdrawal.php';
+require_once __DIR__ . '/../includes/plan_incentives.php';
+require_once __DIR__ . '/../includes/nominee.php';
 $pageTitle = 'Member Details';
+nominee_ensure_schema($pdo);
 
 $showBinary = plan_uses_binary();
 $showMatrix = plan_uses_matrix();
@@ -112,6 +115,8 @@ $ct = $pdo->prepare("SELECT COALESCE(SUM(amount),0) FROM commissions WHERE membe
 $ct->execute([$id]);
 $commTotal = (float) $ct->fetchColumn();
 
+$nomCase = nominee_case_for_member($pdo, $id);
+
 require_once __DIR__ . '/../includes/header.php';
 
 $effectiveStatus = member_effective_status($member);
@@ -152,6 +157,24 @@ $effectiveStatus = member_effective_status($member);
     </div>
 </div>
 
+<div class="panel" style="margin-bottom:1rem">
+    <div class="panel-header">
+        <h2>Nominee</h2>
+        <?php if ($nomCase): ?>
+            <a href="nominee-settlements.php?id=<?= (int) $nomCase['id'] ?>" class="btn btn-outline btn-sm">Settlement case</a>
+        <?php else: ?>
+            <a href="nominee-settlements.php?q=<?= e(urlencode((string) $member['member_id'])) ?>" class="btn btn-outline btn-sm">Start death settlement</a>
+        <?php endif; ?>
+    </div>
+    <div class="panel-body">
+        <p class="muted" style="margin:0">
+            <?= trim((string) ($member['nominee_name'] ?? '')) !== ''
+                ? e($member['nominee_name'] . ' · ' . ($member['nominee_relation'] ?? '') . ' · ' . ($member['nominee_phone'] ?? ''))
+                : 'No nominee on file. Member can add one in Edit Profile, or you can set it in Edit Member.' ?>
+        </p>
+    </div>
+</div>
+
 <?php if ($showPackages && empty($member['package_id'])): ?>
 <div class="panel" style="margin-bottom:1rem">
     <div class="panel-header"><h2><?= $productOnlyMode ? 'Activate ID' : 'Activate Package' ?></h2></div>
@@ -178,7 +201,7 @@ $effectiveStatus = member_effective_status($member);
                     <select name="package_id" required>
                         <option value="">Select package…</option>
                         <?php foreach ($packages as $p): ?>
-                            <option value="<?= (int) $p['id'] ?>"><?= e($p['name']) ?> — <?= currency((float) $p['amount']) ?><?= $showBinary ? ' (BV ' . number_format((float) $p['bv'], 0) . ')' : '' ?></option>
+                            <option value="<?= (int) $p['id'] ?>"><?= e($p['name']) ?> — <?= currency((float) $p['amount']) ?><?= $showBinary ? ' (PV ' . number_format((float) $p['bv'], 0) . ')' : '' ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -200,18 +223,25 @@ $effectiveStatus = member_effective_status($member);
         <strong><?= (int)$member['right_count'] ?></strong>
     </div>
     <div class="mv-kpi g-green">
-        <span class="mv-kpi-label">Left BV</span>
+        <span class="mv-kpi-label">Left PV</span>
         <strong><?= number_format((float)$member['left_bv'], 0) ?></strong>
     </div>
     <div class="mv-kpi g-orange">
-        <span class="mv-kpi-label">Right BV</span>
+        <span class="mv-kpi-label">Right PV</span>
         <strong><?= number_format((float)$member['right_bv'], 0) ?></strong>
     </div>
     <div class="mv-kpi g-purple">
         <span class="mv-kpi-label">Open Pairs</span>
         <strong><?= number_format((float)$openMatch['pairs'], 2) ?></strong>
-        <small style="display:block;font-size:0.7rem;font-weight:600;color:#8392ab;margin-top:0.2rem">Match BV <?= number_format((float)$openMatch['matched_bv'], 0) ?></small>
+        <small style="display:block;font-size:0.7rem;font-weight:600;color:#8392ab;margin-top:0.2rem">Match PV <?= number_format((float)$openMatch['matched_bv'], 0) ?></small>
     </div>
+    <?php if (feature_enabled('feature_ranks_enabled')): ?>
+    <div class="mv-kpi g-mint">
+        <span class="mv-kpi-label">Rank</span>
+        <strong><?= e(plan_rank_title($pdo, (string) ($member['rank_key'] ?? ''))) ?></strong>
+        <small style="display:block;font-size:0.7rem;font-weight:600;color:#8392ab;margin-top:0.2rem"><?= number_format((float) ($member['lifetime_pairs'] ?? 0), 0) ?> lifetime pairs</small>
+    </div>
+    <?php endif; ?>
     <?php endif; ?>
     <div class="mv-kpi g-red">
         <span class="mv-kpi-label">Wallet</span>

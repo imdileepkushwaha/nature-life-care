@@ -42,6 +42,9 @@ if ($justActivated) {
             <?php if ($order): ?>
                 <button type="button" class="up-btn up-btn-primary" onclick="window.print()">Print / Save PDF</button>
             <?php endif; ?>
+            <?php if (!empty($user['package_id'])): ?>
+                <a href="kit-invoice.php" class="up-btn up-btn-outline">Kit Invoice</a>
+            <?php endif; ?>
             <a href="purchase-report.php" class="up-btn up-btn-outline">Purchase Report</a>
             <a href="purchase-product.php" class="up-btn up-btn-outline">Buy more</a>
         </div>
@@ -121,7 +124,13 @@ if ($justActivated) {
         }
         $logoUrl = company_logo_url();
         $paidStatus = strtolower((string) ($order['status'] ?? 'paid'));
-        $itemCount = count($items);
+        $invoiceLines = [];
+        foreach ($items as $it) {
+            $invoiceLines[] = invoice_enrich_line($it);
+        }
+        $kitTotals = invoice_lines_totals($invoiceLines);
+        $itemCount = $kitTotals['total_qty'] ?: count($items);
+        $gstin = invoice_gstin();
     ?>
         <div class="shop-track no-print">
             <div class="shop-track-head">
@@ -181,6 +190,9 @@ if ($justActivated) {
                     <div>
                         <strong class="shop-inv-brand"><?= e($company) ?></strong>
                         <p class="shop-inv-doc-type">TAX / PURCHASE INVOICE</p>
+                        <?php if ($gstin !== ''): ?>
+                            <p class="shop-inv-contact">GSTIN <?= e($gstin) ?></p>
+                        <?php endif; ?>
                         <?php if ($support !== '' || $supportPhone !== ''): ?>
                             <p class="shop-inv-contact">
                                 <?= $support !== '' ? e($support) : '' ?>
@@ -213,7 +225,7 @@ if ($justActivated) {
                 </div>
                 <div>
                     <span>Items</span>
-                    <strong><?= (int) $itemCount ?></strong>
+                    <strong><?= (int) $itemCount ?> pcs</strong>
                 </div>
                 <?php if (!empty($order['tracking_no'])): ?>
                 <div>
@@ -241,41 +253,18 @@ if ($justActivated) {
                 </div>
             </div>
 
-            <table class="shop-inv-table">
-                <thead>
-                <tr>
-                    <th class="is-num">#</th>
-                    <th>Product</th>
-                    <th>SKU</th>
-                    <th class="is-num">Qty</th>
-                    <th class="is-num">Unit</th>
-                    <th class="is-num">PV</th>
-                    <th class="is-num">Amount</th>
-                </tr>
-                </thead>
-                <tbody>
-                <?php foreach ($items as $i => $it): ?>
-                    <tr>
-                        <td class="is-num"><?= $i + 1 ?></td>
-                        <td class="is-name"><?= e($it['product_name']) ?></td>
-                        <td><?= e($it['sku'] ?: '—') ?></td>
-                        <td class="is-num"><?= (int) $it['qty'] ?></td>
-                        <td class="is-num"><?= currency((float) $it['unit_price']) ?></td>
-                        <td class="is-num"><?= number_format((float) $it['line_bv'], 2) ?></td>
-                        <td class="is-num is-amt"><?= currency((float) $it['line_total']) ?></td>
-                    </tr>
-                <?php endforeach; ?>
-                </tbody>
-            </table>
+            <?php
+            $invoiceShowPaid = true;
+            require __DIR__ . '/includes/invoice-product-table.php';
+            ?>
 
             <div class="shop-inv-totals">
                 <div class="shop-inv-notes">
+                    <span class="shop-inv-label">Kit / invoice summary</span>
+                    <p>Product list, quantity, MRP, taxes (GST included in MRP) and customer value are shown line-wise. Keep this invoice for your records.</p>
                     <?php if (!empty($order['note'])): ?>
-                        <span class="shop-inv-label">Order note</span>
+                        <span class="shop-inv-label" style="margin-top:0.75rem">Order note</span>
                         <p><?= e($order['note']) ?></p>
-                    <?php else: ?>
-                        <span class="shop-inv-label">Thank you</span>
-                        <p>Thank you for your purchase. Keep this invoice for your records.</p>
                     <?php endif; ?>
                     <?php if (!empty($order['delivery_note'])): ?>
                         <span class="shop-inv-label" style="margin-top:0.75rem">Delivery note</span>
@@ -283,13 +272,16 @@ if ($justActivated) {
                     <?php endif; ?>
                 </div>
                 <div class="shop-inv-sum">
-                    <div><span>Subtotal</span><strong><?= currency((float) $order['subtotal']) ?></strong></div>
+                    <div><span>Total quantity</span><strong><?= (int) $kitTotals['total_qty'] ?> pcs</strong></div>
+                    <div><span>Customer value (MRP)</span><strong><?= currency($kitTotals['customer_value']) ?></strong></div>
+                    <div><span>Taxable value</span><strong><?= currency($kitTotals['taxable']) ?></strong></div>
+                    <div><span>Taxes (GST)</span><strong><?= currency($kitTotals['tax_amount']) ?></strong></div>
                     <?php if ((float) ($order['discount_amount'] ?? 0) > 0): ?>
                     <div><span>Discount</span><strong>−<?= currency((float) $order['discount_amount']) ?></strong></div>
                     <?php endif; ?>
                     <div><span>Total PV</span><strong><?= number_format((float) $order['total_bv'], 2) ?></strong></div>
-                    <div class="is-grand"><span>Grand Total</span><strong><?= currency((float) $order['total_amount']) ?></strong></div>
-                    <div class="is-paid"><span>Amount Paid</span><strong><?= currency((float) $order['total_amount']) ?></strong></div>
+                    <div class="is-grand"><span>Amount payable</span><strong><?= currency((float) $order['total_amount']) ?></strong></div>
+                    <div class="is-paid"><span>Amount paid</span><strong><?= currency((float) $order['total_amount']) ?></strong></div>
                 </div>
             </div>
 

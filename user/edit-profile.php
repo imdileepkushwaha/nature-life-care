@@ -1,9 +1,10 @@
 <?php
-$pageTitle = 'Edit Profile';
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/../includes/nominee.php';
 require_user();
+nominee_ensure_schema($pdo);
 
-$user = current_user($pdo);
+$user = current_user($pdo, true);
 if (!$user || ($user['status'] ?? '') === 'blocked') {
     unset($_SESSION['user_id'], $_SESSION['user_name'], $_SESSION['user_code']);
     header('Location: login.php');
@@ -33,8 +34,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (!$errors) {
+        $nomCheck = nominee_validate_input($_POST, false);
+        if (!$nomCheck['ok']) {
+            $errors = array_merge($errors, $nomCheck['errors']);
+        }
+    }
+
+    if (!$errors) {
         $upd = $pdo->prepare('UPDATE members SET full_name = ?, phone = ?, email = ? WHERE id = ?');
         $upd->execute([$fullName, $phone !== '' ? $phone : null, $email, (int) $user['id']]);
+        nominee_save_member($pdo, (int) $user['id'], $nomCheck['data']);
         $_SESSION['user_name'] = $fullName;
         flash('success', 'Profile updated successfully.');
         header('Location: profile.php');
@@ -46,7 +55,13 @@ $form = [
     'full_name' => $_POST['full_name'] ?? $user['full_name'],
     'phone' => $_POST['phone'] ?? ($user['phone'] ?? ''),
     'email' => $_POST['email'] ?? $user['email'],
+    'nominee_name' => $_POST['nominee_name'] ?? ($user['nominee_name'] ?? ''),
+    'nominee_relation' => $_POST['nominee_relation'] ?? ($user['nominee_relation'] ?? ''),
+    'nominee_phone' => $_POST['nominee_phone'] ?? ($user['nominee_phone'] ?? ''),
+    'nominee_email' => $_POST['nominee_email'] ?? ($user['nominee_email'] ?? ''),
+    'nominee_address' => $_POST['nominee_address'] ?? ($user['nominee_address'] ?? ''),
 ];
+nominee_ensure_schema($pdo);
 
 $initials = user_initials((string) $form['full_name']);
 $status = member_effective_status($user);
@@ -206,6 +221,45 @@ require_once __DIR__ . '/includes/header.php';
                                     </span>
                                     <input type="text" id="phone" name="phone" value="<?= e($form['phone']) ?>" placeholder="Optional">
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ep-section">
+                        <div class="ep-section-title">
+                            <span class="ep-section-ico is-edit" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+                            </span>
+                            <div>
+                                <h3>Nominee</h3>
+                                <p>Accrued Income Wallet benefits are settled to this person after KYC and legal documents, if you die.</p>
+                            </div>
+                        </div>
+                        <div class="up-form-grid">
+                            <div class="up-field">
+                                <label for="nominee_name">Nominee name</label>
+                                <input type="text" id="nominee_name" name="nominee_name" value="<?= e((string) $form['nominee_name']) ?>" placeholder="Full name">
+                            </div>
+                            <div class="up-field">
+                                <label for="nominee_relation">Relationship</label>
+                                <select id="nominee_relation" name="nominee_relation">
+                                    <option value="">Select</option>
+                                    <?php foreach (nominee_relations() as $rel): ?>
+                                        <option value="<?= e($rel) ?>" <?= (string) $form['nominee_relation'] === $rel ? 'selected' : '' ?>><?= e($rel) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="up-field">
+                                <label for="nominee_phone">Nominee mobile</label>
+                                <input type="text" id="nominee_phone" name="nominee_phone" value="<?= e((string) $form['nominee_phone']) ?>">
+                            </div>
+                            <div class="up-field">
+                                <label for="nominee_email">Nominee email</label>
+                                <input type="email" id="nominee_email" name="nominee_email" value="<?= e((string) $form['nominee_email']) ?>">
+                            </div>
+                            <div class="up-field full">
+                                <label for="nominee_address">Nominee address</label>
+                                <input type="text" id="nominee_address" name="nominee_address" value="<?= e((string) $form['nominee_address']) ?>">
                             </div>
                         </div>
                     </div>

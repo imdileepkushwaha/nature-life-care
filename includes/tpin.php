@@ -640,25 +640,42 @@ function tpin_restore_unused(PDO $pdo, int $pinId, int $usedBy, ?int $previousAs
 }
 
 /**
- * Unused pin counts by package for a member wallet.
+ * Unused pin counts by package.
+ * $memberId > 0 = that member's wallet; 0 = company stock (unassigned).
  * @return list<array{package_id:int,name:string,amount:float,available:int}>
  */
-function tpin_member_package_availability(PDO $pdo, int $memberId): array
+function tpin_package_availability(PDO $pdo, int $memberId = 0): array
 {
     tpin_ensure_tables($pdo);
-    if ($memberId <= 0) {
+    if ($memberId > 0) {
+        $sql = "
+            SELECT p.id AS package_id, p.name, p.amount, COUNT(tp.id) AS available
+            FROM topup_pins tp
+            JOIN packages p ON p.id = tp.package_id
+            WHERE tp.assigned_to = ? AND tp.status = 'unused'
+            GROUP BY p.id, p.name, p.amount
+            HAVING COUNT(tp.id) > 0
+            ORDER BY p.amount ASC
+        ";
+        $params = [$memberId];
+    } else {
+        $sql = "
+            SELECT p.id AS package_id, p.name, p.amount, COUNT(tp.id) AS available
+            FROM topup_pins tp
+            JOIN packages p ON p.id = tp.package_id
+            WHERE tp.assigned_to IS NULL AND tp.status = 'unused'
+            GROUP BY p.id, p.name, p.amount
+            HAVING COUNT(tp.id) > 0
+            ORDER BY p.amount ASC
+        ";
+        $params = [];
+    }
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+    } catch (Throwable $e) {
         return [];
     }
-    $stmt = $pdo->prepare("
-        SELECT p.id AS package_id, p.name, p.amount, COUNT(tp.id) AS available
-        FROM topup_pins tp
-        JOIN packages p ON p.id = tp.package_id
-        WHERE tp.assigned_to = ? AND tp.status = 'unused'
-        GROUP BY p.id, p.name, p.amount
-        HAVING available > 0
-        ORDER BY p.amount ASC
-    ");
-    $stmt->execute([$memberId]);
     $rows = [];
     foreach ($stmt->fetchAll() as $r) {
         $rows[] = [
@@ -672,7 +689,82 @@ function tpin_member_package_availability(PDO $pdo, int $memberId): array
 }
 
 /**
- * Transfer N unused pins of a package from one member to another.
+ * Unused pin counts by package for a member wallet.
+ * @return list<array{package_id:int,name:string,amount:float,available:int}>
+ */
+function tpin_member_package_availability(PDO $pdo, int $memberId): array
+{
+    if ($memberId <= 0) {
+        return [];
+    }
+    return tpin_package_availability($pdo, $memberId);
+}
+
+function tpin_root_member_id(PDO $pdo): int
+{
+    static $cached = null;
+    if ($cached !== null) {
+        return $cached;
+    }
+    try {
+        $cached = (int) $pdo->query('SELECT id FROM members ORDER BY id ASC LIMIT 1')->fetchColumn();
+    } catch (Throwable $e) {
+        $cached = 0;
+    }
+    return $cached;
+}
+
+function tpin_is_company_source(PDO $pdo, int $memberId): bool
+{
+    if ($memberId <= 0) {
+        return true;
+    }
+    $root = tpin_root_member_id($pdo);
+    return $root > 0 && $memberId === $root;
+}
+
+/**
+ * Transfer-from amounts: root member sees company stock (+ pins already on root).
+ * @return list<array{package_id:int,name:string,amount:float,available:int}>
+ */
+function tpin_source_package_availability(PDO $pdo, int $memberId): array
+{
+    if ($memberId <= 0) {
+        return tpin_package_availability($pdo, 0);
+    }
+    if (!tpin_is_company_source($pdo, $memberId)) {
+        return tpin_package_availability($pdo, $memberId);
+    }
+    tpin_ensure_tables($pdo);
+    try {
+        $stmt = $pdo->prepare("
+            SELECT p.id AS package_id, p.name, p.amount, COUNT(tp.id) AS available
+            FROM topup_pins tp
+            JOIN packages p ON p.id = tp.package_id
+            WHERE tp.status = 'unused'
+              AND (tp.assigned_to IS NULL OR tp.assigned_to = ?)
+            GROUP BY p.id, p.name, p.amount
+            HAVING COUNT(tp.id) > 0
+            ORDER BY p.amount ASC
+        ");
+        $stmt->execute([$memberId]);
+    } catch (Throwable $e) {
+        return tpin_package_availability($pdo, 0);
+    }
+    $rows = [];
+    foreach ($stmt->fetchAll() as $r) {
+        $rows[] = [
+            'package_id' => (int) $r['package_id'],
+            'name' => (string) $r['name'],
+            'amount' => (float) $r['amount'],
+            'available' => (int) $r['available'],
+        ];
+    }
+    return $rows;
+}
+
+/**
+ * Transfer N unused pins of a package from company stock or a member wallet.
  * @return array{ok:bool,error:?string,transferred:int}
  */
 function tpin_admin_bulk_transfer(
@@ -685,21 +777,27 @@ function tpin_admin_bulk_transfer(
 ): array {
     tpin_ensure_tables($pdo);
 
+    $fromCompany = $fromMemberId <= 0;
+    $fromRoot = !$fromCompany && tpin_is_company_source($pdo, $fromMemberId);
+    $useCompanyPool = $fromCompany || $fromRoot;
+
     if ($qty < 1 || $qty > 500) {
         return ['ok' => false, 'error' => 'Quantity must be between 1 and 500.', 'transferred' => 0];
     }
-    if ($fromMemberId <= 0 || $toMemberId <= 0) {
-        return ['ok' => false, 'error' => 'From and To members are required.', 'transferred' => 0];
+    if ($toMemberId <= 0) {
+        return ['ok' => false, 'error' => 'Transfer user ID is required.', 'transferred' => 0];
     }
-    if ($fromMemberId === $toMemberId) {
+    if (!$fromCompany && $fromMemberId === $toMemberId) {
         return ['ok' => false, 'error' => 'Cannot transfer to the same member.', 'transferred' => 0];
     }
 
-    $from = $pdo->prepare("SELECT id, member_id, status FROM members WHERE id = ? LIMIT 1");
-    $from->execute([$fromMemberId]);
-    $fromRow = $from->fetch();
-    if (!$fromRow || ($fromRow['status'] ?? '') === 'blocked') {
-        return ['ok' => false, 'error' => 'From member not found or blocked.', 'transferred' => 0];
+    if (!$fromCompany) {
+        $from = $pdo->prepare("SELECT id, member_id, status FROM members WHERE id = ? LIMIT 1");
+        $from->execute([$fromMemberId]);
+        $fromRow = $from->fetch();
+        if (!$fromRow || ($fromRow['status'] ?? '') === 'blocked') {
+            return ['ok' => false, 'error' => 'From member not found or blocked.', 'transferred' => 0];
+        }
     }
 
     $to = $pdo->prepare("SELECT id, member_id, status FROM members WHERE id = ? LIMIT 1");
@@ -717,14 +815,36 @@ function tpin_admin_bulk_transfer(
 
     try {
         $pdo->beginTransaction();
-        $sel = $pdo->prepare("
-            SELECT id FROM topup_pins
-            WHERE assigned_to = ? AND package_id = ? AND status = 'unused'
-            ORDER BY id ASC
-            LIMIT {$qty}
-            FOR UPDATE
-        ");
-        $sel->execute([$fromMemberId, $packageId]);
+        $limit = (int) $qty;
+        if ($fromRoot) {
+            $sel = $pdo->prepare("
+                SELECT id FROM topup_pins
+                WHERE package_id = ? AND status = 'unused'
+                  AND (assigned_to IS NULL OR assigned_to = ?)
+                ORDER BY id ASC
+                LIMIT {$limit}
+                FOR UPDATE
+            ");
+            $sel->execute([$packageId, $fromMemberId]);
+        } elseif ($fromCompany) {
+            $sel = $pdo->prepare("
+                SELECT id FROM topup_pins
+                WHERE assigned_to IS NULL AND package_id = ? AND status = 'unused'
+                ORDER BY id ASC
+                LIMIT {$limit}
+                FOR UPDATE
+            ");
+            $sel->execute([$packageId]);
+        } else {
+            $sel = $pdo->prepare("
+                SELECT id FROM topup_pins
+                WHERE assigned_to = ? AND package_id = ? AND status = 'unused'
+                ORDER BY id ASC
+                LIMIT {$limit}
+                FOR UPDATE
+            ");
+            $sel->execute([$fromMemberId, $packageId]);
+        }
         $pins = $sel->fetchAll(PDO::FETCH_COLUMN);
         if (count($pins) < $qty) {
             $pdo->rollBack();
@@ -735,21 +855,37 @@ function tpin_admin_bulk_transfer(
             ];
         }
 
-        $upd = $pdo->prepare("
+        $updMember = $pdo->prepare("
             UPDATE topup_pins SET assigned_to = ?
             WHERE id = ? AND assigned_to = ? AND status = 'unused'
+        ");
+        $updCompany = $pdo->prepare("
+            UPDATE topup_pins SET assigned_to = ?
+            WHERE id = ? AND assigned_to IS NULL AND status = 'unused'
         ");
         $ins = $pdo->prepare('
             INSERT INTO topup_pin_transfers (pin_id, from_member_id, to_member_id)
             VALUES (?, ?, ?)
         ');
         $done = 0;
+        $logFrom = $fromCompany ? 0 : $fromMemberId;
         foreach ($pins as $pinId) {
-            $upd->execute([$toMemberId, (int) $pinId, $fromMemberId]);
-            if ($upd->rowCount() < 1) {
+            $changed = 0;
+            if ($useCompanyPool) {
+                $updCompany->execute([$toMemberId, (int) $pinId]);
+                $changed = $updCompany->rowCount();
+                if ($changed < 1 && $fromRoot) {
+                    $updMember->execute([$toMemberId, (int) $pinId, $fromMemberId]);
+                    $changed = $updMember->rowCount();
+                }
+            } else {
+                $updMember->execute([$toMemberId, (int) $pinId, $fromMemberId]);
+                $changed = $updMember->rowCount();
+            }
+            if ($changed < 1) {
                 continue;
             }
-            $ins->execute([(int) $pinId, $fromMemberId, $toMemberId]);
+            $ins->execute([(int) $pinId, $logFrom, $toMemberId]);
             $done++;
         }
         if ($done < $qty) {
@@ -911,7 +1047,7 @@ function tpin_admin_transfers(PDO $pdo, array $filters = [], int $limit = 300): 
         FROM topup_pin_transfers t
         JOIN topup_pins tp ON tp.id = t.pin_id
         JOIN packages p ON p.id = tp.package_id
-        JOIN members fm ON fm.id = t.from_member_id
+        LEFT JOIN members fm ON fm.id = t.from_member_id AND t.from_member_id > 0
         JOIN members tm ON tm.id = t.to_member_id
         WHERE ' . implode(' AND ', $where) . '
         ORDER BY t.id DESC

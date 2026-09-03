@@ -4,6 +4,7 @@
  * Expects $walletKey before include (income|topup|shopping).
  */
 require_once __DIR__ . '/../../includes/wallet.php';
+require_once __DIR__ . '/auth.php';
 
 $types = wallet_types();
 $enabled = wallet_types_enabled();
@@ -11,7 +12,7 @@ if (empty($walletKey) || !isset($types[$walletKey]) || !isset($enabled[$walletKe
     header('Location: wallet.php');
     exit;
 }
-$meta = $types[$walletKey];
+$meta = $enabled[$walletKey];
 $pageTitle = $meta['label'];
 
 require_once __DIR__ . '/header.php';
@@ -21,6 +22,7 @@ $uid = (int) $user['id'];
 $balances = wallet_get_balances($pdo, $uid);
 $balance = (float) ($balances[$walletKey] ?? 0);
 $showWithdrawUi = feature_module_allowed('withdrawals');
+$showTransferUi = wallet_transfer_routes() !== [];
 
 $page = max(1, (int) ($_GET['page'] ?? 1));
 $perPage = 15;
@@ -59,7 +61,9 @@ $quickTone = ['income' => 'green', 'topup' => 'blue', 'shopping' => 'purple'];
     </div>
     <div class="up-head-actions">
         <a href="wallet.php" class="up-btn up-btn-outline">All Wallets</a>
+        <?php if ($showTransferUi): ?>
         <a href="wallet-transfer.php" class="up-btn up-btn-primary">Transfer</a>
+        <?php endif; ?>
         <?php if ($walletKey === 'income' && $showWithdrawUi): ?>
             <a href="withdrawal-fund.php" class="up-btn up-btn-outline">Withdraw</a>
         <?php endif; ?>
@@ -102,7 +106,7 @@ $quickTone = ['income' => 'green', 'topup' => 'blue', 'shopping' => 'purple'];
 </div>
 
 <div class="wal-quick">
-    <?php foreach ($types as $key => $t): ?>
+    <?php foreach ($enabled as $key => $t): ?>
         <a href="<?= e($t['page']) ?>" class="wal-quick-card tone-<?= e($quickTone[$key] ?? 'blue') ?><?= $key === $walletKey ? ' is-on' : '' ?>">
             <span class="wal-quick-ico" aria-hidden="true"><?= $quickIcons[$key] ?? $quickIcons['topup'] ?></span>
             <span class="wal-quick-meta">

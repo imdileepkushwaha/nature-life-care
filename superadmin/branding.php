@@ -19,6 +19,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($key === 'member_id_pad') {
             $val = (string) max(3, min(8, (int) $val));
         }
+        if ($key === 'currency_symbol') {
+            $val = currency_symbol_normalize($val, trim((string) ($_POST['currency'] ?? setting('currency', 'INR'))));
+        }
         feature_save($pdo, $key, $val);
     }
 
@@ -66,7 +69,7 @@ $prefix = setting('member_id_prefix', 'MLM');
 $pad = (int) setting('member_id_pad', '5');
 $sampleId = $prefix . str_pad('1', $pad, '0', STR_PAD_LEFT);
 $currency = setting('currency', 'INR');
-$symbol = setting('currency_symbol', '₹');
+$symbol = currency_symbol();
 $logoUrl = company_logo_url();
 $favUrl = company_favicon_url();
 ?>
@@ -102,7 +105,7 @@ $favUrl = company_favicon_url();
                 </div>
                 <div class="form-group">
                     <label>Currency symbol</label>
-                    <input type="text" name="currency_symbol" id="saSymbol" value="<?= e($symbol) ?>">
+                    <input type="text" name="currency_symbol" id="saSymbol" value="<?= currency_symbol_input_value() ?>">
                 </div>
                 <div class="form-group">
                     <label>Member ID prefix</label>
@@ -193,7 +196,7 @@ $favUrl = company_favicon_url();
                 <?php endif; ?>
                 <span>Company</span>
                 <strong id="saPreviewName"><?= e($coName) ?></strong>
-                <em>Sample ID · <span id="saPreviewId"><?= e($sampleId) ?></span> · <span id="saPreviewCur"><?= e($symbol . ' / ' . $currency) ?></span></em>
+                <em>Sample ID · <span id="saPreviewId"><?= e($sampleId) ?></span> · <span id="saPreviewCur"><?= currency_symbol_html() ?> / <?= e($currency) ?></span></em>
             </div>
             <div class="sa-note" style="margin-top:1rem">Changes apply immediately after save on both Client Admin and User panels.</div>
         </div>
@@ -214,7 +217,7 @@ $favUrl = company_favicon_url();
         var pre = (prefix && prefix.value ? prefix.value : 'MLM').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10) || 'MLM';
         var n = Math.max(3, Math.min(8, parseInt(pad && pad.value ? pad.value : '5', 10) || 5));
         if (pId) pId.textContent = pre + String(1).padStart(n, '0');
-        if (pCur) pCur.textContent = ((sym && sym.value) || '₹') + ' / ' + ((cur && cur.value) || 'INR');
+        if (pCur) pCur.textContent = ((sym && sym.value) || '\u20B9') + ' / ' + ((cur && cur.value) || 'INR');
     }
     [name, prefix, pad, cur, sym].forEach(function (el) {
         if (el) el.addEventListener('input', sync);

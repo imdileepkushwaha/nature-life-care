@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/../includes/registration.php';
+require_once __DIR__ . '/../includes/nominee.php';
 
 if (!client_license_ok()) {
     flash('error', client_license_message() ?: 'Registration is unavailable.');
@@ -22,6 +23,8 @@ if (!empty($_SESSION['user_id'])) {
 ensure_member_registration_columns($pdo);
 
 $company = setting('company_name', 'Binary MLM');
+$logoUrl = company_logo_url();
+$favUrl = company_favicon_url();
 $errors = [];
 $success = false;
 $createdCode = '';
@@ -54,6 +57,11 @@ $form = [
     'dob_m' => reg_form_dob_value($_POST['dob_m'] ?? '', 'm'),
     'dob_d' => reg_form_dob_value($_POST['dob_d'] ?? '', 'd'),
     'agree' => isset($_POST['agree']),
+    'nominee_name' => trim($_POST['nominee_name'] ?? ''),
+    'nominee_relation' => trim($_POST['nominee_relation'] ?? ''),
+    'nominee_phone' => trim($_POST['nominee_phone'] ?? ''),
+    'nominee_email' => trim($_POST['nominee_email'] ?? ''),
+    'nominee_address' => trim($_POST['nominee_address'] ?? ''),
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -84,6 +92,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'dob_m' => reg_form_dob_value($_POST['dob_m'] ?? '', 'm'),
         'dob_d' => reg_form_dob_value($_POST['dob_d'] ?? '', 'd'),
         'agree' => isset($_POST['agree']),
+        'nominee_name' => trim($_POST['nominee_name'] ?? ''),
+        'nominee_relation' => trim($_POST['nominee_relation'] ?? ''),
+        'nominee_phone' => trim($_POST['nominee_phone'] ?? ''),
+        'nominee_email' => trim($_POST['nominee_email'] ?? ''),
+        'nominee_address' => trim($_POST['nominee_address'] ?? ''),
     ];
 
     $sponsor = reg_lookup_sponsor($pdo, $sponsorCode);
@@ -132,6 +145,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if (empty($_POST['agree'])) {
         $errors[] = 'Please agree to the E-Contract.';
+    }
+
+    require_once __DIR__ . '/../includes/nominee.php';
+    $nomCheck = nominee_validate_input($_POST, false);
+    if (!$nomCheck['ok']) {
+        $errors = array_merge($errors, $nomCheck['errors']);
     }
 
     if (!$errors) {
@@ -190,9 +209,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $pdo->prepare('
                 INSERT INTO members (
                     member_id, username, email, password, full_name, name_title, gender, date_of_birth, phone,
-                    sponsor_id, placement_id, position, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    sponsor_id, placement_id, position, status,
+                    nominee_name, nominee_relation, nominee_phone, nominee_email, nominee_address
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ');
+            $nom = $nomCheck['data'];
             $stmt->execute([
                 $memberCode,
                 $username,
@@ -207,6 +228,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $placementId,
                 $position,
                 'inactive',
+                $nom['nominee_name'] !== '' ? $nom['nominee_name'] : null,
+                $nom['nominee_relation'] !== '' ? $nom['nominee_relation'] : null,
+                $nom['nominee_phone'] !== '' ? $nom['nominee_phone'] : null,
+                $nom['nominee_email'] !== '' ? $nom['nominee_email'] : null,
+                $nom['nominee_address'] !== '' ? $nom['nominee_address'] : null,
             ]);
             if ($useBinaryPlacement && $placementId && $position) {
                 reg_update_upline_counts($pdo, $placementId, $position);
@@ -248,22 +274,32 @@ $months = [
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Account | <?= e($company) ?></title>
+    <?php if ($favUrl): ?><link rel="icon" href="<?= e($favUrl) ?>"><?php endif; ?>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/user.css?v=<?= (int) @filemtime(__DIR__ . '/assets/css/user.css') ?>">
 </head>
 <body class="ureg-body">
 <div class="ureg">
     <header class="ureg-top">
-        <a href="login.php" class="ureg-brand"><?= e($company) ?></a>
-        <a href="login.php" class="ureg-top-link">Already have an account? <strong>Sign In</strong></a>
+        <a href="login.php" class="ureg-brand">
+            <?php if ($logoUrl): ?>
+            <img src="<?= e($logoUrl) ?>" alt="<?= e($company) ?>" class="ureg-brand-logo">
+            <?php else: ?>
+            <?= e($company) ?>
+            <?php endif; ?>
+        </a>
+        <div class="ureg-top-links">
+            <a href="../index.php" class="ureg-top-link ureg-home-link">← Back to home</a>
+            <a href="login.php" class="ureg-top-link">Already have an account? <strong>Sign In</strong></a>
+        </div>
     </header>
 
     <main class="ureg-main">
         <div class="ureg-intro">
             <h1>Create Your Account</h1>
-            <p>Join <?= e($company) ?> and start building your network.</p>
+            <p>Join <?= e($company) ?> — wellness products ke saath product-led व्यवसाय शुरू करें।</p>
         </div>
 
         <nav class="ureg-steps" aria-label="Registration steps">
@@ -443,6 +479,55 @@ $months = [
                         </div>
                     </div>
                 </div>
+
+                <div class="ureg-pos" style="margin-top:1.1rem">
+                    <div class="ureg-pos-head">
+                        <strong>Nominee (recommended)</strong>
+                        <span>Used for accrued-benefit settlement if the member dies. You can update this later in profile.</span>
+                    </div>
+                </div>
+                <div class="ureg-grid">
+                    <div class="ureg-field">
+                        <label for="nominee_name">Nominee name</label>
+                        <div class="ureg-input-ico">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            <input type="text" id="nominee_name" name="nominee_name" value="<?= e($form['nominee_name']) ?>" placeholder="Full name">
+                        </div>
+                    </div>
+                    <div class="ureg-field">
+                        <label for="nominee_relation">Relationship</label>
+                        <div class="ureg-input-ico">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+                            <select id="nominee_relation" name="nominee_relation">
+                                <option value="">Select</option>
+                                <?php foreach (nominee_relations() as $rel): ?>
+                                    <option value="<?= e($rel) ?>" <?= ($form['nominee_relation'] ?? '') === $rel ? 'selected' : '' ?>><?= e($rel) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="ureg-field">
+                        <label for="nominee_phone">Nominee mobile</label>
+                        <div class="ureg-input-ico">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+                            <input type="tel" id="nominee_phone" name="nominee_phone" value="<?= e($form['nominee_phone']) ?>" placeholder="Optional">
+                        </div>
+                    </div>
+                    <div class="ureg-field">
+                        <label for="nominee_email">Nominee email</label>
+                        <div class="ureg-input-ico">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                            <input type="email" id="nominee_email" name="nominee_email" value="<?= e($form['nominee_email']) ?>" placeholder="Optional">
+                        </div>
+                    </div>
+                    <div class="ureg-field" style="grid-column:1/-1">
+                        <label for="nominee_address">Nominee address</label>
+                        <div class="ureg-input-ico">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                            <input type="text" id="nominee_address" name="nominee_address" value="<?= e($form['nominee_address']) ?>" placeholder="Optional">
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <!-- 3. Security -->
@@ -503,7 +588,7 @@ $months = [
 
             <div class="ureg-actions">
                 <button type="submit" class="ureg-submit">Create Account</button>
-                <p class="ureg-foot">Already have an account? <a href="login.php">Sign In</a></p>
+                <p class="ureg-foot">Already have an account? <a href="login.php">Sign In</a> · <a href="../index.php">Back to home</a></p>
             </div>
         </form>
     </main>
@@ -531,6 +616,7 @@ $months = [
                 <li>Commissions, bonuses and withdrawals are subject to plan settings and admin approval.</li>
                 <li>You will not misuse the platform, referral links, or payment systems.</li>
                 <li>Accounts found in violation may be suspended or blocked without notice.</li>
+                <li><strong>Nominee settlement:</strong> You may designate a nominee. If you (an eligible member/distributor) die, accrued benefits in the Income Wallet are settled only to that nominee after KYC and legal documentation (death certificate, legal heir/succession papers, nominee identity and bank proof) are verified by the company. The membership ID is then closed. This nominee policy forms part of this agreement.</li>
             </ul>
             <p class="ureg-dialog-note">This electronic agreement is binding upon successful registration.</p>
         </div>

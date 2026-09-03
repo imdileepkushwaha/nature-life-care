@@ -33,7 +33,7 @@ $presetModified = feature_preset_is_modified($currentPreset);
 $mode = plan_mode();
 $productOnlyOn = feature_product_only_activation() || $currentPreset === 'product_only';
 $activateValue = product_activate_min_amount();
-$currencySym = function_exists('currency_symbol') ? currency_symbol() : '₹';
+$currencySymHtml = currency_symbol_html();
 
 $secIco = static function (string $d): string {
     return '<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">' . $d . '</svg></span>';
@@ -245,7 +245,7 @@ $switch = static function (string $name, string $label, string $hint, bool $on, 
             <div class="sa-activate-value-body">
                 <label class="sa-activate-value-label" for="product_activate_min_amount">Minimum selling price</label>
                 <div class="sa-activate-value-input-wrap">
-                    <span class="sa-activate-value-cur"><?= e($currencySym === '₹' ? '₹' : $currencySym) ?></span>
+                    <span class="sa-activate-value-cur"><?= $currencySymHtml ?></span>
                     <input
                         type="number"
                         step="0.01"
@@ -260,7 +260,7 @@ $switch = static function (string $name, string $label, string $hint, bool $on, 
                 <div class="sa-activate-value-chips" role="group" aria-label="Quick amounts">
                     <?php foreach ([0, 500, 1000, 2500, 5000] as $chip): ?>
                     <button type="button" class="sa-activate-chip<?= abs($activateValue - $chip) < 0.001 ? ' is-on' : '' ?>" data-amount="<?= $chip ?>">
-                        <?= $chip === 0 ? 'Any product' : e(($currencySym === '₹' ? '₹' : $currencySym) . number_format($chip, 0)) ?>
+                        <?= $chip === 0 ? 'Any product' : $currencySymHtml . number_format($chip, 0) ?>
                     </button>
                     <?php endforeach; ?>
                 </div>
@@ -283,6 +283,9 @@ $switch = static function (string $name, string $label, string $hint, bool $on, 
             <?= $switch('feature_level_income', 'Level income', 'Sponsor-level % on activations', feature_enabled('feature_level_income')) ?>
             <?= $switch('feature_referral_income', 'Referral income', 'Direct sponsor bonus on activation', feature_enabled('feature_referral_income')) ?>
             <?= $switch('feature_matching_income', 'Matching income', 'Matching bonus on downline earnings', feature_enabled('feature_matching_income')) ?>
+            <?= $switch('feature_dsi_income', 'DSI — Direct Sponsor', 'L1–L4 share of the distributable incentive pool on product / kit activity', feature_enabled('feature_dsi_income')) ?>
+            <?= $switch('feature_ranks_enabled', 'Rank & promotion', 'Auto-promote Executive → Director from lifetime pairs', feature_enabled('feature_ranks_enabled')) ?>
+            <?= $switch('feature_rewards_enabled', 'Business rewards', 'Pair-milestone gifts; Client Admin fulfills / credits cash', feature_enabled('feature_rewards_enabled')) ?>
         </div>
 
         <h3 class="sa-section-title"><?= $secIco('<circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>') ?> Operations</h3>
@@ -403,6 +406,7 @@ $switch = static function (string $name, string $label, string $hint, bool $on, 
     var amountInput = document.getElementById('product_activate_min_amount');
     var hint = document.getElementById('saActivateValueHint');
     var chips = document.querySelectorAll('.sa-activate-chip');
+    var curSym = <?= json_encode(currency_symbol(), JSON_UNESCAPED_UNICODE) ?>;
     function formatMoney(n) {
         try {
             return new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(n);
@@ -416,7 +420,7 @@ $switch = static function (string $name, string $label, string $hint, bool $on, 
         if (!isFinite(v) || v <= 0) {
             hint.innerHTML = '<strong>0 = any product</strong> purchase can activate the ID (Product Only mode).';
         } else {
-            hint.innerHTML = 'Buy product of <strong>₹' + formatMoney(v) + '</strong> or more → ID activates. No package link needed in Product Only.';
+            hint.innerHTML = 'Buy product of <strong>' + curSym + formatMoney(v) + '</strong> or more → ID activates. No package link needed in Product Only.';
         }
         chips.forEach(function (chip) {
             var a = parseFloat(chip.getAttribute('data-amount') || '0');

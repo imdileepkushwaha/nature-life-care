@@ -246,7 +246,7 @@ require_once __DIR__ . '/../includes/header.php';
             <button type="submit" class="btn btn-primary">Filter</button>
             <a href="activations.php" class="btn btn-outline">Reset</a>
         </form>
-        <p class="muted" style="margin:0.75rem 0 0;font-size:0.85rem">Approve only after verifying UTR / payment. Activation assigns the package; upgrade takes difference amount only and credits difference BV / commissions.</p>
+        <p class="muted" style="margin:0.75rem 0 0;font-size:0.85rem">Approve only after verifying UTR / payment. Activation assigns the package; upgrade takes difference amount only and credits difference PV / commissions.</p>
     </div>
     <?php
     $hasSearchFilters = $reqIdFilter !== '' || $nameFilter !== '' || $dateFrom !== '' || $dateTo !== '' || $typeFilter !== '';

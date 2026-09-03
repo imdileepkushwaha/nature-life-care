@@ -17,6 +17,8 @@ wallet_topup_ensure_requests_table($pdo);
 $uid = (int) $user['id'];
 $errors = [];
 $openModal = false;
+$featWalletActivate = feature_module_allowed('wallet_activate');
+$featProducts = feature_module_allowed('products');
 
 $form = [
     'amount' => $_POST['amount'] ?? '',
@@ -50,7 +52,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_m
     if (!$errors) {
         $res = wallet_topup_submit_request($pdo, $uid, $amount, $mode, $utr, $proofPath, $note !== '' ? $note : null);
         if ($res['ok']) {
-            flash('success', 'Topup request submitted. After admin approval, transfer Topup → Shopping Wallet, then buy products.');
+            flash('success', $featProducts
+                ? 'Topup request submitted. After admin approval, transfer Topup → Shopping Wallet, then buy products.'
+                : 'Topup request submitted. After admin approval, the amount will be credited to Topup Wallet.');
             header('Location: wallet-topup.php' . (in_array(($_POST['next'] ?? $_GET['next'] ?? ''), ['shop', 'checkout'], true) ? '?next=' . rawurlencode((string) ($_POST['next'] ?? $_GET['next'])) : ''));
             exit;
         }
@@ -74,7 +78,7 @@ $balance = (float) ($balances['topup'] ?? 0);
 $pendingSum = wallet_topup_member_pending_sum($pdo, $uid);
 $requests = wallet_topup_member_requests($pdo, $uid, 40);
 $ledgerRows = wallet_ledger_rows($pdo, $uid, 'topup', 12);
-$types = wallet_types();
+$types = wallet_types_enabled();
 $pendingCount = 0;
 foreach ($requests as $rq) {
     if (($rq['status'] ?? '') === 'pending') {
@@ -115,11 +119,9 @@ $quickIcons = [
 ];
 $quickTone = ['income' => 'green', 'topup' => 'blue', 'shopping' => 'purple'];
 $next = (string) ($_GET['next'] ?? $_POST['next'] ?? '');
-if (!in_array($next, ['shop', 'checkout'], true)) {
+if (!in_array($next, ['shop', 'checkout'], true) || !$featProducts) {
     $next = '';
 }
-$featWalletActivate = feature_module_allowed('wallet_activate');
-$featProducts = feature_module_allowed('products');
 
 require_once __DIR__ . '/includes/header.php';
 $flash = get_flash();
@@ -127,12 +129,14 @@ $flash = get_flash();
 <div class="up-page-head">
     <div>
         <h1>Topup Wallet</h1>
-        <p>Step 1 for shopping: request topup → admin approves → transfer to Shopping Wallet → buy.</p>
+        <p><?= $featProducts
+            ? 'Step 1 for shopping: request topup → admin approves → transfer to Shopping Wallet → buy.'
+            : 'Request topup with payment proof. After admin approval, the amount is credited here.' ?></p>
     </div>
     <div class="up-head-actions">
         <button type="button" class="up-btn up-btn-primary" data-wal-open-add>Add Money</button>
-        <a href="wallet-transfer.php?from=topup&to=shopping<?= $next !== '' ? '&next=' . rawurlencode($next) : '' ?>" class="up-btn up-btn-outline">Transfer</a>
         <?php if ($featProducts): ?>
+        <a href="wallet-transfer.php?from=topup&to=shopping<?= $next !== '' ? '&next=' . rawurlencode($next) : '' ?>" class="up-btn up-btn-outline">Transfer</a>
         <a href="purchase-product.php" class="up-btn up-btn-outline">Buy Products</a>
         <?php endif; ?>
         <?php if ($featWalletActivate): ?>
@@ -183,8 +187,17 @@ $flash = get_flash();
         </span>
         <div class="wal-stat-copy">
             <span class="wal-stat-label">Quick use</span>
-            <strong style="font-size:1.05rem">Activate · Shop</strong>
-            <small>Activate downline or transfer</small>
+            <strong style="font-size:1.05rem"><?php
+                $quickUse = [];
+                if ($featWalletActivate) {
+                    $quickUse[] = 'Activate';
+                }
+                if ($featProducts) {
+                    $quickUse[] = 'Shop';
+                }
+                echo e($quickUse ? implode(' · ', $quickUse) : 'Hold');
+            ?></strong>
+            <small><?= $featProducts ? 'Activate downline or transfer' : ($featWalletActivate ? 'Activate downline members' : 'Available after approval') ?></small>
         </div>
     </article>
 </div>

@@ -22,6 +22,7 @@ $featKyc = feature_module_allowed('kyc');
 $featUtility = feature_module_allowed('utility');
 $featReports = feature_module_allowed('reports');
 $featBinaryClosing = feature_module_allowed('binary_closing');
+$featRewards = feature_module_allowed('rewards');
 
 $utilityPages = [
     'countries', 'states', 'cities', 'banks', 'bank-accounts',
@@ -31,14 +32,14 @@ $utilityOpen = in_array($currentPage, $utilityPages, true);
 
 $memberPages = [
     'members', 'member-view', 'member-add', 'member-edit',
-    'approve-kyc', 'tree-view', 'binary-tree', 'matrix-tree', 'level-tree', 'downline',
+    'approve-kyc', 'nominee-settlements', 'tree-view', 'binary-tree', 'matrix-tree', 'level-tree', 'downline',
 ];
 $membersOpen = in_array($currentPage, $memberPages, true);
 
 $productPages = [
     'product-categories', 'product-subcategories', 'product-sizes', 'product-colors',
     'subcategory-settings', 'product-add', 'product-form', 'product-details', 'product-status',
-    'product-orders', 'stock-report', 'vendors', 'stock-purchase', 'purchase-details', 'commodity-prices',
+    'product-orders', 'stock-report', 'vendors', 'stock-purchase', 'purchase-details',
 ];
 $productOpen = in_array($currentPage, $productPages, true);
 
@@ -48,6 +49,7 @@ $packageOpen = in_array($currentPage, $packagePages, true);
 $reportPages = [
     'reports', 'report-commission', 'report-joining', 'report-package-sales',
     'report-top-earners', 'report-binary-closing', 'tds-report', 'stock-report', 'tpin-report',
+    'weekly-reconciliation',
 ];
 $reportOpen = in_array($currentPage, $reportPages, true);
 
@@ -161,6 +163,16 @@ $chevronDown = '<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke=
                         <?php if ($featKyc): ?>
                         <a href="approve-kyc.php" class="<?= $currentPage === 'approve-kyc' ? 'active' : '' ?>"><span class="dot"></span>Approve KYC</a>
                         <?php endif; ?>
+                        <a href="nominee-settlements.php" class="<?= $currentPage === 'nominee-settlements' ? 'active' : '' ?>"><span class="dot"></span>Nominee Settlement<?php
+                            $nomPend = 0;
+                            try {
+                                require_once __DIR__ . '/nominee.php';
+                                $nomPend = nominee_pending_count($pdo);
+                            } catch (Throwable $e) {
+                                $nomPend = 0;
+                            }
+                            echo $nomPend > 0 ? ' (' . $nomPend . ')' : '';
+                        ?></a>
                         <?php if ($featBinary): ?>
                         <a href="tree-view.php" class="<?= in_array($currentPage, ['tree-view', 'binary-tree'], true) ? 'active' : '' ?>"><span class="dot"></span>Tree View</a>
                         <?php endif; ?>
@@ -230,7 +242,6 @@ $chevronDown = '<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke=
                         <a href="vendors.php" class="<?= $currentPage === 'vendors' ? 'active' : '' ?>"><span class="dot"></span>Vendor Master</a>
                         <a href="stock-purchase.php" class="<?= $currentPage === 'stock-purchase' ? 'active' : '' ?>"><span class="dot"></span>Stock Purchase</a>
                         <a href="purchase-details.php" class="<?= $currentPage === 'purchase-details' ? 'active' : '' ?>"><span class="dot"></span>Purchase Details</a>
-                        <a href="commodity-prices.php" class="<?= $currentPage === 'commodity-prices' ? 'active' : '' ?>"><span class="dot"></span>Add Commodities Price</a>
                     </div>
                 </div>
                 <?php endif; ?>
@@ -289,6 +300,26 @@ $chevronDown = '<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke=
                     </span>
                 </a>
 
+                <?php if ($featRewards): ?>
+                <a href="rewards.php" class="nav-link <?= $currentPage === 'rewards' ? 'active' : '' ?>">
+                    <span class="nav-link-left">
+                        <?= nav_ico($icoPkg) ?>
+                        <span class="nav-label">Rewards</span>
+                    </span>
+                    <?php
+                    $rewardNotify = 0;
+                    try {
+                        $rewardNotify = (int) $pdo->query("SELECT COUNT(*) FROM member_rewards WHERE status = 'eligible'")->fetchColumn();
+                    } catch (Throwable $e) {
+                        $rewardNotify = 0;
+                    }
+                    ?>
+                    <?php if ($rewardNotify > 0): ?>
+                    <span class="nav-badge"><?= $rewardNotify > 9 ? '9+' : $rewardNotify ?></span>
+                    <?php endif; ?>
+                </a>
+                <?php endif; ?>
+
                 <?php if ($featBinaryClosing): ?>
                 <a href="binary-closing.php" class="nav-link <?= $currentPage === 'binary-closing' ? 'active' : '' ?>">
                     <span class="nav-link-left">
@@ -297,6 +328,13 @@ $chevronDown = '<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke=
                     </span>
                 </a>
                 <?php endif; ?>
+
+                <a href="weekly-reconciliation.php" class="nav-link <?= $currentPage === 'weekly-reconciliation' ? 'active' : '' ?>">
+                    <span class="nav-link-left">
+                        <?= nav_ico($icoChart) ?>
+                        <span class="nav-label">Weekly Recon</span>
+                    </span>
+                </a>
 
                 <?php if ($featWithdrawals): ?>
                 <a href="withdrawals.php" class="nav-link <?= $currentPage === 'withdrawals' ? 'active' : '' ?>">
@@ -346,6 +384,7 @@ $chevronDown = '<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke=
                         <?php if ($featBinaryClosing): ?>
                         <a href="report-binary-closing.php" class="<?= $currentPage === 'report-binary-closing' ? 'active' : '' ?>"><span class="dot"></span>Binary Closing</a>
                         <?php endif; ?>
+                        <a href="weekly-reconciliation.php" class="<?= $currentPage === 'weekly-reconciliation' ? 'active' : '' ?>"><span class="dot"></span>Weekly Reconciliation</a>
                         <a href="tds-report.php" class="<?= $currentPage === 'tds-report' ? 'active' : '' ?>"><span class="dot"></span>TDS Report</a>
                         <?php if ($featProducts): ?>
                         <a href="product-orders.php" class="<?= $currentPage === 'product-orders' ? 'active' : '' ?>"><span class="dot"></span>Product Orders</a>

@@ -373,6 +373,20 @@ $transactions = array_slice($transactions, 0, 8);
                         </div>
                         <span class="pp-contact-tag green"><?= $packageAmount > 0 ? currency($packageAmount) : 'N/A' ?></span>
                     </li>
+                    <li>
+                        <span class="pp-ci indigo" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+                        </span>
+                        <div class="pp-contact-body">
+                            <small>Nominee</small>
+                            <?php if (trim((string) ($user['nominee_name'] ?? '')) !== ''): ?>
+                            <strong><?= e((string) $user['nominee_name']) ?></strong>
+                            <?php else: ?>
+                            <strong class="is-muted">Not set — add in Edit Profile</strong>
+                            <?php endif; ?>
+                        </div>
+                        <span class="pp-contact-tag indigo"><?= e((string) ($user['nominee_relation'] ?? 'Nominee')) ?></span>
+                    </li>
                 </ul>
             </div>
 
@@ -469,8 +483,8 @@ $transactions = array_slice($transactions, 0, 8);
                             <?php if ($showBinaryUi): ?>
                             <span class="pp-s-chip"><small>Position</small><strong><?= e($user['position'] ? ucfirst($user['position']) : '—') ?></strong></span>
                             <span class="pp-s-chip"><small>L / R</small><strong><?= (int) $user['left_count'] ?> / <?= (int) $user['right_count'] ?></strong></span>
-                            <span class="pp-s-chip"><small>Left BV</small><strong><?= number_format($leftBv, 0) ?></strong></span>
-                            <span class="pp-s-chip"><small>Right BV</small><strong><?= number_format($rightBv, 0) ?></strong></span>
+                            <span class="pp-s-chip"><small>Left PV</small><strong><?= number_format($leftBv, 0) ?></strong></span>
+                            <span class="pp-s-chip"><small>Right PV</small><strong><?= number_format($rightBv, 0) ?></strong></span>
                             <span class="pp-s-chip"><small>Open Pairs</small><strong><?= number_format($openPairs, $openPairs == floor($openPairs) ? 0 : 2) ?></strong></span>
                             <?php else: ?>
                             <span class="pp-s-chip"><small>Direct</small><strong><?= (int) $directCount ?></strong></span>

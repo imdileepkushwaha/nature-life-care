@@ -65,6 +65,9 @@ function mlm_expected_tables(): array
         'password_resets', 'member_kyc_documents', 'member_kyc_upi', 'activation_requests',
         'bv_credits', 'closing_runs', 'closing_items', 'package_products',
         'super_admins', 'withdrawal_payout_logs',
+        'plan_ranks', 'plan_rewards', 'member_rank_history', 'member_rewards',
+        'bv_lots', 'weekly_reconciliations', 'ops_cron_logs',
+        'member_nominee_settlements', 'member_nominee_documents',
     ];
 }
 
@@ -160,6 +163,12 @@ function mlm_run_schema_setup(PDO $pdo): array
         require_once dirname(__DIR__) . '/includes/features.php';
         feature_ensure_superadmin_table($pdo);
         feature_ensure_defaults($pdo);
+        require_once dirname(__DIR__) . '/includes/plan_incentives.php';
+        plan_incentives_ensure($pdo);
+        require_once dirname(__DIR__) . '/includes/ops_cycle.php';
+        ops_ensure_tables($pdo);
+        require_once dirname(__DIR__) . '/includes/nominee.php';
+        nominee_ensure_schema($pdo);
     } catch (Throwable $e) {
         // ignore
     }

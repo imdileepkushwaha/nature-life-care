@@ -63,8 +63,8 @@ if (!function_exists('member_effective_status')) {
     function member_effective_status(array $member): string
     {
         $status = strtolower(trim((string) ($member['status'] ?? 'inactive')));
-        if ($status === 'blocked') {
-            return 'blocked';
+        if ($status === 'blocked' || $status === 'deceased') {
+            return $status;
         }
         if (empty($member['package_id'])) {
             return 'inactive';

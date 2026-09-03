@@ -86,6 +86,7 @@ require_once __DIR__ . '/../includes/header.php';
             <?php if ($showBinaryClosing): ?>
             <a class="btn btn-outline" href="report-binary-closing.php?from=<?= e($from) ?>&to=<?= e($to) ?>">Binary Closing</a>
             <?php endif; ?>
+            <a class="btn btn-outline" href="weekly-reconciliation.php">Weekly Reconciliation</a>
             <a class="btn btn-outline" href="tds-report.php?from=<?= e($from) ?>&to=<?= e($to) ?>">TDS Report</a>
             <?php if ($showTpin): ?>
             <a class="btn btn-outline" href="tpin-report.php">T-Pin Report</a>

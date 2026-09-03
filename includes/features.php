@@ -39,6 +39,18 @@ function feature_defaults(): array
         'feature_level_income' => '1',
         'feature_referral_income' => '1',
         'feature_matching_income' => '1',
+        'feature_dsi_income' => '1',
+        'feature_ranks_enabled' => '1',
+        'feature_rewards_enabled' => '1',
+
+        'dsi_pool_percent' => '10',
+        'dsi_level_1_percent' => '50',
+        'dsi_level_2_percent' => '20',
+        'dsi_level_3_percent' => '15',
+        'dsi_level_4_percent' => '10',
+        'commission_rates_frozen' => '0',
+        'commission_rates_frozen_at' => '',
+        'commission_rates_frozen_note' => '',
 
         // Operational modules
         'feature_withdrawals_enabled' => '1',
@@ -47,6 +59,11 @@ function feature_defaults(): array
         'feature_withdraw_require_kyc' => '0',
         'feature_utility_enabled' => '1',
         'feature_reports_enabled' => '1',
+
+        // Binary pair matching: 1:2 = weaker:stronger (also 2:1)
+        'binary_match_ratio' => '1:2',
+        'invoice_tax_percent' => '0',
+        'invoice_gstin' => '',
 
         // Meta
         'feature_preset' => 'hybrid_full',
@@ -77,6 +94,9 @@ function feature_presets(): array
                 'feature_level_income' => '1',
                 'feature_referral_income' => '1',
                 'feature_matching_income' => '1',
+                'feature_dsi_income' => '1',
+                'feature_ranks_enabled' => '1',
+                'feature_rewards_enabled' => '1',
                 'feature_withdrawals_enabled' => '1',
                 'feature_kyc_enabled' => '1',
                 'feature_utility_enabled' => '1',
@@ -99,6 +119,9 @@ function feature_presets(): array
                 'feature_level_income' => '0',
                 'feature_referral_income' => '1',
                 'feature_matching_income' => '1',
+                'feature_dsi_income' => '1',
+                'feature_ranks_enabled' => '1',
+                'feature_rewards_enabled' => '1',
                 'feature_withdrawals_enabled' => '1',
                 'feature_kyc_enabled' => '1',
                 'feature_utility_enabled' => '1',
@@ -121,6 +144,9 @@ function feature_presets(): array
                 'feature_level_income' => '1',
                 'feature_referral_income' => '1',
                 'feature_matching_income' => '0',
+                'feature_dsi_income' => '1',
+                'feature_ranks_enabled' => '0',
+                'feature_rewards_enabled' => '0',
                 'feature_withdrawals_enabled' => '1',
                 'feature_kyc_enabled' => '1',
                 'feature_utility_enabled' => '1',
@@ -143,6 +169,9 @@ function feature_presets(): array
                 'feature_level_income' => '1',
                 'feature_referral_income' => '1',
                 'feature_matching_income' => '1',
+                'feature_dsi_income' => '1',
+                'feature_ranks_enabled' => '1',
+                'feature_rewards_enabled' => '1',
                 'feature_withdrawals_enabled' => '1',
                 'feature_kyc_enabled' => '1',
                 'feature_utility_enabled' => '1',
@@ -165,6 +194,9 @@ function feature_presets(): array
                 'feature_level_income' => '0',
                 'feature_referral_income' => '1',
                 'feature_matching_income' => '0',
+                'feature_dsi_income' => '1',
+                'feature_ranks_enabled' => '1',
+                'feature_rewards_enabled' => '1',
                 'feature_withdrawals_enabled' => '1',
                 'feature_kyc_enabled' => '1',
                 'feature_utility_enabled' => '1',
@@ -187,6 +219,9 @@ function feature_presets(): array
                 'feature_level_income' => '1',
                 'feature_referral_income' => '1',
                 'feature_matching_income' => '0',
+                'feature_dsi_income' => '1',
+                'feature_ranks_enabled' => '0',
+                'feature_rewards_enabled' => '0',
                 'feature_withdrawals_enabled' => '1',
                 'feature_kyc_enabled' => '1',
                 'feature_utility_enabled' => '1',
@@ -210,6 +245,9 @@ function feature_presets(): array
                 'feature_level_income' => '1',
                 'feature_referral_income' => '1',
                 'feature_matching_income' => '0',
+                'feature_dsi_income' => '1',
+                'feature_ranks_enabled' => '0',
+                'feature_rewards_enabled' => '0',
                 'feature_withdrawals_enabled' => '1',
                 'feature_kyc_enabled' => '1',
                 'feature_utility_enabled' => '1',
@@ -232,6 +270,9 @@ function feature_presets(): array
                 'feature_level_income' => '1',
                 'feature_referral_income' => '1',
                 'feature_matching_income' => '1',
+                'feature_dsi_income' => '1',
+                'feature_ranks_enabled' => '1',
+                'feature_rewards_enabled' => '1',
                 'feature_withdrawals_enabled' => '1',
                 'feature_kyc_enabled' => '1',
                 'feature_utility_enabled' => '1',
@@ -319,6 +360,11 @@ function client_packages_locked(): bool
 {
     // Packages are managed by Client Admin only (not Super Admin).
     return false;
+}
+
+function commission_rates_frozen(): bool
+{
+    return setting('commission_rates_frozen', '0') === '1';
 }
 
 /**
@@ -411,6 +457,9 @@ function feature_save_from_post(PDO $pdo, array $post): void
         'feature_level_income',
         'feature_referral_income',
         'feature_matching_income',
+        'feature_dsi_income',
+        'feature_ranks_enabled',
+        'feature_rewards_enabled',
         'feature_withdrawals_enabled',
         'feature_kyc_enabled',
         'feature_withdraw_require_kyc',
@@ -516,6 +565,7 @@ function feature_admin_page_map(): array
         'level-tree' => 'level_tree',
         'binary-closing' => 'binary_closing',
         'report-binary-closing' => 'binary_closing',
+        'rewards' => 'rewards',
         'packages' => 'packages',
         'package-assign-products' => 'packages',
         'package-plans' => 'packages',
@@ -538,7 +588,6 @@ function feature_admin_page_map(): array
         'vendors' => 'products',
         'stock-purchase' => 'products',
         'purchase-details' => 'products',
-        'commodity-prices' => 'products',
         'wallet-topup-requests' => 'wallet_topup',
         'withdrawals' => 'withdrawals',
         'approve-kyc' => 'kyc',
@@ -580,6 +629,11 @@ function feature_user_page_map(): array
         'income-level' => 'income_level',
         'income-referral' => 'income_referral',
         'income-matching' => 'income_matching',
+        'income-dsi' => 'income_dsi',
+        'income-rank' => 'ranks',
+        'income-reward' => 'rewards',
+        'rank' => 'ranks',
+        'rewards' => 'rewards',
         'withdrawal-fund' => 'withdrawals',
         'withdrawal-report' => 'withdrawals',
         'kyc-pan' => 'kyc',
@@ -625,13 +679,19 @@ function feature_module_allowed(string $module): bool
         case 'reports':
             return feature_enabled('feature_reports_enabled');
         case 'income_binary':
-            return plan_uses_binary();
+            return false;
         case 'income_level':
             return plan_uses_level();
         case 'income_referral':
             return feature_enabled('feature_referral_income');
         case 'income_matching':
-            return feature_enabled('feature_matching_income') && plan_uses_binary();
+            return plan_uses_binary();
+        case 'income_dsi':
+            return feature_enabled('feature_dsi_income');
+        case 'ranks':
+            return feature_enabled('feature_ranks_enabled') && plan_uses_binary();
+        case 'rewards':
+            return feature_enabled('feature_rewards_enabled') && plan_uses_binary();
         default:
             return true;
     }
@@ -683,6 +743,10 @@ function feature_summary(): array
         'product_min_amount' => product_activate_min_amount(),
         'referral' => feature_enabled('feature_referral_income'),
         'matching' => feature_enabled('feature_matching_income'),
+        'dsi' => feature_enabled('feature_dsi_income'),
+        'ranks' => feature_enabled('feature_ranks_enabled'),
+        'rewards' => feature_enabled('feature_rewards_enabled'),
+        'rates_frozen' => commission_rates_frozen(),
         'withdrawals' => feature_enabled('feature_withdrawals_enabled'),
         'kyc' => feature_enabled('feature_kyc_enabled'),
         'withdraw_require_kyc' => feature_enabled('feature_withdraw_require_kyc', false),
@@ -939,10 +1003,17 @@ function feature_audit_snapshot(PDO $pdo, ?array $keys = null): array
             'matching_commission_percent',
             'binary_flush_pairs',
             'binary_pair_bv',
+            'binary_match_ratio',
             'daily_closing_admin_charge',
             'binary_income_enabled',
             'level_income_enabled',
             'level_income_levels',
+            'dsi_pool_percent',
+            'dsi_level_1_percent',
+            'dsi_level_2_percent',
+            'dsi_level_3_percent',
+            'dsi_level_4_percent',
+            'commission_rates_frozen',
         ]);
         $keys = array_values(array_unique($keys));
     }

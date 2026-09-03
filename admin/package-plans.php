@@ -110,7 +110,7 @@ require_once __DIR__ . '/../includes/header.php';
                     <input type="number" step="0.01" name="amount" value="<?= e((string)($edit['amount'] ?? $_POST['amount'] ?? '0')) ?>">
                 </div>
                 <div class="form-group">
-                    <label>BV</label>
+                    <label>PV</label>
                     <input type="number" step="0.01" name="bv" value="<?= e((string)($edit['bv'] ?? $_POST['bv'] ?? '0')) ?>">
                 </div>
                 <div class="form-group">
@@ -145,7 +145,7 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
     <div class="table-wrap">
         <table class="data">
-            <thead><tr><th>Plan</th><th>Package</th><th>Amount</th><th>BV</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Plan</th><th>Package</th><th>Amount</th><th>PV</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
             <?php if (!$rows): ?><tr><td colspan="6">No mappings yet.</td></tr>
             <?php else: foreach ($rows as $r): ?>

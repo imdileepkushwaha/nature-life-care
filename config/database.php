@@ -118,7 +118,7 @@ function setting(string $key, string $default = ''): string
         $stmt = $pdo->prepare('SELECT setting_value FROM settings WHERE setting_key = ?');
         $stmt->execute([$key]);
         $row = $stmt->fetch();
-        $cache[$key] = $row ? (string) $row['setting_value'] : $default;
+        $cache[$key] = $row ? utf8_mojibake_fix((string) $row['setting_value']) : $default;
     }
     return $cache[$key];
 }
@@ -147,13 +147,51 @@ function user_logout_session(): void
     session_clear_scope('user');
 }
 
+/** Unicode rupee (U+20B9) — avoid a literal ₹ in source so file encoding cannot break it. */
+function currency_inr_symbol(): string
+{
+    return "\u{20B9}";
+}
+
+/** True when the stored/posted symbol is ₹ or a known broken encoding of it. */
+function currency_symbol_looks_rupee(string $symbol): bool
+{
+    $raw = trim($symbol);
+    $decoded = trim(html_entity_decode($raw, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    $rupee = currency_inr_symbol();
+
+    if ($decoded === '' || $decoded === $rupee || str_contains($decoded, $rupee)) {
+        return true;
+    }
+    if (preg_match('/^(rs\.?|inr)$/i', $decoded)) {
+        return true;
+    }
+    // Classic mojibake of UTF-8 ₹ (E2 82 B9) read as Windows-1252 / double-encoded UTF-8
+    if (preg_match('/â‚¹|Ôé╣|Ã¢|Â‚|\\\\u20b9|&#8377;|&#x20b9;/iu', $raw . $decoded)) {
+        return true;
+    }
+
+    return false;
+}
+
+/** Clean symbol for DB storage and form values. */
+function currency_symbol_normalize(?string $symbol, ?string $code = null): string
+{
+    $symbol = trim((string) $symbol);
+    $code = strtoupper(trim((string) ($code ?? setting('currency', 'INR'))));
+    if ($code === 'INR' || currency_symbol_looks_rupee($symbol)) {
+        return currency_inr_symbol();
+    }
+    $decoded = trim(html_entity_decode($symbol, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    return $decoded !== '' ? $decoded : currency_inr_symbol();
+}
+
 function currency(float $amount): string
 {
     $symbol = currency_symbol();
     $code = strtoupper(setting('currency', 'INR'));
 
-    // Prefer HTML entity for INR so encoding never breaks (avoids mojibake like â‚¹)
-    if ($symbol === '₹' || strtoupper($code) === 'INR' || $symbol === 'Rs' || $symbol === 'Rs.') {
+    if ($symbol === currency_inr_symbol() || $code === 'INR') {
         return '&#8377;' . number_format($amount, 2);
     }
 
@@ -163,24 +201,90 @@ function currency(float $amount): string
 /** Normalized currency symbol for display (fixes corrupted UTF-8 in DB). */
 function currency_symbol(): string
 {
-    $symbol = trim(setting('currency_symbol', '₹'));
-    $code = strtoupper(setting('currency', 'INR'));
-    if ($symbol === '' || $symbol === '₹' || $code === 'INR' || $symbol === 'Rs' || $symbol === 'Rs.'
-        || preg_match('/Ôé╣|Ã¢|â‚¹/u', $symbol)) {
-        return '₹';
-    }
-    return $symbol;
+    return currency_symbol_normalize(
+        setting('currency_symbol', currency_inr_symbol()),
+        setting('currency', 'INR')
+    );
 }
 
 /** HTML-safe currency symbol for labels (INR uses &#8377;). */
 function currency_symbol_html(): string
 {
-    return currency_symbol() === '₹' ? '&#8377;' : htmlspecialchars(currency_symbol(), ENT_QUOTES, 'UTF-8');
+    $symbol = currency_symbol();
+    return $symbol === currency_inr_symbol()
+        ? '&#8377;'
+        : htmlspecialchars($symbol, ENT_QUOTES, 'UTF-8');
+}
+
+/** Value attribute that stays a real ₹ even if the page encoding slips. */
+function currency_symbol_input_value(): string
+{
+    $symbol = currency_symbol();
+    return $symbol === currency_inr_symbol()
+        ? '&#8377;'
+        : htmlspecialchars($symbol, ENT_QUOTES, 'UTF-8');
+}
+
+/** Rewrite a corrupted currency_symbol row to a real rupee. */
+function currency_symbol_heal(PDO $pdo): void
+{
+    $raw = setting('currency_symbol', currency_inr_symbol());
+    $fixed = currency_symbol_normalize($raw, setting('currency', 'INR'));
+    if ($raw === $fixed) {
+        return;
+    }
+    feature_save($pdo, 'currency_symbol', $fixed);
+}
+
+/**
+ * Fix UTF-8 punctuation that was stored as Windows-1252 mojibake (â€“ etc).
+ */
+function utf8_mojibake_fix(string $text): string
+{
+    if ($text === '') {
+        return $text;
+    }
+
+    static $map = [
+        // UTF-8 en/em dash (E2 80 93/94) misread as Windows-1252
+        "\xC3\xA2\xE2\x82\xAC\xE2\x80\x9C" => '-',
+        "\xC3\xA2\xE2\x82\xAC\xE2\x80\x9D" => '-',
+        "\xC3\xA2\xE2\x82\xAC\xE2\x80\x93" => '-',
+        "\xC3\xA2\xE2\x82\xAC\xE2\x80\x94" => '-',
+        "\xC3\xA2\xE2\x82\xAC\xE2\x84\xA2" => "'",
+        "\xC3\xA2\xE2\x82\xAC\xC5\x93" => '"',
+        "\xC3\xA2\xE2\x80\x9A\xC2\xB9" => "\u{20B9}",
+    ];
+
+    return strtr($text, $map);
+}
+
+/** Rewrite settings rows that still contain classic UTF-8 mojibake. */
+function settings_mojibake_heal(PDO $pdo): void
+{
+    try {
+        $rows = $pdo->query('SELECT setting_key, setting_value FROM settings')->fetchAll();
+    } catch (Throwable $e) {
+        return;
+    }
+    $upd = $pdo->prepare(
+        'UPDATE settings SET setting_value = ? WHERE setting_key = ?'
+    );
+    foreach ($rows as $row) {
+        $key = (string) ($row['setting_key'] ?? '');
+        $raw = (string) ($row['setting_value'] ?? '');
+        $fixed = utf8_mojibake_fix($raw);
+        if ($key === '' || $fixed === $raw) {
+            continue;
+        }
+        $upd->execute([$fixed, $key]);
+        clear_setting_cache($key);
+    }
 }
 
 function e(?string $str): string
 {
-    return htmlspecialchars($str ?? '', ENT_QUOTES, 'UTF-8');
+    return htmlspecialchars(utf8_mojibake_fix($str ?? ''), ENT_QUOTES, 'UTF-8');
 }
 
 function flash(string $type, string $message): void
@@ -311,11 +415,15 @@ function generate_member_id(PDO $pdo): string
 require_once __DIR__ . '/../includes/utility.php';
 require_once __DIR__ . '/../includes/features.php';
 require_once __DIR__ . '/../includes/matrix.php';
+require_once __DIR__ . '/../includes/plan_incentives.php';
 
 // Ensure feature defaults + super_admins when DB is ready (no-op if tables missing).
 try {
     feature_ensure_defaults($pdo);
     feature_ensure_superadmin_table($pdo);
+    currency_symbol_heal($pdo);
+    settings_mojibake_heal($pdo);
+    plan_incentives_ensure($pdo);
 } catch (Throwable $e) {
     // ignore during early install
 }

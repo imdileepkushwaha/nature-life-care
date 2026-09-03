@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS packages (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     amount DECIMAL(12,2) NOT NULL,
-    bv DECIMAL(12,2) NOT NULL DEFAULT 0 COMMENT 'Business Volume',
+    bv DECIMAL(12,2) NOT NULL DEFAULT 0 COMMENT 'Point Value',
     capping DECIMAL(12,2) NOT NULL DEFAULT 0 COMMENT 'Max earning cap',
     daily_roi DECIMAL(8,2) NOT NULL DEFAULT 0,
     validity_days INT NOT NULL DEFAULT 30,
@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS commissions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     member_id INT NOT NULL,
     from_member_id INT NULL,
-    type ENUM('binary','referral','matching','level','other') DEFAULT 'binary',
+    type ENUM('binary','referral','matching','level','dsi','rank','reward','other') DEFAULT 'binary',
     amount DECIMAL(12,2) NOT NULL,
     description VARCHAR(255) NULL,
     status ENUM('pending','paid','cancelled') DEFAULT 'pending',
@@ -133,10 +133,10 @@ INSERT INTO admins (username, email, password, full_name) VALUES
 
 -- Default packages
 INSERT INTO packages (name, amount, bv, daily_roi, validity_days, description) VALUES
-('Starter Plan', 1000.00, 1000.00, 1.00, 30, 'Access level 1-5 commissions, binary node placement'),
-('Silver Plan', 2500.00, 2500.00, 1.25, 45, 'Access level 1-8 commissions, priority matching'),
-('Gold Plan', 5000.00, 5000.00, 1.50, 60, 'Full level access, matching bonus eligible'),
-('Platinum Plan', 10000.00, 10000.00, 2.00, 90, 'Premium package with maximum earning potential');
+('Starter', 1599.00, 1599.00, 0, 30, 'Begin with a complete product kit'),
+('Basic', 3299.00, 3299.00, 0, 30, 'More range for regular customers'),
+('Growth', 4999.00, 4999.00, 0, 30, 'Scale sales and team volume'),
+('Premium', 7999.00, 7999.00, 0, 30, 'Full catalogue value for leaders');
 
 -- Default settings
 INSERT INTO settings (setting_key, setting_value) VALUES
@@ -148,6 +148,7 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('matching_commission_percent', '0'),
 ('binary_flush_pairs', '0'),
 ('binary_pair_bv', '1000'),
+('binary_match_ratio', '1:2'),
 ('binary_income_enabled', '1'),
 ('level_income_enabled', '1'),
 ('level_income_levels', '10'),
@@ -178,7 +179,7 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('contact_state', 'Maharashtra'),
 ('contact_country', 'India'),
 ('contact_pincode', '400001'),
-('contact_hours', 'Mon–Sat, 10:00 AM – 6:00 PM'),
+('contact_hours', 'Mon-Sat, 10:00 AM - 6:00 PM'),
 ('contact_map_url', ''),
 ('contact_facebook', ''),
 ('contact_instagram', ''),

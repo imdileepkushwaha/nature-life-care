@@ -1,14 +1,19 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/closing.php';
+require_once __DIR__ . '/../includes/ops_cycle.php';
 require_admin();
 feature_guard_admin_page('binary-closing');
 
 $pageTitle = 'Binary Closing';
 closing_ensure_tables($pdo);
+ops_ensure_tables($pdo);
 
 $adminId = (int) ($_SESSION['admin_id'] ?? 0);
 $preview = null;
+$opsWeek = ops_week_for();
+$opsGate = ops_closing_gate($pdo, false);
+$opsClosingStatus = ops_week_closing_status($pdo, $opsWeek['end_date']);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string) ($_POST['action'] ?? '');
@@ -19,23 +24,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash('error', $preview['message']);
         }
     } elseif ($action === 'run') {
-        $confirm = trim((string) ($_POST['confirm'] ?? ''));
-        if (strtoupper($confirm) !== 'CLOSE') {
-            flash('error', 'Type CLOSE to confirm the closing run.');
+        $confirm = strtoupper(trim((string) ($_POST['confirm'] ?? '')));
+        $override = $confirm === 'CLOSE OVERRIDE';
+        if ($confirm !== 'CLOSE' && !$override) {
+            flash('error', 'Type CLOSE to confirm, or CLOSE OVERRIDE for an off-schedule / extra run.');
         } else {
-            $result = closing_run_binary($pdo, $adminId, true);
-            if ($result['ok']) {
-                flash('success', $result['message'] . ' Binary net: ' . currency((float) $result['binary_net_total']) . ' · Matching: ' . currency((float) $result['matching_total']));
+            $gate = ops_closing_gate($pdo, $override);
+            if (!$gate['ok']) {
+                flash('error', $gate['message']);
             } else {
-                flash('error', $result['message']);
+                $notes = 'Binary + matching closing';
+                if ($override) {
+                    $notes = 'Weekly closing (override)';
+                } elseif (ops_weekly_closing_enabled() && ops_is_closing_day()) {
+                    $notes = 'Weekly closing (Saturday)';
+                }
+                $result = closing_run_binary($pdo, $adminId, true, $notes);
+                if ($result['ok']) {
+                    ops_save_reconciliation($pdo, ops_week_for(), $adminId, false, $notes);
+                    flash('success', $result['message'] . ' Binary net: ' . currency((float) $result['binary_net_total']) . ' · Matching: ' . currency((float) $result['matching_total']));
+                } else {
+                    flash('error', $result['message']);
+                }
+                header('Location: binary-closing.php');
+                exit;
             }
-            header('Location: binary-closing.php');
-            exit;
         }
     } elseif ($action === 'rebuild_bv') {
         $confirm = trim((string) ($_POST['confirm'] ?? ''));
         if (strtoupper($confirm) !== 'REBUILD') {
-            flash('error', 'Type REBUILD to confirm BV recalculation.');
+            flash('error', 'Type REBUILD to confirm PV recalculation.');
         } else {
             $result = closing_rebuild_bv($pdo);
             flash($result['ok'] ? 'success' : 'error', $result['message']);
@@ -95,15 +113,29 @@ require_once __DIR__ . '/../includes/header.php';
         <div class="rpt-hero-main">
             <span class="rpt-hero-ico"><?= $icoClose ?></span>
             <div>
-                <p class="rpt-kicker">Daily settlement</p>
+                <p class="rpt-kicker">Weekly settlement</p>
                 <h1>Binary Closing</h1>
-                <p class="rpt-sub">Match open BV pairs, pay binary + matching, and keep carry-forward clean.</p>
+                <p class="rpt-sub">Saturday closing · match open PV pairs · pay binary + matching. Bank payout is Monday–Tuesday.</p>
             </div>
         </div>
         <div class="rpt-hero-actions">
-            <a class="btn btn-outline btn-sm" href="settings.php?tab=general">Settings</a>
+            <a class="btn btn-outline btn-sm" href="weekly-reconciliation.php">Weekly recon</a>
+            <a class="btn btn-outline btn-sm" href="settings.php?tab=operations">Operations</a>
         </div>
     </header>
+
+    <div class="ops-cycle-banner <?= $opsGate['ok'] ? 'is-ok' : 'is-wait' ?>">
+        <div>
+            <strong>This week <?= e($opsWeek['label']) ?></strong>
+            <p>
+                Closing day: <?= e(ops_weekday_name(ops_closing_weekday())) ?>
+                <?= ops_is_closing_day() ? ' · today' : ' · next ' . ops_next_closing_day()->format('d M Y') ?>
+                · Bank credit: <?= e(ops_payout_days_label()) ?>
+                <?= ops_is_payout_day() ? ' · window open' : ' · next ' . ops_next_payout_day()->format('d M Y') ?>
+            </p>
+        </div>
+        <span class="ops-cycle-pill"><?= $opsClosingStatus['already'] ? 'Closed this week' : ($opsGate['ok'] ? 'Ready to close' : 'Waits for Saturday') ?></span>
+    </div>
 
     <?php if (!$binaryEnabled): ?>
         <div class="cls-alert">Binary income is disabled for this install.</div>
@@ -123,7 +155,7 @@ require_once __DIR__ . '/../includes/header.php';
             <div>
                 <span class="rpt-stat-label">Open pairs</span>
                 <strong><?= number_format((float) $summary['pairs'], 2) ?></strong>
-                <small>pair BV <?= number_format((float) $summary['pair_bv'], 2) ?><?= $summary['flush_pairs'] > 0 ? ' · flush ' . (int) $summary['flush_pairs'] : '' ?></small>
+                <small>1:2 / 2:1 · pair PV <?= number_format((float) $summary['pair_bv'], 2) ?><?= $summary['flush_pairs'] > 0 ? ' · flush ' . (int) $summary['flush_pairs'] : '' ?></small>
             </div>
         </article>
         <article class="rpt-stat">
@@ -131,13 +163,13 @@ require_once __DIR__ . '/../includes/header.php';
             <div>
                 <span class="rpt-stat-label">Est. binary gross</span>
                 <strong><?= currency((float) $summary['est_binary_gross']) ?></strong>
-                <small><?= number_format((float) $summary['binary_percent'], 2) ?>% of matched BV</small>
+                <small><?= number_format((float) $summary['binary_percent'], 2) ?>% of matched PV</small>
             </div>
         </article>
         <article class="rpt-stat">
             <span class="rpt-stat-ico is-coral"><?= $icoInr ?></span>
             <div>
-                <span class="rpt-stat-label">Matched BV open</span>
+                <span class="rpt-stat-label">Matched PV open</span>
                 <strong><?= number_format((float) $summary['matched_bv'], 2) ?></strong>
                 <small>matching <?= number_format($matchingPct, 2) ?>% · admin <?= number_format($adminCharge, 2) ?>%</small>
             </div>
@@ -157,8 +189,14 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
             <div class="rpt-panel-body cls-actions">
                 <p class="cls-help">
-                    Each pair = <strong><?= number_format((float) $summary['pair_bv'], 2) ?> BV</strong> matched on both legs.
-                    Leftover BV carries forward. Matching goes to the direct sponsor of each paid member.
+                    Official closing is <strong>every Saturday</strong> (IST). Preview works any day.
+                    Payout is on <strong>company-approved eligible PV</strong> only (paid kit / paid product). Return, cancel or refund nets unmatched PV off before settlement.
+                    Matching is <strong>1:2 / 2:1</strong>: either leg can be stronger; matching volume = the weaker eligible side.
+                    Example: ₹10,000 left + ₹10,000 right = ₹10,000 matched. ₹10,000 + ₹20,000 = ₹10,000 matched, leftover stays on the stronger leg.
+                    Pair unit = <strong><?= number_format((float) $summary['pair_bv'], 2) ?> PV</strong>.
+                    <?php if (ops_weekly_closing_enabled() && !$opsGate['ok']): ?>
+                        <br><strong><?= e($opsGate['message']) ?></strong>
+                    <?php endif; ?>
                 </p>
                 <div class="cls-btn-row">
                     <form method="post">
@@ -168,8 +206,8 @@ require_once __DIR__ . '/../includes/header.php';
                     <form method="post" class="cls-confirm-form" onsubmit="return confirm('Run binary closing now? This will credit wallets.');">
                         <input type="hidden" name="action" value="run">
                         <label class="cls-confirm">
-                            <span>Type <kbd>CLOSE</kbd> to confirm</span>
-                            <input type="text" name="confirm" autocomplete="off" placeholder="CLOSE" required <?= !$binaryEnabled ? 'disabled' : '' ?>>
+                            <span>Type <kbd>CLOSE</kbd><?= ops_weekly_closing_enabled() && !$opsGate['ok'] ? ' or <kbd>CLOSE OVERRIDE</kbd>' : '' ?></span>
+                            <input type="text" name="confirm" autocomplete="off" placeholder="<?= ops_weekly_closing_enabled() && !$opsGate['ok'] ? 'CLOSE OVERRIDE' : 'CLOSE' ?>" required <?= !$binaryEnabled ? 'disabled' : '' ?>>
                         </label>
                         <button type="submit" class="btn btn-primary" <?= !$binaryEnabled ? 'disabled' : '' ?>>Run closing</button>
                     </form>
@@ -183,22 +221,22 @@ require_once __DIR__ . '/../includes/header.php';
                     <span class="rpt-panel-ico"><?= $icoPair ?></span>
                     <div>
                         <span class="rpt-kicker">Maintenance</span>
-                        <h2>Rebuild BV</h2>
+                        <h2>Rebuild PV</h2>
                     </div>
                 </div>
             </div>
             <div class="rpt-panel-body cls-actions">
                 <p class="cls-help">
-                    Resets all left/right BV to zero, then re-credits package BV for every activated member up the placement tree.
+                    Resets all left/right PV, then re-credits <strong>company-approved eligible lots</strong> (paid kits and paid products). Reversed return/cancel lots stay off.
                     Does <strong>not</strong> change commissions or wallets.
                 </p>
-                <form method="post" class="cls-confirm-form" onsubmit="return confirm('Rebuild all BV from activations?');">
+                <form method="post" class="cls-confirm-form" onsubmit="return confirm('Rebuild all PV from activations?');">
                     <input type="hidden" name="action" value="rebuild_bv">
                     <label class="cls-confirm">
                         <span>Type <kbd>REBUILD</kbd> to confirm</span>
                         <input type="text" name="confirm" autocomplete="off" placeholder="REBUILD" required>
                     </label>
-                    <button type="submit" class="btn btn-outline">Rebuild BV now</button>
+                    <button type="submit" class="btn btn-outline">Rebuild PV now</button>
                 </form>
             </div>
         </section>
@@ -219,14 +257,14 @@ require_once __DIR__ . '/../includes/header.php';
             <div class="rpt-panel-body">
                 <div class="cls-preview-stats">
                     <div><span>Pairs</span><strong><?= number_format((float) $preview['pairs_total'], 2) ?></strong></div>
-                    <div><span>Matched BV</span><strong><?= number_format((float) $preview['matched_bv_total'], 2) ?></strong></div>
+                    <div><span>Matched PV</span><strong><?= number_format((float) $preview['matched_bv_total'], 2) ?></strong></div>
                     <div><span>Binary gross</span><strong><?= currency((float) $preview['binary_gross_total']) ?></strong></div>
                     <div><span>Admin charge</span><strong><?= currency((float) $preview['admin_charge_total']) ?></strong></div>
                     <div><span>Binary net</span><strong><?= currency((float) $preview['binary_net_total']) ?></strong></div>
                     <div><span>Matching</span><strong><?= currency((float) $preview['matching_total']) ?></strong></div>
                 </div>
                 <?php if (empty($preview['items'])): ?>
-                    <div class="rpt-empty"><strong>No pairs</strong><p>Activate members on both legs to create open BV.</p></div>
+                    <div class="rpt-empty"><strong>No pairs</strong><p>Activate members on both legs to create open PV.</p></div>
                 <?php else: ?>
                     <div class="rpt-table-wrap">
                         <table class="rpt-table">
@@ -235,7 +273,7 @@ require_once __DIR__ . '/../includes/header.php';
                                     <th>Member</th>
                                     <th>L / R before</th>
                                     <th>Pairs</th>
-                                    <th>Matched BV</th>
+                                    <th>Matched PV</th>
                                     <th>Binary net</th>
                                     <th>Matching</th>
                                     <th>L / R after</th>
@@ -289,7 +327,7 @@ require_once __DIR__ . '/../includes/header.php';
                             <tr>
                                 <th>Member</th>
                                 <th>Pairs</th>
-                                <th>Matched BV</th>
+                                <th>Matched PV</th>
                                 <th>Binary net</th>
                                 <th>Matching</th>
                                 <th>Carry L / R</th>

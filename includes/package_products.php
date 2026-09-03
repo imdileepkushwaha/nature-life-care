@@ -33,11 +33,15 @@ function package_products_ensure_table(PDO $pdo): void
 function package_products_list(PDO $pdo, int $packageId): array
 {
     package_products_ensure_table($pdo);
+    if (function_exists('products_ensure_columns')) {
+        products_ensure_columns($pdo);
+    }
     if ($packageId <= 0) {
         return [];
     }
     $stmt = $pdo->prepare('
-        SELECT pp.*, p.name AS product_name, p.sku, p.price AS current_price, p.status AS product_status
+        SELECT pp.*, p.name AS product_name, p.sku, p.price AS current_price, p.status AS product_status,
+               p.mrp, p.tax_percent
         FROM package_products pp
         JOIN products p ON p.id = pp.product_id
         WHERE pp.package_id = ?

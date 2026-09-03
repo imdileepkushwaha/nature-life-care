@@ -86,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($showBinaryMetrics) {
         if ($bv < 0) {
-            $errors[] = 'BV cannot be negative.';
+            $errors[] = 'PV cannot be negative.';
         }
         if ($bv === 0.0 && $amount > 0) {
             $bv = $amount;
@@ -150,7 +150,7 @@ require_once __DIR__ . '/../includes/header.php';
     <div class="panel-header">
         <div>
             <h2><?= $edit ? 'Edit Package' : 'Add Package' ?></h2>
-            <p class="members-sub"><?= $showBinaryMetrics ? 'Plan name, investment, BV, capping and description' : 'Plan name, investment and description' ?></p>
+            <p class="members-sub"><?= $showBinaryMetrics ? 'Plan name, investment, PV, capping and description' : 'Plan name, investment and description' ?></p>
         </div>
         <?php if ($edit): ?>
         <a href="packages.php" class="btn btn-outline btn-sm">Cancel edit</a>
@@ -163,20 +163,20 @@ require_once __DIR__ . '/../includes/header.php';
             <div class="form-grid pkg-form-grid">
                 <div class="form-group">
                     <label>Plan Name *</label>
-                    <input type="text" name="name" value="<?= e((string) $formName) ?>" placeholder="e.g. Starter Plan" required>
+                    <input type="text" name="name" value="<?= e((string) $formName) ?>" placeholder="e.g. Starter" required>
                 </div>
                 <div class="form-group">
-                    <label>Investment Amount (₹) *</label>
+                    <label>Investment Amount (<?= currency_symbol_html() ?>) *</label>
                     <input type="number" step="0.01" min="0" name="amount" value="<?= e((string) $formAmount) ?>" placeholder="1000" required>
                 </div>
                 <?php if ($showBinaryMetrics): ?>
                 <div class="form-group">
-                    <label>BV (Business Volume)</label>
+                    <label>PV (Point Value)</label>
                     <input type="number" step="0.01" min="0" name="bv" value="<?= e((string) $formBv) ?>" placeholder="Same as amount if blank">
                     <small class="field-hint">Leave blank to use investment amount</small>
                 </div>
                 <div class="form-group">
-                    <label>Capping (₹)</label>
+                    <label>Capping (<?= currency_symbol_html() ?>)</label>
                     <input type="number" step="0.01" min="0" name="capping" value="<?= e((string) $formCapping) ?>" placeholder="e.g. 50000">
                     <small class="field-hint">Max earning limit for this package (0 = no limit)</small>
                 </div>
@@ -238,7 +238,7 @@ require_once __DIR__ . '/../includes/header.php';
                 </span>
                 <div>
                     <strong><?= number_format((float) $p['bv'], 0) ?></strong>
-                    <span>BV</span>
+                    <span>PV</span>
                 </div>
             </div>
             <div class="pkg-metric">

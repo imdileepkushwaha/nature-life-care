@@ -114,6 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $packageId = (int) ($_POST['package_id'] ?? 0) ?: null;
     }
     $mrp = (float) ($_POST['mrp'] ?? 0);
+    $taxPercent = max(0.0, min(40.0, (float) ($_POST['tax_percent'] ?? 0)));
     $discount = 0.0;
     if ($mrp > 0 && $price >= 0 && $price <= $mrp) {
         $discount = round((($mrp - $price) / $mrp) * 100, 2);
@@ -194,13 +195,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo->prepare('
                     UPDATE products SET
                         name=?, slug=?, sku=?, sku_mode=?, category_id=?, subcategory_id=?, size_id=?, color_id=?,
-                        price=?, bv=?, package_id=?, mrp=?, discount_percent=?, offer_flash_text=?, offer_countdown=?, offer_bank_text=?,
+                        price=?, bv=?, package_id=?, mrp=?, tax_percent=?, discount_percent=?, offer_flash_text=?, offer_countdown=?, offer_bank_text=?,
                         stock_qty=?, description=?, thumbnail=?,
                         meta_title=?, meta_description=?, weight=?, length=?, width=?, height=?, status=?
                     WHERE id=?
                 ')->execute([
                     $name, $slug, $sku ?: null, $skuMode, $categoryId, $subcategoryId, $sizeId, $colorId,
-                    $price, $bv, $packageId, $mrp, $discount, $offerFlash ?: null, $offerCountdown ?: null, $offerBank ?: null,
+                    $price, $bv, $packageId, $mrp, $taxPercent, $discount, $offerFlash ?: null, $offerCountdown ?: null, $offerBank ?: null,
                     $stockQty, $description ?: null, $thumbPath,
                     $metaTitle ?: null, $metaDescription ?: null, $weight, $length, $width, $height, $status, $id
                 ]);
@@ -211,13 +212,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo->prepare('
                     INSERT INTO products (
                         name, slug, sku, sku_mode, category_id, subcategory_id, size_id, color_id,
-                        price, bv, package_id, mrp, discount_percent, offer_flash_text, offer_countdown, offer_bank_text,
+                        price, bv, package_id, mrp, tax_percent, discount_percent, offer_flash_text, offer_countdown, offer_bank_text,
                         stock_qty, description, thumbnail,
                         meta_title, meta_description, weight, length, width, height, status
-                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 ')->execute([
                     $name, $slug, $sku ?: null, $skuMode, $categoryId, $subcategoryId, $sizeId, $colorId,
-                    $price, $bv, $packageId, $mrp, $discount, $offerFlash ?: null, $offerCountdown ?: null, $offerBank ?: null,
+                    $price, $bv, $packageId, $mrp, $taxPercent, $discount, $offerFlash ?: null, $offerCountdown ?: null, $offerBank ?: null,
                     $stockQty, $description ?: null, $thumbPath,
                     $metaTitle ?: null, $metaDescription ?: null, $weight, $length, $width, $height, $status
                 ]);
@@ -280,6 +281,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'price' => $price,
         'bv' => $bv,
         'mrp' => $mrp,
+        'tax_percent' => $taxPercent,
         'discount_percent' => $discount,
         'offer_flash_text' => $offerFlash,
         'offer_countdown' => $offerCountdown,
@@ -562,6 +564,11 @@ require_once __DIR__ . '/../includes/header.php';
                         <div class="form-group">
                             <label>MRP</label>
                             <input type="number" step="0.01" min="0" name="mrp" id="pfMrp" value="<?= e((string)$v('mrp', '0')) ?>">
+                        </div>
+                        <div class="form-group">
+                            <label>GST / Tax %</label>
+                            <input type="number" step="0.01" min="0" max="40" name="tax_percent" id="pfTax" value="<?= e((string)$v('tax_percent', '0')) ?>">
+                            <p class="pf-help">Shown on kit / purchase invoice. MRP is treated as tax-inclusive.</p>
                         </div>
                         <div class="form-group">
                             <label>Selling Price *</label>

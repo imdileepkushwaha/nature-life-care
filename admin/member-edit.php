@@ -1,9 +1,11 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/registration.php';
+require_once __DIR__ . '/../includes/nominee.php';
 $pageTitle = 'Edit Member';
 
 ensure_member_registration_columns($pdo);
+nominee_ensure_schema($pdo);
 
 $id = (int) ($_GET['id'] ?? $_POST['id'] ?? 0);
 $stmt = $pdo->prepare('SELECT * FROM members WHERE id = ? LIMIT 1');
@@ -57,8 +59,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $errors[] = 'Valid email is required.';
         }
-        if (!in_array($status, ['active', 'inactive', 'blocked'], true)) {
+        if (!in_array($status, ['active', 'inactive', 'blocked', 'deceased'], true)) {
             $errors[] = 'Invalid status.';
+        }
+        if (($member['status'] ?? '') === 'deceased' && $status !== 'deceased') {
+            $errors[] = 'Deceased IDs are managed on the Nominee Settlement desk.';
+            $status = 'deceased';
         }
         if ($dob !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dob)) {
             $errors[] = 'Invalid date of birth.';
@@ -73,6 +79,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($dup->fetch()) {
                 $errors[] = 'Username or email already used by another member.';
             }
+        }
+
+        $nomCheck = nominee_validate_input($_POST, false);
+        if (!$nomCheck['ok']) {
+            $errors = array_merge($errors, $nomCheck['errors']);
         }
 
         if (!$errors) {
@@ -92,6 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $dob,
                 $id,
             ]);
+            nominee_save_member($pdo, $id, $nomCheck['data']);
             log_activity('member_edit', "Updated member #{$id} ({$member['member_id']})");
             flash('success', 'Member profile updated.');
             header('Location: member-view.php?id=' . $id);
@@ -141,11 +153,15 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
             <div class="form-group">
                 <label>Status *</label>
-                <select name="status" required>
-                    <?php foreach (['active', 'inactive', 'blocked'] as $s): ?>
+                <select name="status" required <?= ($member['status'] ?? '') === 'deceased' ? 'disabled' : '' ?>>
+                    <?php foreach (['active', 'inactive', 'blocked', 'deceased'] as $s): ?>
                         <option value="<?= $s ?>" <?= ($member['status'] ?? '') === $s ? 'selected' : '' ?>><?= ucfirst($s) ?></option>
                     <?php endforeach; ?>
                 </select>
+                <?php if (($member['status'] ?? '') === 'deceased'): ?>
+                    <input type="hidden" name="status" value="deceased">
+                    <small class="muted">Use Nominee Settlement to manage this ID.</small>
+                <?php endif; ?>
             </div>
 
             <div class="form-group">
@@ -186,6 +202,31 @@ require_once __DIR__ . '/../includes/header.php';
             <div class="form-group">
                 <label>Date of Birth</label>
                 <input type="date" name="date_of_birth" value="<?= e($member['date_of_birth'] ?? '') ?>">
+            </div>
+            <div class="form-group">
+                <label>Nominee name</label>
+                <input type="text" name="nominee_name" value="<?= e((string) ($member['nominee_name'] ?? '')) ?>">
+            </div>
+            <div class="form-group">
+                <label>Nominee relation</label>
+                <select name="nominee_relation">
+                    <option value="">—</option>
+                    <?php foreach (nominee_relations() as $rel): ?>
+                        <option value="<?= e($rel) ?>" <?= ($member['nominee_relation'] ?? '') === $rel ? 'selected' : '' ?>><?= e($rel) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Nominee mobile</label>
+                <input type="text" name="nominee_phone" value="<?= e((string) ($member['nominee_phone'] ?? '')) ?>">
+            </div>
+            <div class="form-group">
+                <label>Nominee email</label>
+                <input type="email" name="nominee_email" value="<?= e((string) ($member['nominee_email'] ?? '')) ?>">
+            </div>
+            <div class="form-group" style="grid-column:1 / -1">
+                <label>Nominee address</label>
+                <input type="text" name="nominee_address" value="<?= e((string) ($member['nominee_address'] ?? '')) ?>">
             </div>
 
             <div class="form-group" style="grid-column:1 / -1">

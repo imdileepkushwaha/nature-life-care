@@ -5,12 +5,18 @@
  * Rules (fixed & consistent):
  * 1) On package activation → package BV walks the PLACEMENT upline and adds to left_bv / right_bv.
  * 2) Level income (if enabled) → % of package amount up the SPONSOR chain (L1 = direct sponsor).
- * 3) Binary closing → match BV 1:1 on both legs in pair units; pay % of matched BV; carry leftover.
- * 4) Matching → % of that member's binary gross to their direct sponsor.
- * 5) Admin charge % (optional) is deducted from binary before wallet credit.
+ * 3) Binary closing → 1:2 / 2:1 means either leg can be the power leg; matching volume = weaker eligible PV.
+ *    Example: 10,000 + 10,000 → 10,000 matched; 10,000 + 20,000 → 10,000 matched, leftover on the stronger leg.
+ * 4) Matching payout uses company-approved eligible PV only (paid kit / paid product, not reversed).
+ * 5) Return / cancel / refund reverses unmatched eligible PV (net settlement). Already-paid pairs are not clawed back.
+ * 6) Matching bonus → % of that member's binary gross to their direct sponsor.
+ * 7) Admin charge % (optional) is deducted from binary before wallet credit.
+ * 8) DSI — distributable pool from kit/product activity, split L1–L4 up the sponsor chain.
+ * 9) After closing, lifetime pairs update rank promotions and unlock pair rewards.
  */
 
 require_once __DIR__ . '/wallet.php';
+require_once __DIR__ . '/plan_incentives.php';
 
 function closing_ensure_tables(PDO $pdo): void
 {
@@ -72,6 +78,32 @@ function closing_ensure_tables(PDO $pdo): void
         ) ENGINE=InnoDB
     ");
 
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS bv_lots (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            from_member_id INT NOT NULL,
+            source_type VARCHAR(32) NOT NULL,
+            source_id INT NOT NULL DEFAULT 0,
+            amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+            status ENUM('eligible','reversed') NOT NULL DEFAULT 'eligible',
+            reversed_at DATETIME NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uk_bv_lot (from_member_id, source_type, source_id),
+            KEY idx_bv_lots_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+
+    try {
+        $pdo->exec("
+            INSERT IGNORE INTO bv_lots (from_member_id, source_type, source_id, amount, status)
+            SELECT member_id, 'activation', member_id, bv, 'eligible'
+            FROM bv_credits
+            WHERE bv > 0
+        ");
+    } catch (Throwable $e) {
+        // ignore
+    }
+
     // Ensure pair BV setting exists
     try {
         $chk = $pdo->prepare("SELECT setting_value FROM settings WHERE setting_key = 'binary_pair_bv' LIMIT 1");
@@ -89,6 +121,12 @@ function closing_ensure_tables(PDO $pdo): void
             $ins = $pdo->prepare('INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)');
             $ins->execute(['binary_pair_bv', (string) $defaultPair]);
         }
+        $ratioChk = $pdo->prepare("SELECT setting_value FROM settings WHERE setting_key = 'binary_match_ratio' LIMIT 1");
+        $ratioChk->execute();
+        if (!$ratioChk->fetch()) {
+            $pdo->prepare('INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)')
+                ->execute(['binary_match_ratio', '1:2']);
+        }
     } catch (Throwable $e) {
         // ignore
     }
@@ -102,13 +140,35 @@ function closing_pair_bv(): float
     return $v > 0 ? $v : 1.0;
 }
 
+/** Pair ratio: 1:2 (weaker:stronger, also 2:1) or 1:1 equal-leg. */
+function closing_match_ratio(): string
+{
+    $r = strtolower(str_replace(' ', '', (string) setting('binary_match_ratio', '1:2')));
+    if ($r === 'consume' || $r === '1:2c' || $r === '12c' || $r === 'strict') {
+        return 'consume';
+    }
+    if ($r === '1:1' || $r === '11' || $r === 'equal') {
+        return '1:1';
+    }
+    return '1:2';
+}
+
+function closing_bv_suppress(?bool $set = null): bool
+{
+    static $on = false;
+    if ($set !== null) {
+        $on = $set;
+    }
+    return $on;
+}
+
 /**
- * Push BV up the placement tree (left_bv / right_bv). Does not touch bv_credits.
+ * Push BV up the placement tree (left_bv / right_bv). Negative amount reverses unmatched leftover (floored at 0).
  */
 function closing_push_bv_upline(PDO $pdo, int $memberId, float $bv): void
 {
     $bv = round($bv, 2);
-    if ($memberId <= 0 || $bv <= 0) {
+    if ($memberId <= 0 || $bv == 0.0) {
         return;
     }
 
@@ -123,8 +183,8 @@ function closing_push_bv_upline(PDO $pdo, int $memberId, float $bv): void
     $side = strtolower(trim((string) ($row['position'] ?? '')));
     $guard = 0;
 
-    $updL = $pdo->prepare('UPDATE members SET left_bv = ROUND(left_bv + ?, 2) WHERE id = ?');
-    $updR = $pdo->prepare('UPDATE members SET right_bv = ROUND(right_bv + ?, 2) WHERE id = ?');
+    $updL = $pdo->prepare('UPDATE members SET left_bv = GREATEST(0, ROUND(left_bv + ?, 2)) WHERE id = ?');
+    $updR = $pdo->prepare('UPDATE members SET right_bv = GREATEST(0, ROUND(right_bv + ?, 2)) WHERE id = ?');
     $parentStmt = $pdo->prepare('SELECT placement_id, position FROM members WHERE id = ? LIMIT 1');
 
     while ($currentId > 0 && $guard < 200) {
@@ -145,6 +205,107 @@ function closing_push_bv_upline(PDO $pdo, int $memberId, float $bv): void
         $currentId = (int) $parent['placement_id'];
         $guard++;
     }
+}
+
+/**
+ * Company-approved eligible PV lot. Pushed to placement upline once.
+ */
+function closing_credit_eligible(PDO $pdo, int $fromMemberId, float $bv, string $sourceType, int $sourceId): bool
+{
+    if (closing_bv_suppress()) {
+        return false;
+    }
+    if (!plan_uses_binary()) {
+        return false;
+    }
+    closing_ensure_tables($pdo);
+    $bv = round($bv, 2);
+    $sourceType = preg_replace('/[^a-z0-9_]/', '', strtolower($sourceType)) ?: 'manual';
+    if ($fromMemberId <= 0 || $bv <= 0) {
+        return false;
+    }
+
+    try {
+        $pdo->prepare('INSERT INTO bv_lots (from_member_id, source_type, source_id, amount, status) VALUES (?, ?, ?, ?, ?)')
+            ->execute([$fromMemberId, $sourceType, $sourceId, $bv, 'eligible']);
+    } catch (Throwable $e) {
+        return false;
+    }
+
+    if ($sourceType === 'activation' || $sourceType === 'upgrade') {
+        try {
+            $pdo->prepare('INSERT INTO bv_credits (member_id, package_id, bv) VALUES (?, NULL, ?)')
+                ->execute([$fromMemberId, $bv]);
+        } catch (Throwable $e) {
+            try {
+                $pdo->prepare('UPDATE bv_credits SET bv = ROUND(bv + ?, 2) WHERE member_id = ?')
+                    ->execute([$bv, $fromMemberId]);
+            } catch (Throwable $e2) {
+                // ignore
+            }
+        }
+    }
+
+    closing_push_bv_upline($pdo, $fromMemberId, $bv);
+    return true;
+}
+
+/**
+ * Reverse an eligible lot after return / cancel / refund. Unmatched leftover only (legs floored at 0).
+ */
+function closing_reverse_eligible(PDO $pdo, int $fromMemberId, string $sourceType, int $sourceId): bool
+{
+    if (!plan_uses_binary()) {
+        return false;
+    }
+    closing_ensure_tables($pdo);
+    $sourceType = preg_replace('/[^a-z0-9_]/', '', strtolower($sourceType)) ?: 'manual';
+
+    $stmt = $pdo->prepare("
+        SELECT id, amount FROM bv_lots
+        WHERE from_member_id = ? AND source_type = ? AND source_id = ? AND status = 'eligible'
+        LIMIT 1
+    ");
+    $stmt->execute([$fromMemberId, $sourceType, $sourceId]);
+    $lot = $stmt->fetch();
+    if (!$lot) {
+        return false;
+    }
+
+    $amt = round((float) $lot['amount'], 2);
+    if ($amt > 0) {
+        closing_push_bv_upline($pdo, $fromMemberId, -$amt);
+    }
+    $pdo->prepare("UPDATE bv_lots SET status = 'reversed', reversed_at = NOW() WHERE id = ?")
+        ->execute([(int) $lot['id']]);
+    return true;
+}
+
+function closing_restore_eligible(PDO $pdo, int $fromMemberId, string $sourceType, int $sourceId): bool
+{
+    if (!plan_uses_binary()) {
+        return false;
+    }
+    closing_ensure_tables($pdo);
+    $sourceType = preg_replace('/[^a-z0-9_]/', '', strtolower($sourceType)) ?: 'manual';
+
+    $stmt = $pdo->prepare("
+        SELECT id, amount FROM bv_lots
+        WHERE from_member_id = ? AND source_type = ? AND source_id = ? AND status = 'reversed'
+        LIMIT 1
+    ");
+    $stmt->execute([$fromMemberId, $sourceType, $sourceId]);
+    $lot = $stmt->fetch();
+    if (!$lot) {
+        return false;
+    }
+    $amt = round((float) $lot['amount'], 2);
+    $pdo->prepare("UPDATE bv_lots SET status = 'eligible', reversed_at = NULL WHERE id = ?")
+        ->execute([(int) $lot['id']]);
+    if ($amt > 0) {
+        closing_push_bv_upline($pdo, $fromMemberId, $amt);
+    }
+    return true;
 }
 
 /**
@@ -294,10 +455,13 @@ function closing_on_activation(PDO $pdo, array $user, array $pkg): void
     $packageId = isset($pkg['id']) ? (int) $pkg['id'] : null;
 
     if ($bv > 0 && plan_uses_binary()) {
-        closing_credit_bv_upline($pdo, $uid, $bv, $packageId);
+        closing_credit_eligible($pdo, $uid, $bv, 'activation', $uid);
     }
     if ($amount > 0 && plan_uses_level()) {
         closing_pay_level_income($pdo, $uid, $code, $amount);
+    }
+    if ($amount > 0) {
+        plan_dsi_pay($pdo, $uid, $code, $amount, 'dsi:act:' . $uid . ':' . (int) ($packageId ?? 0));
     }
 }
 
@@ -318,11 +482,15 @@ function closing_on_upgrade(PDO $pdo, array $user, array $oldPkg, array $newPkg,
     $packageId = isset($newPkg['id']) ? (int) $newPkg['id'] : null;
 
     if ($deltaBv > 0 && plan_uses_binary()) {
-        closing_credit_bv_delta($pdo, $uid, $deltaBv, $packageId);
+        closing_credit_eligible($pdo, $uid, $deltaBv, 'upgrade', $packageId ?: $uid);
     }
     if ($deltaAmount > 0 && plan_uses_level()) {
         $key = $eventKey !== null && $eventKey !== '' ? $eventKey : ('upgrade:' . $uid . ':' . ($packageId ?? 0));
         closing_pay_level_income($pdo, $uid, $code, $deltaAmount, $key);
+    }
+    if ($deltaAmount > 0) {
+        $dsiKey = $eventKey !== null && $eventKey !== '' ? ('dsi:' . $eventKey) : ('dsi:upg:' . $uid . ':' . ($packageId ?? 0));
+        plan_dsi_pay($pdo, $uid, $code, $deltaAmount, $dsiKey);
     }
 }
 
@@ -334,7 +502,7 @@ function closing_on_upgrade(PDO $pdo, array $user, array $oldPkg, array $newPkg,
 function closing_rebuild_bv(PDO $pdo): array
 {
     if (!plan_uses_binary()) {
-        return ['ok' => false, 'message' => 'Binary BV rebuild is disabled for this client plan.', 'members' => 0];
+        return ['ok' => false, 'message' => 'Binary PV rebuild is disabled for this client plan.', 'members' => 0];
     }
     closing_ensure_tables($pdo);
 
@@ -342,6 +510,28 @@ function closing_rebuild_bv(PDO $pdo): array
         $pdo->beginTransaction();
 
         $pdo->exec('UPDATE members SET left_bv = 0, right_bv = 0');
+
+        $lots = [];
+        try {
+            $lots = $pdo->query("SELECT from_member_id, amount FROM bv_lots WHERE status = 'eligible' AND amount > 0 ORDER BY id ASC")->fetchAll();
+        } catch (Throwable $e) {
+            $lots = [];
+        }
+
+        $count = 0;
+        if ($lots) {
+            foreach ($lots as $lot) {
+                closing_push_bv_upline($pdo, (int) $lot['from_member_id'], (float) $lot['amount']);
+                $count++;
+            }
+            $pdo->commit();
+            return [
+                'ok' => true,
+                'message' => "Eligible PV rebuilt from {$count} approved lot(s). Returns/cancellations stay reversed.",
+                'members' => $count,
+            ];
+        }
+
         $pdo->exec('DELETE FROM bv_credits');
 
         $rows = $pdo->query("
@@ -366,20 +556,21 @@ function closing_rebuild_bv(PDO $pdo): array
         $pdo->commit();
         return [
             'ok' => true,
-            'message' => "BV rebuilt for {$count} activated member(s).",
+            'message' => "PV rebuilt for {$count} activated member(s).",
             'members' => $count,
         ];
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        return ['ok' => false, 'message' => 'BV rebuild failed.', 'members' => 0];
+        return ['ok' => false, 'message' => 'PV rebuild failed.', 'members' => 0];
     }
 }
 
 /**
- * Compute binary match for one member from current BV legs.
- * @return array{pairs:float,matched_bv:float,left_after:float,right_after:float,left_before:float,right_before:float}
+ * Compute binary match from current eligible PV legs.
+ * Plan: 1:2 / 2:1 — either leg may be stronger; matching volume = weaker eligible PV.
+ * Optional Super Admin 1:1 is the same weaker-side match (equal legs also pay the min).
  */
 function closing_compute_match(float $leftBv, float $rightBv, float $pairBv, int $flushPairs): array
 {
@@ -387,25 +578,58 @@ function closing_compute_match(float $leftBv, float $rightBv, float $pairBv, int
     $rightBv = max(0.0, round($rightBv, 2));
     $pairBv = $pairBv > 0 ? $pairBv : 1.0;
 
-    $leftPairs = floor($leftBv / $pairBv + 1e-9);
-    $rightPairs = floor($rightBv / $pairBv + 1e-9);
-    $pairs = (float) min($leftPairs, $rightPairs);
+    $leftUnits = (int) floor($leftBv / $pairBv + 1e-9);
+    $rightUnits = (int) floor($rightBv / $pairBv + 1e-9);
+    $leftRem = round($leftBv - ($leftUnits * $pairBv), 2);
+    $rightRem = round($rightBv - ($rightUnits * $pairBv), 2);
 
-    if ($flushPairs > 0) {
-        $pairs = min($pairs, (float) $flushPairs);
+    $ratio = closing_match_ratio();
+    if ($ratio === 'consume') {
+        if ($leftUnits <= $rightUnits) {
+            $weak = $leftUnits;
+            $strong = $rightUnits;
+            $leftIsWeak = true;
+        } else {
+            $weak = $rightUnits;
+            $strong = $leftUnits;
+            $leftIsWeak = false;
+        }
+        $pairs = (float) min($weak, intdiv($strong, 2));
+        if ($flushPairs > 0) {
+            $pairs = min($pairs, (float) $flushPairs);
+        }
+        $p = (int) $pairs;
+        $weakAfter = $weak - $p;
+        $strongAfter = $strong - ($p * 2);
+        if ($leftIsWeak) {
+            $leftUnitsAfter = $weakAfter;
+            $rightUnitsAfter = $strongAfter;
+        } else {
+            $leftUnitsAfter = $strongAfter;
+            $rightUnitsAfter = $weakAfter;
+        }
+    } else {
+        // 1:2 / 2:1 plan and 1:1 — matching volume is the weaker eligible side
+        $pairs = (float) min($leftUnits, $rightUnits);
+        if ($flushPairs > 0) {
+            $pairs = min($pairs, (float) $flushPairs);
+        }
+        $p = (int) $pairs;
+        $leftUnitsAfter = $leftUnits - $p;
+        $rightUnitsAfter = $rightUnits - $p;
     }
 
     $matched = round($pairs * $pairBv, 2);
-    $leftAfter = round($leftBv - $matched, 2);
-    $rightAfter = round($rightBv - $matched, 2);
+    $leftAfter = max(0.0, round($leftRem + ($leftUnitsAfter * $pairBv), 2));
+    $rightAfter = max(0.0, round($rightRem + ($rightUnitsAfter * $pairBv), 2));
 
     return [
         'pairs' => $pairs,
         'matched_bv' => $matched,
         'left_before' => $leftBv,
         'right_before' => $rightBv,
-        'left_after' => max(0.0, $leftAfter),
-        'right_after' => max(0.0, $rightAfter),
+        'left_after' => $leftAfter,
+        'right_after' => $rightAfter,
     ];
 }
 
@@ -422,7 +646,7 @@ function closing_compute_match(float $leftBv, float $rightBv, float $pairBv, int
  *   items:array
  * }
  */
-function closing_run_binary(PDO $pdo, ?int $adminId = null, bool $commit = true): array
+function closing_run_binary(PDO $pdo, ?int $adminId = null, bool $commit = true, string $notes = ''): array
 {
     closing_ensure_tables($pdo);
 
@@ -563,7 +787,7 @@ function closing_run_binary(PDO $pdo, ?int $adminId = null, bool $commit = true)
                     'binary',
                     $net,
                     sprintf(
-                        'Binary closing: %s pair(s), matched BV %s',
+                        'Binary closing: %s pair(s), matched PV %s',
                         rtrim(rtrim(number_format($match['pairs'], 2, '.', ''), '0'), '.'),
                         number_format($match['matched_bv'], 2, '.', '')
                     ),
@@ -578,7 +802,7 @@ function closing_run_binary(PDO $pdo, ?int $adminId = null, bool $commit = true)
                     'commission',
                     $cid ?: null,
                     sprintf(
-                        'Binary closing: %s pair(s), matched BV %s',
+                        'Binary closing: %s pair(s), matched PV %s',
                         rtrim(rtrim(number_format($match['pairs'], 2, '.', ''), '0'), '.'),
                         number_format($match['matched_bv'], 2, '.', '')
                     )
@@ -623,7 +847,7 @@ function closing_run_binary(PDO $pdo, ?int $adminId = null, bool $commit = true)
                 $binaryPct,
                 $matchingPct,
                 $flushPairs,
-                'Binary + matching closing',
+                $notes !== '' ? $notes : 'Binary + matching closing',
             ]);
             $closingId = (int) $pdo->lastInsertId();
 
@@ -651,6 +875,8 @@ function closing_run_binary(PDO $pdo, ?int $adminId = null, bool $commit = true)
                     $it['right_bv_after'],
                 ]);
             }
+
+            plan_closing_apply_pairs($pdo, $items);
 
             $pdo->commit();
             if ($adminId) {

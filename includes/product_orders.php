@@ -6,6 +6,7 @@
 require_once __DIR__ . '/wallet.php';
 require_once __DIR__ . '/utility.php';
 require_once __DIR__ . '/activation.php';
+require_once __DIR__ . '/invoice.php';
 
 function product_orders_ensure_tables(PDO $pdo): void
 {
@@ -60,6 +61,33 @@ function product_orders_ensure_tables(PDO $pdo): void
     ");
 
     product_orders_ensure_fulfillment_columns($pdo);
+    product_orders_ensure_item_value_columns($pdo);
+    $done = true;
+}
+
+/** Snapshot MRP / tax / customer value on order items. */
+function product_orders_ensure_item_value_columns(PDO $pdo): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $cols = [
+        'unit_mrp' => 'DECIMAL(12,2) NOT NULL DEFAULT 0',
+        'tax_percent' => 'DECIMAL(8,2) NOT NULL DEFAULT 0',
+        'tax_amount' => 'DECIMAL(12,2) NOT NULL DEFAULT 0',
+        'customer_value' => 'DECIMAL(12,2) NOT NULL DEFAULT 0',
+    ];
+    foreach ($cols as $col => $def) {
+        try {
+            $chk = $pdo->query('SHOW COLUMNS FROM product_order_items LIKE ' . $pdo->quote($col));
+            if ($chk && !$chk->fetch()) {
+                $pdo->exec("ALTER TABLE product_order_items ADD COLUMN {$col} {$def}");
+            }
+        } catch (Throwable $e) {
+            // ignore
+        }
+    }
     $done = true;
 }
 
@@ -224,10 +252,80 @@ function product_orders_admin_update_fulfillment(PDO $pdo, int $orderId, array $
             $deliveredAt,
             $orderId,
         ]);
+        $fresh = product_order_get($pdo, $orderId);
+        if ($fresh) {
+            product_orders_sync_eligible_bv($pdo, $fresh);
+        }
         return ['ok' => true, 'error' => null];
     } catch (Throwable $e) {
         return ['ok' => false, 'error' => 'Could not update delivery status.'];
     }
+}
+
+/**
+ * Paid + not cancelled/refunded = company-approved eligible PV. Return/cancel nets it off.
+ */
+function product_orders_sync_eligible_bv(PDO $pdo, array $order): void
+{
+    $oid = (int) ($order['id'] ?? 0);
+    $mid = (int) ($order['member_id'] ?? 0);
+    if ($oid < 1 || $mid < 1) {
+        return;
+    }
+    $pay = strtolower((string) ($order['status'] ?? ''));
+    $del = strtolower((string) ($order['delivery_status'] ?? ''));
+    $dead = in_array($pay, ['cancelled', 'refunded'], true) || $del === 'cancelled';
+    try {
+        if ($dead) {
+            closing_reverse_eligible($pdo, $mid, 'product_order', $oid);
+        } else {
+            closing_restore_eligible($pdo, $mid, 'product_order', $oid);
+        }
+    } catch (Throwable $e) {
+        // ignore
+    }
+}
+
+/**
+ * Admin marks payment cancelled/refunded (return). Reverses eligible PV; optionally credits Shopping Wallet.
+ * @return array{ok:bool,error:?string}
+ */
+function product_orders_admin_set_payment(PDO $pdo, int $orderId, string $status, bool $creditWallet = false): array
+{
+    product_orders_ensure_tables($pdo);
+    $status = strtolower($status);
+    if (!in_array($status, ['paid', 'cancelled', 'refunded'], true)) {
+        return ['ok' => false, 'error' => 'Invalid payment status.'];
+    }
+    $order = product_order_get($pdo, $orderId);
+    if (!$order) {
+        return ['ok' => false, 'error' => 'Order not found.'];
+    }
+    $prev = strtolower((string) ($order['status'] ?? ''));
+    if ($prev === $status) {
+        return ['ok' => true, 'error' => null];
+    }
+
+    $pdo->prepare('UPDATE product_orders SET status = ? WHERE id = ?')->execute([$status, $orderId]);
+    $order['status'] = $status;
+    product_orders_sync_eligible_bv($pdo, $order);
+
+    if ($creditWallet && $prev === 'paid' && in_array($status, ['cancelled', 'refunded'], true)) {
+        $amt = round((float) ($order['total_amount'] ?? 0), 2);
+        if ($amt > 0) {
+            wallet_credit(
+                $pdo,
+                (int) $order['member_id'],
+                'shopping',
+                $amt,
+                'product_order_refund',
+                $orderId,
+                'Refund ' . (string) ($order['invoice_no'] ?? ('#' . $orderId))
+            );
+        }
+    }
+
+    return ['ok' => true, 'error' => null];
 }
 
 function product_orders_cart_get(): array
@@ -372,27 +470,26 @@ function product_orders_build_lines(PDO $pdo, array $cart): array
     $subtotal = 0.0;
     $totalBv = 0.0;
 
+    products_ensure_columns($pdo);
+
     $stmt = $pdo->prepare("
-        SELECT id, name, sku, price, bv, stock_qty, status, package_id, thumbnail
+        SELECT id, name, sku, price, bv, stock_qty, status, package_id, thumbnail, mrp, tax_percent
         FROM products
         WHERE id = ?
         LIMIT 1
     ");
-
-    $hasMrp = false;
     try {
-        $chk = $pdo->query("SHOW COLUMNS FROM products LIKE 'mrp'");
-        $hasMrp = $chk && (bool) $chk->fetch();
+        $chk = $pdo->query("SHOW COLUMNS FROM products LIKE 'tax_percent'");
+        if (!$chk || !$chk->fetch()) {
+            $stmt = $pdo->prepare("
+                SELECT id, name, sku, price, bv, stock_qty, status, package_id, thumbnail, mrp
+                FROM products
+                WHERE id = ?
+                LIMIT 1
+            ");
+        }
     } catch (Throwable $e) {
-        $hasMrp = false;
-    }
-    if ($hasMrp) {
-        $stmt = $pdo->prepare("
-            SELECT id, name, sku, price, bv, stock_qty, status, package_id, thumbnail, mrp
-            FROM products
-            WHERE id = ?
-            LIMIT 1
-        ");
+        // keep default
     }
 
     foreach ($cart as $pid => $qty) {
@@ -418,10 +515,20 @@ function product_orders_build_lines(PDO $pdo, array $cart): array
         }
         $unit = round((float) $p['price'], 2);
         $mrp = round((float) ($p['mrp'] ?? 0), 2);
+        if ($mrp <= 0) {
+            $mrp = $unit;
+        }
         $bv = round((float) ($p['bv'] ?? 0), 2);
+        $taxPct = (float) ($p['tax_percent'] ?? 0);
         $lineTotal = round($unit * $qty, 2);
         $lineBv = round($bv * $qty, 2);
-        $lineMrp = $mrp > $unit ? round($mrp * $qty, 2) : 0.0;
+        $enriched = invoice_enrich_line([
+            'qty' => $qty,
+            'unit_mrp' => $mrp,
+            'unit_price' => $unit,
+            'tax_percent' => $taxPct,
+        ]);
+        $lineMrp = $enriched['customer_value'];
         $lines[] = [
             'product_id' => $pid,
             'product_name' => (string) $p['name'],
@@ -429,11 +536,14 @@ function product_orders_build_lines(PDO $pdo, array $cart): array
             'qty' => $qty,
             'max_qty' => $stock,
             'unit_price' => $unit,
-            'unit_mrp' => $mrp,
+            'unit_mrp' => $enriched['unit_mrp'],
             'unit_bv' => $bv,
             'line_total' => $lineTotal,
             'line_mrp' => $lineMrp,
             'line_bv' => $lineBv,
+            'tax_percent' => $enriched['tax_percent'],
+            'tax_amount' => $enriched['tax_amount'],
+            'customer_value' => $enriched['customer_value'],
             'package_id' => product_orders_resolve_package_id($pdo, $pid, $p['package_id'] ?? null) ?: null,
             'thumbnail' => (string) ($p['thumbnail'] ?? ''),
         ];
@@ -573,8 +683,9 @@ function product_orders_checkout(
 
         $itemIns = $pdo->prepare("
             INSERT INTO product_order_items
-                (order_id, product_id, product_name, sku, qty, unit_price, unit_bv, line_total, line_bv)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (order_id, product_id, product_name, sku, qty, unit_price, unit_bv, line_total, line_bv,
+                 unit_mrp, tax_percent, tax_amount, customer_value)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stockUp = $pdo->prepare('UPDATE products SET stock_qty = stock_qty - ? WHERE id = ? AND stock_qty >= ?');
 
@@ -589,6 +700,10 @@ function product_orders_checkout(
                 $line['unit_bv'],
                 $line['line_total'],
                 $line['line_bv'],
+                $line['unit_mrp'] ?? 0,
+                $line['tax_percent'] ?? 0,
+                $line['tax_amount'] ?? 0,
+                $line['customer_value'] ?? 0,
             ]);
             $stockUp->execute([$line['qty'], $line['product_id'], $line['qty']]);
             if ($stockUp->rowCount() < 1) {
@@ -617,7 +732,31 @@ function product_orders_checkout(
         $pdo->commit();
         product_orders_cart_clear();
 
+        $creditOrderBv = $totalBv > 0;
+        plan_dsi_suppress(true);
+        if ($creditOrderBv) {
+            closing_bv_suppress(true);
+        }
         $act = product_orders_try_activate($pdo, $member, $builtLines);
+        closing_bv_suppress(false);
+        plan_dsi_suppress(false);
+
+        if ($creditOrderBv) {
+            try {
+                closing_credit_eligible($pdo, $memberId, $totalBv, 'product_order', $orderId);
+            } catch (Throwable $e) {
+                // Order paid; PV can be rebuilt from eligible lots
+            }
+        }
+
+        $memberCode = (string) ($member['member_id'] ?? '');
+        if ($total > 0 && $memberCode !== '') {
+            try {
+                plan_dsi_pay($pdo, $memberId, $memberCode, $total, 'dsi:ord:' . $orderId);
+            } catch (Throwable $e) {
+                // Order already paid; DSI can be rebuilt later
+            }
+        }
 
         return [
             'ok' => true,
@@ -908,7 +1047,14 @@ function product_order_items(PDO $pdo, int $orderId): array
     product_orders_ensure_tables($pdo);
     $stmt = $pdo->prepare('SELECT * FROM product_order_items WHERE order_id = ? ORDER BY id ASC');
     $stmt->execute([$orderId]);
-    return $stmt->fetchAll();
+    $rows = $stmt->fetchAll() ?: [];
+    foreach ($rows as &$r) {
+        if ((float) ($r['customer_value'] ?? 0) <= 0) {
+            $r = invoice_enrich_line($r);
+        }
+    }
+    unset($r);
+    return $rows;
 }
 
 function product_orders_for_member(PDO $pdo, int $memberId, int $limit = 50, int $offset = 0, string $q = ''): array

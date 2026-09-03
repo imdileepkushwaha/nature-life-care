@@ -18,6 +18,15 @@ if (feature_enabled('feature_referral_income')) {
 if (feature_enabled('feature_matching_income') && plan_uses_binary()) {
     $enabledTypes[] = 'matching';
 }
+if (feature_enabled('feature_dsi_income')) {
+    $enabledTypes[] = 'dsi';
+}
+if (feature_enabled('feature_ranks_enabled') && plan_uses_binary()) {
+    $enabledTypes[] = 'rank';
+}
+if (feature_enabled('feature_rewards_enabled') && plan_uses_binary()) {
+    $enabledTypes[] = 'reward';
+}
 if (feature_enabled('feature_level_income') && plan_uses_level()) {
     $enabledTypes[] = 'level';
 }

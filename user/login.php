@@ -56,8 +56,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Portal is under maintenance. Login is temporarily disabled.';
                 $maintenanceOn = true;
             } elseif ($member && password_verify($password, $member['password'])) {
-                if (($member['status'] ?? '') === 'blocked') {
-                    $error = 'Your account has been blocked. Contact support.';
+                if (member_is_login_blocked($member)) {
+                    $error = member_login_block_message($member);
                 } else {
                     $_SESSION['user_id'] = (int) $member['id'];
                     $_SESSION['user_name'] = $member['full_name'];
@@ -99,7 +99,7 @@ if ($flash && $flash['type'] === 'error' && (
     <?php if ($favUrl): ?><link rel="icon" href="<?= e($favUrl) ?>"><?php endif; ?>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Unbounded:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/user.css?v=<?= (int) @filemtime(__DIR__ . '/assets/css/user.css') ?>">
 </head>
 <body class="ulog-body<?= $portalLocked ? ' is-maintenance' : '' ?>">
@@ -112,30 +112,43 @@ if ($flash && $flash['type'] === 'error' && (
     </div>
 
     <aside class="ulog-rail" aria-hidden="true">
-        <svg class="ulog-tree" viewBox="0 0 280 520" fill="none">
-            <path class="ulog-tree-line" d="M140 40 V160 M140 160 L60 260 M140 160 L220 260 M60 260 V340 M220 260 V340 M60 340 L30 420 M60 340 L90 420 M220 340 L190 420 M220 340 L250 420"/>
-            <circle class="ulog-tree-dot is-core" cx="140" cy="40" r="10"/>
-            <circle class="ulog-tree-dot" cx="140" cy="160" r="8"/>
-            <circle class="ulog-tree-dot" cx="60" cy="260" r="7"/>
-            <circle class="ulog-tree-dot" cx="220" cy="260" r="7"/>
-            <circle class="ulog-tree-dot" cx="60" cy="340" r="6"/>
-            <circle class="ulog-tree-dot" cx="220" cy="340" r="6"/>
-            <circle class="ulog-tree-dot" cx="30" cy="420" r="5"/>
-            <circle class="ulog-tree-dot" cx="90" cy="420" r="5"/>
-            <circle class="ulog-tree-dot" cx="190" cy="420" r="5"/>
-            <circle class="ulog-tree-dot" cx="250" cy="420" r="5"/>
-        </svg>
-        <p class="ulog-rail-copy">Build left.<br>Grow right.<br>Earn both.</p>
+        <div class="ulog-mart">
+            <svg class="ulog-mart-svg" viewBox="0 0 280 360" fill="none">
+                <path class="ulog-mart-line" d="M40 78h200M40 78l20-28h160l20 28" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                <path class="ulog-mart-line" d="M52 78v18h176V78" stroke="currentColor" stroke-width="1.6"/>
+                <path class="ulog-mart-stripe" d="M60 62h28M100 54h28M140 48h28M180 54h28" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+
+                <rect class="ulog-mart-fill" x="58" y="118" width="48" height="72" rx="8"/>
+                <path class="ulog-mart-line" d="M70 118v-14a12 12 0 0124 0v14" stroke="currentColor" stroke-width="1.7"/>
+                <rect class="ulog-mart-fill" x="116" y="108" width="48" height="82" rx="8"/>
+                <path class="ulog-mart-line" d="M128 108v-16a12 12 0 0124 0v16" stroke="currentColor" stroke-width="1.7"/>
+                <rect class="ulog-mart-fill" x="174" y="126" width="48" height="64" rx="8"/>
+                <path class="ulog-mart-line" d="M186 126v-12a12 12 0 0124 0v12" stroke="currentColor" stroke-width="1.7"/>
+                <path class="ulog-mart-line" d="M48 198h184" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+
+                <path class="ulog-mart-fill" d="M86 248h108l12 72H74l12-72z"/>
+                <path class="ulog-mart-line" d="M108 248v-22a32 32 0 0164 0v22" stroke="currentColor" stroke-width="1.8"/>
+                <circle class="ulog-mart-dot is-core" cx="140" cy="278" r="10"/>
+                <path class="ulog-mart-leaf" d="M152 268c14-2 24 8 22 20-12 2-22-8-22-20zM128 268c-14-2-24 8-22 20 12 2 22-8 22-20z"/>
+            </svg>
+            <ul class="ulog-mart-tags">
+                <li>Wellness</li>
+                <li>Organic</li>
+                <li>Natural</li>
+            </ul>
+        </div>
+        <p class="ulog-rail-copy">Nurture health.<br>Share products.<br>Grow together.</p>
     </aside>
 
     <main class="ulog-main">
-        <p class="ulog-kicker">Member access</p>
+        <a href="../index.php" class="ulog-home">← Back to home</a>
+        <p class="ulog-kicker">Wellness · Organic · Natural</p>
         <?php if ($logoUrl): ?>
         <img class="ulog-logo" src="<?= e($logoUrl) ?>" alt="<?= e($company) ?>">
         <?php endif; ?>
-        <p class="ulog-brand"><?= e($company) ?></p>
-        <h1 class="ulog-title">Sign in to your network desk</h1>
-        <p class="ulog-lead">Use your member ID, username, or email to continue.</p>
+        <!-- <p class="ulog-brand"><?= e($company) ?></p> -->
+        <h1 class="ulog-title">Sign in to your account</h1>
+        <p class="ulog-lead">Continue with your member ID, username, or email.</p>
 
         <?php if ($flash):
             $ftype = $flash['type'] === 'success' ? 'ok' : ($flash['type'] === 'error' ? 'err' : 'info');
@@ -175,6 +188,7 @@ if ($flash && $flash['type'] === 'error' && (
 
         <footer class="ulog-foot">
             <p>New here? <a href="register.php">Create an account</a></p>
+            <p><a href="../index.php">Back to home</a></p>
             <p class="ulog-copy">&copy; <?= date('Y') ?> <?= e($company) ?></p>
         </footer>
     </main>

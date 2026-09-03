@@ -14,11 +14,25 @@ if (!$user || ($user['status'] ?? '') === 'blocked') {
 wallet_ensure_schema($pdo);
 $uid = (int) $user['id'];
 $balances = wallet_get_balances($pdo, $uid);
-$types = wallet_types();
+$types = wallet_types_enabled();
+$routes = wallet_transfer_routes();
 $errors = [];
 
-$allowedFrom = ['income', 'topup'];
-$allowedTo = ['topup', 'shopping'];
+$allowedFrom = array_keys($routes);
+$allowedTo = [];
+foreach ($routes as $dests) {
+    foreach ($dests as $d) {
+        $allowedTo[$d] = true;
+    }
+}
+$allowedTo = array_keys($allowedTo);
+
+if (!$allowedFrom) {
+    flash('error', 'Wallet transfer is not available on your plan.');
+    header('Location: wallet.php');
+    exit;
+}
+
 $fromGet = (string) ($_GET['from'] ?? '');
 $toGet = (string) ($_GET['to'] ?? '');
 $amountGet = (float) ($_GET['amount'] ?? 0);
@@ -26,9 +40,21 @@ $next = (string) ($_GET['next'] ?? $_POST['next'] ?? '');
 if (!in_array($next, ['shop', 'checkout', ''], true)) {
     $next = '';
 }
+$shopOn = feature_module_allowed('products');
+if (!$shopOn && ($next === 'shop' || $next === 'checkout')) {
+    $next = '';
+}
 
-$from = (string) ($_POST['from_wallet'] ?? (in_array($fromGet, $allowedFrom, true) ? $fromGet : 'topup'));
-$to = (string) ($_POST['to_wallet'] ?? (in_array($toGet, $allowedTo, true) ? $toGet : 'shopping'));
+$from = (string) ($_POST['from_wallet'] ?? (in_array($fromGet, $allowedFrom, true) ? $fromGet : $allowedFrom[0]));
+if (!in_array($from, $allowedFrom, true)) {
+    $from = $allowedFrom[0];
+}
+$toChoices = $routes[$from] ?? $allowedTo;
+$toFallback = $toChoices[0] ?? ($allowedTo[0] ?? '');
+$to = (string) ($_POST['to_wallet'] ?? (in_array($toGet, $toChoices, true) ? $toGet : $toFallback));
+if (!in_array($to, $toChoices, true)) {
+    $to = $toFallback;
+}
 $amount = (float) ($_POST['amount'] ?? ($amountGet > 0 ? $amountGet : 0));
 $note = trim((string) ($_POST['note'] ?? ($next === 'shop' ? 'Transfer for product purchase' : '')));
 
@@ -62,7 +88,9 @@ $flash = get_flash();
 <div class="up-page-head">
     <div>
         <h1>Wallet Transfer</h1>
-        <p>Move funds between your wallets. For shopping: Topup → Shopping, then buy products.</p>
+        <p><?= $shopOn
+            ? 'Move funds between your wallets. For shopping: Topup → Shopping, then buy products.'
+            : 'Move funds between your wallets according to your plan.' ?></p>
     </div>
     <div class="up-head-actions">
         <?php if (feature_module_allowed('products')): ?>
@@ -123,7 +151,7 @@ $flash = get_flash();
                     <div class="up-field">
                         <label for="from_wallet">From wallet</label>
                         <select name="from_wallet" id="from_wallet" required>
-                            <?php foreach (['income', 'topup'] as $k): ?>
+                            <?php foreach ($allowedFrom as $k): ?>
                                 <option value="<?= e($k) ?>" <?= $from === $k ? 'selected' : '' ?>><?= e(wallet_label($k)) ?> (<?= strip_tags(currency($balances[$k] ?? 0)) ?>)</option>
                             <?php endforeach; ?>
                         </select>
@@ -131,7 +159,7 @@ $flash = get_flash();
                     <div class="up-field">
                         <label for="to_wallet">To wallet</label>
                         <select name="to_wallet" id="to_wallet" required>
-                            <?php foreach (['topup', 'shopping'] as $k): ?>
+                            <?php foreach ($allowedTo as $k): ?>
                                 <option value="<?= e($k) ?>" <?= $to === $k ? 'selected' : '' ?>><?= e(wallet_label($k)) ?> (<?= strip_tags(currency($balances[$k] ?? 0)) ?>)</option>
                             <?php endforeach; ?>
                         </select>
@@ -142,13 +170,21 @@ $flash = get_flash();
                     </div>
                     <div class="up-field full">
                         <label for="note">Note (optional)</label>
-                        <input type="text" name="note" id="note" maxlength="200" value="<?= e($note) ?>" placeholder="e.g. Move for shopping">
+                        <input type="text" name="note" id="note" maxlength="200" value="<?= e($note) ?>" placeholder="<?= $shopOn ? 'e.g. Move for shopping' : 'Optional note' ?>">
                     </div>
                 </div>
                 <div class="up-actions" style="margin-top:1rem">
                     <button type="submit" class="up-btn up-btn-primary">Transfer Now</button>
                 </div>
-                <p class="wal-hint">Allowed: Income → Topup, Income → Shopping, Topup → Shopping. Withdrawals use Income Wallet only.</p>
+                <p class="wal-hint">Allowed: <?php
+                    $hintBits = [];
+                    foreach ($routes as $src => $dests) {
+                        foreach ($dests as $d) {
+                            $hintBits[] = wallet_label($src) . ' → ' . wallet_label($d);
+                        }
+                    }
+                    echo e(implode(', ', $hintBits) ?: 'None');
+                ?>. Withdrawals use Income Wallet only.</p>
             </form>
         </div>
     </section>

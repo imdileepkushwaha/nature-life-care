@@ -325,7 +325,8 @@ $payHelp = $payLabels ? implode(' or ', $payLabels) : 'an enabled payment method
     <div class="actx-current-plan" style="margin:0 0 1.25rem;padding:0.9rem 1.1rem;border:1px solid var(--up-border, #e5e7eb);border-radius:12px;background:rgba(15,118,110,.04);display:flex;flex-wrap:wrap;gap:0.75rem 1.5rem;align-items:center">
         <div><small style="display:block;opacity:.7">Current plan</small><strong><?= e($currentPkg['name']) ?></strong></div>
         <div><small style="display:block;opacity:.7">Paid</small><strong><?= currency($currentAmount) ?></strong></div>
-        <div><small style="display:block;opacity:.7">BV</small><strong><?= number_format($currentBv, 0) ?></strong></div>
+        <div><small style="display:block;opacity:.7">PV</small><strong><?= number_format($currentBv, 0) ?></strong></div>
+        <div><a href="kit-invoice.php" class="up-btn up-btn-outline up-btn-sm">Kit Invoice</a></div>
     </div>
     <?php endif; ?>
 
@@ -371,7 +372,7 @@ $payHelp = $payLabels ? implode(' or ', $payLabels) : 'an enabled payment method
                     <span class="actx-desc" style="margin-top:-0.35rem">Full price <?= currency((float) $pkg['amount']) ?> · UTR pays difference · T-Pin = full package pin</span>
                 <?php endif; ?>
                 <span class="actx-stats">
-                    <span><small><?= $isUpgrade ? '+BV' : 'BV' ?></small><strong><?= number_format($bvShow, 0) ?></strong></span>
+                    <span><small><?= $isUpgrade ? '+PV' : 'PV' ?></small><strong><?= number_format($bvShow, 0) ?></strong></span>
                     <span title="<?= e($prodCount > 0 ? $prodLabel : 'No products assigned') ?>">
                         <small>Products</small>
                         <strong><?= $prodCount > 0 ? (int) $prodCount : '—' ?></strong>
@@ -668,7 +669,7 @@ $payHelp = $payLabels ? implode(' or ', $payLabels) : 'an enabled payment method
                 <span id="actxSumPrice"><?= $selectedPkg ? currency($selectedPay) : '—' ?></span>
                 <?php if ($isUpgrade): ?><span class="actx-bar-pay-note">difference (UTR)</span><?php endif; ?>
                 <span>·</span>
-                <span><?= $isUpgrade ? '+BV' : 'BV' ?> <em id="actxSumBv"><?= $selectedPkg ? number_format($selectedBvDelta, 0) : '0' ?></em></span>
+                <span><?= $isUpgrade ? '+PV' : 'PV' ?> <em id="actxSumBv"><?= $selectedPkg ? number_format($selectedBvDelta, 0) : '0' ?></em></span>
                 <span>·</span>
                 <span id="actxSumProducts"><?php
                     if ($selectedProductCount > 0) {

@@ -1,189 +1,239 @@
-/* Contact page — extends landing theme */
-
-.lp-contact .lp-header {
-    background: rgba(7, 16, 24, 0.88);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
+/* Contact page — matches landing wellness theme */
 
 .lp-contact-hero {
     position: relative;
     isolation: isolate;
     overflow: hidden;
-    padding: clamp(7rem, 12vw, 9rem) 0 clamp(3rem, 6vw, 4.25rem);
-    color: #f4f7fa;
+    padding: clamp(3.75rem, 8vw, 5.75rem) 0 clamp(2.5rem, 5vw, 3.5rem);
+    color: #f7f3ea;
 }
 
 .lp-contact-hero-stage {
     position: absolute;
     inset: 0;
     z-index: 0;
-    background: linear-gradient(145deg, #050a10 0%, #0b1722 42%, #123041 78%, #0d2a28 100%);
+    background: linear-gradient(145deg, #0c1c14 0%, #134e38 42%, #1a3a28 72%, #3f2a12 100%);
 }
 
 .lp-contact-hero-wash {
     position: absolute;
     inset: 0;
     background:
-        radial-gradient(70% 60% at 82% 30%, rgba(18, 129, 122, 0.36), transparent 58%),
-        radial-gradient(50% 45% at 12% 85%, rgba(225, 29, 72, 0.2), transparent 55%),
-        radial-gradient(40% 35% at 50% 0%, rgba(255, 255, 255, 0.07), transparent 60%);
+        radial-gradient(60% 55% at 78% 28%, rgba(196, 163, 90, 0.38), transparent 62%),
+        radial-gradient(50% 50% at 12% 80%, rgba(194, 65, 12, 0.28), transparent 58%),
+        linear-gradient(180deg, rgba(12, 28, 20, 0.15), rgba(12, 28, 20, 0.45));
+}
+
+.lp-contact-hero .lp-hero-sun {
+    width: min(38vw, 380px);
+    height: min(38vw, 380px);
+    right: 4%;
+    top: -8%;
 }
 
 .lp-contact-hero-inner {
     position: relative;
     z-index: 1;
-    max-width: 40rem;
+    max-width: 42rem;
 }
 
-.lp-contact-kicker {
-    color: #5eead4;
-}
+.lp-contact-kicker { color: var(--lp-gold); }
 
 .lp-contact-hero h1 {
     margin: 0 0 0.85rem;
     font-family: var(--lp-display);
-    font-size: clamp(2.2rem, 5vw, 3.4rem);
+    font-size: clamp(2.15rem, 5vw, 3.25rem);
     font-weight: 750;
     letter-spacing: -0.045em;
-    line-height: 1.05;
+    line-height: 1.06;
     color: #fff;
 }
 
 .lp-contact-lead {
     margin: 0;
     font-family: var(--lp-serif);
-    font-size: clamp(1.08rem, 2vw, 1.3rem);
-    line-height: 1.45;
-    color: rgba(244, 247, 250, 0.7);
-    max-width: 34rem;
+    font-size: clamp(1.05rem, 2vw, 1.28rem);
+    line-height: 1.5;
+    color: rgba(247, 243, 234, 0.78);
+    max-width: 36rem;
+}
+
+.lp-contact-quick {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    margin-top: 1.5rem;
+}
+
+.lp-contact-quick-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.62rem 1.15rem;
+    border-radius: 999px;
+    background: var(--lp-rose);
+    color: #fff;
+    font-family: var(--lp-display);
+    font-weight: 700;
+    font-size: 0.88rem;
+    box-shadow: 0 10px 20px rgba(194, 65, 12, 0.28);
+}
+
+.lp-contact-quick-btn:hover { background: var(--lp-rose-deep); }
+
+.lp-contact-quick-btn.is-line {
+    background: transparent;
+    color: #fff;
+    border: 1.5px solid rgba(255, 255, 255, 0.35);
+    box-shadow: none;
+}
+
+.lp-contact-quick-btn.is-line:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: #fff;
 }
 
 .lp-contact-body {
     background:
-        linear-gradient(180deg, #edf2f5 0%, var(--lp-paper) 40%, #fff 100%);
-    padding-top: clamp(2.5rem, 5vw, 3.75rem);
-    padding-bottom: clamp(3.5rem, 7vw, 5rem);
+        radial-gradient(55% 50% at 6% 8%, rgba(196, 163, 90, 0.12), transparent 55%),
+        radial-gradient(40% 45% at 96% 92%, rgba(31, 107, 74, 0.08), transparent 50%),
+        var(--lp-paper);
 }
 
 .lp-contact-layout {
     display: grid;
-    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.2fr);
-    gap: clamp(2rem, 5vw, 3.75rem);
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.15fr);
+    gap: clamp(1.75rem, 4.5vw, 3.25rem);
     align-items: start;
 }
 
 .lp-contact-reach h2,
 .lp-contact-form-panel h2 {
-    margin: 0 0 0.55rem;
+    margin: 0 0 0.5rem;
     font-family: var(--lp-display);
-    font-size: clamp(1.55rem, 2.8vw, 2rem);
+    font-size: clamp(1.5rem, 2.6vw, 1.95rem);
     font-weight: 750;
     letter-spacing: -0.035em;
-    line-height: 1.1;
-    color: var(--lp-ink);
+    line-height: 1.12;
+    color: var(--lp-teal-deep);
 }
 
-.lp-contact-reach-sub {
-    margin: 0 0 1.75rem;
+.lp-contact-reach-sub,
+.lp-contact-form-lead {
+    margin: 0 0 1.45rem;
     color: var(--lp-muted);
-    font-size: 1.02rem;
+    font-size: 1rem;
     line-height: 1.5;
-    max-width: 28rem;
+    max-width: 32rem;
 }
 
-.lp-contact-rows {
+.lp-contact-form-lead { margin-bottom: 1.2rem; }
+
+.lp-contact-cards {
     display: grid;
-    gap: 0;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
 }
 
-.lp-contact-row {
+.lp-c-card {
     display: grid;
-    gap: 0.2rem;
-    padding: 1rem 0;
-    border-top: 1px solid var(--lp-line);
+    gap: 0.22rem;
+    min-width: 0;
+    padding: 1rem 1rem 1.05rem;
+    border-radius: 1.1rem;
+    background: #fff;
+    border: 1px solid var(--lp-line);
     color: inherit;
+    box-shadow: 0 10px 24px rgba(19, 78, 56, 0.05);
+    transition: transform 0.18s ease, border-color 0.18s ease;
 }
 
-.lp-contact-row:first-child {
-    border-top: 0;
-    padding-top: 0;
+a.lp-c-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(196, 163, 90, 0.45);
 }
 
-.lp-contact-row-label {
-    font-family: var(--lp-display);
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.14em;
+.lp-c-card-ico {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 0.45rem;
+    border-radius: 11px;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(160deg, #1f6b4a, #134e38);
+    color: var(--lp-gold);
+}
+
+.lp-c-card-ico svg { width: 18px; height: 18px; }
+
+.lp-c-card-label {
+    font-size: 0.68rem;
+    font-weight: 750;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--lp-muted);
+    color: var(--lp-gold);
 }
 
-.lp-contact-row-value {
+.lp-c-card strong {
     font-family: var(--lp-display);
-    font-size: 1.05rem;
-    font-weight: 650;
+    font-size: 0.95rem;
+    font-weight: 700;
     letter-spacing: -0.02em;
     color: var(--lp-ink);
     word-break: break-word;
 }
 
-a.lp-contact-row:hover .lp-contact-row-value {
-    color: var(--lp-teal);
+.lp-c-address {
+    margin-top: 0.85rem;
+    padding: 1.05rem 1.1rem;
+    border-radius: 1.1rem;
+    background: #fff;
+    border: 1px solid var(--lp-line);
 }
 
-.lp-contact-map {
-    margin-top: 0.35rem;
-    width: fit-content;
-    font-size: 0.88rem;
-    font-weight: 700;
-    color: var(--lp-teal);
-}
-
-.lp-contact-map:hover {
+.lp-c-address p {
+    margin: 0.3rem 0 0.55rem;
+    font-weight: 650;
     color: var(--lp-ink);
+    line-height: 1.45;
 }
+
+.lp-c-address a {
+    font-weight: 700;
+    font-size: 0.88rem;
+    color: var(--lp-teal);
+}
+
+.lp-c-address a:hover { color: var(--lp-teal-deep); }
 
 .lp-contact-social {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.65rem 1.15rem;
-    margin-top: 1.5rem;
-    padding-top: 1.25rem;
-    border-top: 1px solid var(--lp-line);
+    gap: 0.5rem;
+    margin-top: 1.15rem;
 }
 
 .lp-contact-social a {
-    font-family: var(--lp-display);
-    font-size: 0.9rem;
-    font-weight: 650;
-    letter-spacing: -0.01em;
-    color: var(--lp-muted);
-    border-bottom: 1px solid transparent;
-    transition: color 0.15s ease, border-color 0.15s ease;
+    padding: 0.38rem 0.8rem;
+    border-radius: 999px;
+    background: #fff;
+    border: 1px solid var(--lp-line);
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--lp-teal-deep);
 }
 
 .lp-contact-social a:hover {
-    color: var(--lp-ink);
-    border-bottom-color: var(--lp-teal);
+    border-color: var(--lp-gold);
+    color: var(--lp-rose);
 }
 
-/* Form panel — interaction surface */
 .lp-contact-form-panel {
-    padding: clamp(1.5rem, 3vw, 2.15rem);
-    border-radius: 24px;
+    padding: clamp(1.4rem, 3vw, 2rem);
+    border-radius: 1.45rem;
     border: 1px solid var(--lp-line);
     background: #fff;
-    box-shadow: 0 20px 50px rgba(8, 16, 24, 0.06);
-}
-
-.lp-contact-form-panel > .lp-kicker {
-    margin-bottom: 0.55rem;
-}
-
-.lp-contact-form-panel > h2 {
-    margin-bottom: 1.35rem;
+    box-shadow: 0 22px 48px rgba(19, 78, 56, 0.08);
 }
 
 .lp-contact-form {
@@ -204,7 +254,7 @@ a.lp-contact-row:hover .lp-contact-row-value {
 
 .lp-field span {
     font-family: var(--lp-display);
-    font-size: 0.78rem;
+    font-size: 0.74rem;
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -216,10 +266,10 @@ a.lp-contact-row:hover .lp-contact-row-value {
     width: 100%;
     padding: 0.85rem 1rem;
     border: 1px solid var(--lp-line);
-    border-radius: 14px;
+    border-radius: 12px;
     font: inherit;
     color: var(--lp-ink);
-    background: var(--lp-fog);
+    background: var(--lp-paper);
     transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -233,13 +283,13 @@ a.lp-contact-row:hover .lp-contact-row-value {
 .lp-field textarea:focus {
     outline: none;
     background: #fff;
-    border-color: rgba(18, 129, 122, 0.45);
-    box-shadow: 0 0 0 3px rgba(18, 129, 122, 0.12);
+    border-color: rgba(196, 163, 90, 0.55);
+    box-shadow: 0 0 0 3px rgba(196, 163, 90, 0.18);
 }
 
 .lp-contact-form .lp-btn {
     justify-self: start;
-    margin-top: 0.25rem;
+    margin-top: 0.2rem;
     border: 0;
     cursor: pointer;
     font-family: inherit;
@@ -255,34 +305,30 @@ a.lp-contact-row:hover .lp-contact-row-value {
 }
 
 .lp-alert-ok {
-    background: rgba(18, 129, 122, 0.1);
-    border-color: rgba(18, 129, 122, 0.22);
-    color: #0f5c57;
+    background: rgba(31, 107, 74, 0.1);
+    border-color: rgba(31, 107, 74, 0.22);
+    color: var(--lp-teal-deep);
 }
 
 .lp-alert-err {
-    background: rgba(225, 29, 72, 0.08);
-    border-color: rgba(225, 29, 72, 0.2);
-    color: #9f1239;
+    background: rgba(194, 65, 12, 0.08);
+    border-color: rgba(194, 65, 12, 0.22);
+    color: var(--lp-rose-deep);
 }
 
 .lp-alert-info {
-    background: rgba(8, 16, 24, 0.04);
+    background: rgba(21, 36, 27, 0.04);
     border-color: var(--lp-line);
     color: var(--lp-ink-2);
 }
 
 @media (max-width: 900px) {
-    .lp-contact-layout {
-        grid-template-columns: 1fr;
-    }
+    .lp-contact-layout { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 640px) {
-    .lp-contact-form-grid {
-        grid-template-columns: 1fr;
-    }
-
+    .lp-contact-cards { grid-template-columns: 1fr; }
+    .lp-contact-form-grid { grid-template-columns: 1fr; }
     .lp-contact-form .lp-btn {
         width: 100%;
         justify-self: stretch;

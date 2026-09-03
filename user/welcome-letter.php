@@ -42,6 +42,7 @@ $firstName = trim(explode(' ', (string) $user['full_name'])[0] ?: (string) $user
         </div>
         <div class="doc-toolbar-actions">
             <button type="button" class="up-btn up-btn-primary" onclick="window.print()">Print / Save PDF</button>
+            <a href="kit-invoice.php" class="up-btn up-btn-outline">Kit Invoice</a>
             <a href="id-card.php" class="up-btn up-btn-outline">ID Card</a>
         </div>
     </div>

@@ -22,7 +22,7 @@ function wallet_types(): array
             'short' => 'Topup',
             'column' => 'topup_wallet_balance',
             'page' => 'wallet-topup.php',
-            'desc' => 'Add money (UTR proof), activate members, or transfer to Shopping.',
+            'desc' => 'Add money (UTR proof) and activate members.',
             'tone' => 'blue',
         ],
         'shopping' => [
@@ -42,13 +42,40 @@ function wallet_types_enabled(): array
 {
     $all = wallet_types();
     $out = ['income' => $all['income']];
-    if (function_exists('feature_module_allowed') && feature_module_allowed('wallet_topup')) {
+    $hasTopup = function_exists('feature_module_allowed') && feature_module_allowed('wallet_topup');
+    $hasShop = function_exists('feature_module_allowed') && feature_module_allowed('products');
+    if ($hasTopup) {
         $out['topup'] = $all['topup'];
+        if ($hasShop) {
+            $out['topup']['desc'] = 'Add money (UTR proof), activate members, or transfer to Shopping.';
+        }
     }
-    if (function_exists('feature_module_allowed') && feature_module_allowed('products')) {
+    if ($hasShop) {
         $out['shopping'] = $all['shopping'];
     }
     return $out;
+}
+
+/**
+ * Allowed member self-transfer destinations, keyed by source wallet.
+ * Follows the Super Admin plan (Topup / Product shop modules).
+ * @return array<string, list<string>>
+ */
+function wallet_transfer_routes(): array
+{
+    $hasTopup = function_exists('feature_module_allowed') && feature_module_allowed('wallet_topup');
+    $hasShop = function_exists('feature_module_allowed') && feature_module_allowed('products');
+    $routes = [];
+    if ($hasTopup) {
+        $routes['income'][] = 'topup';
+    }
+    if ($hasShop) {
+        $routes['income'][] = 'shopping';
+        if ($hasTopup) {
+            $routes['topup'][] = 'shopping';
+        }
+    }
+    return $routes;
 }
 
 function wallet_ensure_schema(PDO $pdo): void
@@ -230,16 +257,12 @@ function wallet_transfer(PDO $pdo, int $memberId, string $from, string $to, floa
 {
     wallet_ensure_schema($pdo);
     $amount = round($amount, 2);
-    $allowed = [
-        'income' => ['topup', 'shopping'],
-        'topup' => ['shopping'],
-        'shopping' => [],
-    ];
+    $allowed = wallet_transfer_routes();
     if ($from === $to) {
         return ['ok' => false, 'error' => 'Select two different wallets.', 'transfer_id' => null];
     }
     if (!isset($allowed[$from]) || !in_array($to, $allowed[$from], true)) {
-        return ['ok' => false, 'error' => 'This wallet transfer direction is not allowed.', 'transfer_id' => null];
+        return ['ok' => false, 'error' => 'This wallet transfer is not available on your plan.', 'transfer_id' => null];
     }
     if ($amount <= 0) {
         return ['ok' => false, 'error' => 'Enter a valid transfer amount.', 'transfer_id' => null];

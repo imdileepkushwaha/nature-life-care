@@ -208,7 +208,7 @@ $iconOut = '<svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d=
         <div class="bg-icon"><?= $iconCheck ?></div>
         <div class="value"><?= number_format((float) $closingSummary['pairs'], 1) ?></div>
         <div class="label">Open Binary Pairs</div>
-        <a class="more" href="binary-closing.php">Close now →</a>
+        <a class="more" href="binary-closing.php">Saturday close →</a>
     </div>
     <div class="stat-card g-mint">
         <div class="bg-icon"><?= $iconMoney ?></div>
@@ -229,7 +229,10 @@ $iconOut = '<svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d=
                 Paid <?= (int) $lastClosing['members_paid'] ?> · Binary net <?= currency((float) $lastClosing['binary_net_total']) ?> · Matching <?= currency((float) $lastClosing['matching_total']) ?>
             </div>
         </div>
-        <a class="btn btn-outline btn-sm" href="binary-closing.php?run=<?= (int) $lastClosing['id'] ?>">View closing</a>
+        <div style="display:flex;flex-wrap:wrap;gap:0.5rem">
+            <a class="btn btn-outline btn-sm" href="binary-closing.php?run=<?= (int) $lastClosing['id'] ?>">View closing</a>
+            <a class="btn btn-outline btn-sm" href="weekly-reconciliation.php">Weekly recon</a>
+        </div>
     </div>
 </div>
 <?php endif; ?>

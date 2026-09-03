@@ -1,9 +1,10 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../includes/ops_cycle.php';
 $pageTitle = 'Settings';
 
 $tab = $_GET['tab'] ?? 'general';
-$allowedTabs = ['general', 'withdrawal', 'contact', 'security', 'activity'];
+$allowedTabs = ['general', 'withdrawal', 'operations', 'contact', 'security', 'activity'];
 if (!feature_module_allowed('withdrawals')) {
     $allowedTabs = array_values(array_filter($allowedTabs, static fn ($t) => $t !== 'withdrawal'));
 }
@@ -51,6 +52,15 @@ if (isset($_GET['inquiry_action'], $_GET['inquiry_id'])) {
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['action'] ?? '') === 'regen_cron') {
+    ops_ensure_tables($pdo);
+    ops_save_setting($pdo, 'ops_cron_secret', bin2hex(random_bytes(16)));
+    log_activity('settings_update', 'Regenerated weekly closing cron key');
+    flash('success', 'Cron key regenerated. Update the scheduled URL.');
+    header('Location: settings.php?tab=operations');
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postTab = $_POST['tab'] ?? 'general';
     $postSub = $_POST['sub'] ?? 'binary';
@@ -67,6 +77,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'max_withdrawal',
             'processing_fee_percent',
             'tds_deduction_percent',
+        ],
+        'operations' => [
+            'ops_weekly_closing_enabled',
+            'ops_payout_window_enabled',
         ],
         'contact' => [
             'contact_person',
@@ -87,6 +101,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'contact_youtube',
             'contact_telegram',
             'contact_form_notify_email',
+            'invoice_gstin',
+            'invoice_tax_percent',
         ],
     ];
 
@@ -101,10 +117,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($postTab === 'contact') {
         foreach ($keysByTab['contact'] as $key) {
             if (isset($_POST[$key])) {
-                $saveSetting($pdo, $key, trim((string) $_POST[$key]));
+                $saveSetting($pdo, $key, utf8_mojibake_fix(trim((string) $_POST[$key])));
             }
         }
         $saveSetting($pdo, 'contact_form_enabled', isset($_POST['contact_form_enabled']) ? '1' : '0');
+        if (isset($_POST['invoice_tax_percent'])) {
+            $tax = max(0.0, min(40.0, (float) $_POST['invoice_tax_percent']));
+            $saveSetting($pdo, 'invoice_tax_percent', (string) $tax);
+        }
     } else {
         $keys = $keysByTab[$postTab] ?? [];
         $prevMaintenance = setting('maintenance_mode', 'off');
@@ -113,6 +133,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $val = trim((string) $_POST[$key]);
                 if ($key === 'maintenance_mode') {
                     $val = ($val === 'on') ? 'on' : 'off';
+                }
+                if ($key === 'ops_weekly_closing_enabled' || $key === 'ops_payout_window_enabled') {
+                    $val = ($val === '1') ? '1' : '0';
                 }
                 $saveSetting($pdo, $key, $val);
             }
@@ -187,7 +210,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $settings = [];
 $rows = $pdo->query('SELECT setting_key, setting_value FROM settings')->fetchAll();
 foreach ($rows as $r) {
-    $settings[$r['setting_key']] = $r['setting_value'];
+    $settings[$r['setting_key']] = utf8_mojibake_fix((string) $r['setting_value']);
 }
 
 $logs = $pdo->query("
@@ -235,6 +258,12 @@ require_once __DIR__ . '/../includes/header.php';
                 Withdrawal Rules
             </a>
             <?php endif; ?>
+            <a href="settings.php?tab=operations" class="settings-nav-item <?= $tab === 'operations' ? 'active' : '' ?>">
+                <span class="sni-ico orange">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                </span>
+                Operations
+            </a>
             <a href="settings.php?tab=contact" class="settings-nav-item <?= $tab === 'contact' ? 'active' : '' ?>">
                 <span class="sni-ico teal">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
@@ -306,7 +335,7 @@ require_once __DIR__ . '/../includes/header.php';
                     </div>
                     <div class="form-group">
                         <label>Currency Symbol</label>
-                        <input type="text" name="currency_symbol" value="<?= e($settings['currency_symbol'] ?? '₹') ?>">
+                        <input type="text" name="currency_symbol" value="<?= currency_symbol_input_value() ?>">
                     </div>
                 </div>
             </div>
@@ -433,6 +462,78 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
         </form>
 
+        <?php elseif ($tab === 'operations'):
+            ops_ensure_tables($pdo);
+            $weekCloseOn = ($settings['ops_weekly_closing_enabled'] ?? '1') === '1';
+            $payoutOn = ($settings['ops_payout_window_enabled'] ?? '1') === '1';
+            $cronUrl = ops_cron_url();
+        ?>
+        <form method="post" class="settings-card">
+            <input type="hidden" name="tab" value="operations">
+            <div class="settings-card-head">
+                <div class="settings-title-block">
+                    <span class="settings-title-ico orange">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                    </span>
+                    <div>
+                        <h2>Operations &amp; payment cycle</h2>
+                        <p>Saturday weekly closing, weekly reconciliation, Monday–Tuesday bank credit.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="wr-rules-grid">
+                <div class="wr-rule-card">
+                    <span class="wr-rule-ico orange">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                    </span>
+                    <label for="ops_weekly_closing_enabled">Saturday weekly closing</label>
+                    <select id="ops_weekly_closing_enabled" name="ops_weekly_closing_enabled">
+                        <option value="1" <?= $weekCloseOn ? 'selected' : '' ?>>On — close on Saturday only</option>
+                        <option value="0" <?= !$weekCloseOn ? 'selected' : '' ?>>Off — close any day</option>
+                    </select>
+                    <small class="field-hint">Preview always works. Use CLOSE OVERRIDE for an extra / off-schedule run.</small>
+                </div>
+                <div class="wr-rule-card">
+                    <span class="wr-rule-ico teal">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                    </span>
+                    <label for="ops_payout_window_enabled">Monday–Tuesday bank payout</label>
+                    <select id="ops_payout_window_enabled" name="ops_payout_window_enabled">
+                        <option value="1" <?= $payoutOn ? 'selected' : '' ?>>On — mark paid Mon–Tue only</option>
+                        <option value="0" <?= !$payoutOn ? 'selected' : '' ?>>Off — mark paid any day</option>
+                    </select>
+                    <small class="field-hint">Members can request anytime. Admin approves any day. Bank “paid” is locked to the window.</small>
+                </div>
+            </div>
+            <div class="settings-section" style="padding:0 1.35rem 1.25rem">
+                <div class="settings-info">
+                    <span class="si-ico">i</span>
+                    <p>
+                        Schedule this URL daily (it no-ops except Saturday):<br>
+                        <code style="word-break:break-all"><?= e($cronUrl) ?></code>
+                    </p>
+                </div>
+            </div>
+            <div class="settings-card-foot">
+                <button type="submit" class="btn btn-primary">Save operations settings</button>
+            </div>
+        </form>
+        <form method="post" class="settings-card" style="margin-top:1rem" onsubmit="return confirm('Regenerate cron key? Update the scheduled URL after this.');">
+            <input type="hidden" name="action" value="regen_cron">
+            <div class="settings-card-head">
+                <div class="settings-title-block">
+                    <div>
+                        <h2>Cron key</h2>
+                        <p>HTTP cron requires this secret. Regenerating invalidates the old URL.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="settings-card-foot">
+                <a class="btn btn-outline" href="weekly-reconciliation.php">Open weekly recon</a>
+                <button type="submit" class="btn btn-outline">Regenerate cron key</button>
+            </div>
+        </form>
+
         <?php elseif ($tab === 'contact'):
             $c = static function (array $settings, string $key, string $default = '') {
                 return $settings[$key] ?? $default;
@@ -491,7 +592,7 @@ require_once __DIR__ . '/../includes/header.php';
                     </div>
                     <div class="form-group">
                         <label>Business Hours</label>
-                        <input type="text" name="contact_hours" value="<?= e($c($settings, 'contact_hours', 'Mon–Sat, 10:00 AM – 6:00 PM')) ?>">
+                        <input type="text" name="contact_hours" value="<?= e($c($settings, 'contact_hours', 'Mon-Sat, 10:00 AM - 6:00 PM')) ?>">
                     </div>
                 </div>
             </div>
@@ -525,6 +626,15 @@ require_once __DIR__ . '/../includes/header.php';
                     <div class="form-group" style="grid-column:1/-1">
                         <label>Google Maps URL</label>
                         <input type="url" name="contact_map_url" value="<?= e($c($settings, 'contact_map_url')) ?>" placeholder="https://maps.google.com/...">
+                    </div>
+                    <div class="form-group">
+                        <label>GSTIN</label>
+                        <input type="text" name="invoice_gstin" value="<?= e($c($settings, 'invoice_gstin')) ?>" placeholder="22AAAAA0000A1Z5" maxlength="20">
+                    </div>
+                    <div class="form-group">
+                        <label>Default invoice GST %</label>
+                        <input type="number" step="0.01" min="0" max="40" name="invoice_tax_percent" value="<?= e($c($settings, 'invoice_tax_percent', '0')) ?>">
+                        <small class="field-hint">Used when a product has 0% tax. MRP is tax-inclusive.</small>
                     </div>
                 </div>
             </div>

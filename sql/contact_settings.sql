@@ -24,7 +24,7 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('contact_state', 'Maharashtra'),
 ('contact_country', 'India'),
 ('contact_pincode', '400001'),
-('contact_hours', 'Mon–Sat, 10:00 AM – 6:00 PM'),
+('contact_hours', 'Mon-Sat, 10:00 AM - 6:00 PM'),
 ('contact_map_url', ''),
 ('contact_facebook', ''),
 ('contact_instagram', ''),

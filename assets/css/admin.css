@@ -2328,6 +2328,7 @@ button.btn-icon {
 .badge-canceled,
 .badge-failed,
 .badge-blocked,
+.badge-deceased,
 .badge-declined,
 .badge-expired {
     background: #fee2e2;
@@ -4235,7 +4236,8 @@ input, select, textarea{
     color: #64748b;
 }
 
-.wr-rule-card input {
+.wr-rule-card input,
+.wr-rule-card select {
     width: 100%;
     height: 46px;
     border: 1px solid #e2e8f0;
@@ -4249,7 +4251,8 @@ input, select, textarea{
     transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.wr-rule-card input:focus {
+.wr-rule-card input:focus,
+.wr-rule-card select:focus {
     border-color: #fda4af;
     box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.12);
 }
@@ -6613,3 +6616,76 @@ input, select, textarea{
     color: #64748b;
     line-height: 1.35;
 }
+
+/* Operations cycle */
+.ops-cycle-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+    padding: 0.95rem 1.1rem;
+    border-radius: 14px;
+    border: 1px solid #dbeafe;
+    background: #eff6ff;
+    margin-bottom: 1.1rem;
+}
+.ops-cycle-banner.is-ok {
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+}
+.ops-cycle-banner.is-wait {
+    border-color: #fed7aa;
+    background: #fff7ed;
+}
+.ops-cycle-banner strong {
+    display: block;
+    font-size: 0.95rem;
+    color: #0f172a;
+}
+.ops-cycle-banner p {
+    margin: 0.2rem 0 0;
+    font-size: 0.84rem;
+    color: #64748b;
+    line-height: 1.45;
+}
+.ops-cycle-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    background: #fff;
+    color: #0f172a;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+}
+.ops-check-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.75rem;
+}
+.ops-check {
+    display: flex;
+    gap: 0.7rem;
+    padding: 0.9rem 1rem;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+}
+.ops-check.is-ok { border-color: #bbf7d0; background: #f0fdf4; }
+.ops-check.is-wait { border-color: #fed7aa; background: #fff7ed; }
+.ops-check-ico {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    background: #fff;
+}
+.ops-check-ico svg { width: 16px; height: 16px; }
+.ops-check strong { display: block; font-size: 0.86rem; color: #0f172a; }
+.ops-check p { margin: 0.2rem 0 0; font-size: 0.78rem; color: #64748b; line-height: 1.4; }
+.ops-row-today td { background: #fff7ed; }

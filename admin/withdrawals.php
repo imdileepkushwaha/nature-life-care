@@ -3,10 +3,13 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/procedures.php';
 require_once __DIR__ . '/../includes/withdrawal.php';
 require_once __DIR__ . '/../includes/wallet.php';
+require_once __DIR__ . '/../includes/ops_cycle.php';
 $pageTitle = 'Withdrawals';
 
 wd_ensure_columns($pdo);
 wd_ensure_payout_log_table($pdo);
+ops_ensure_tables($pdo);
+$opsPayoutGate = ops_payout_gate();
 
 if (isset($_GET['export']) && $_GET['export'] === 'csv') {
     $status = $_GET['status'] ?? 'approved';
@@ -142,13 +145,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Only approved → paid (never pending → paid)
     if ($wd && $wd['status'] === 'approved' && $action === 'paid') {
-        $finalNote = $note !== '' ? $note : ($wd['admin_note'] ?? null);
-        $pdo->prepare("UPDATE withdrawals SET status = 'paid', admin_note = ?, processed_at = NOW() WHERE id = ? AND status = 'approved'")
-            ->execute([$finalNote, $id]);
-        $wd['admin_note'] = $finalNote;
-        wd_payout_log_append($pdo, wd_payout_log_from_row($wd, 'paid', (string) $finalNote, $payoutRef));
-        log_activity('withdrawal_paid', "Marked withdrawal #$id paid" . ($payoutRef !== '' ? " ref=$payoutRef" : ''));
-        flash('success', 'Marked as paid. Net remitted: ' . strip_tags(currency(wd_net_display($wd))) . '.');
+        $payGate = ops_payout_gate();
+        if (!$payGate['ok']) {
+            flash('error', $payGate['message']);
+        } else {
+            $finalNote = $note !== '' ? $note : ($wd['admin_note'] ?? null);
+            $pdo->prepare("UPDATE withdrawals SET status = 'paid', admin_note = ?, processed_at = NOW() WHERE id = ? AND status = 'approved'")
+                ->execute([$finalNote, $id]);
+            $wd['admin_note'] = $finalNote;
+            wd_payout_log_append($pdo, wd_payout_log_from_row($wd, 'paid', (string) $finalNote, $payoutRef));
+            log_activity('withdrawal_paid', "Marked withdrawal #$id paid" . ($payoutRef !== '' ? " ref=$payoutRef" : ''));
+            flash('success', 'Marked as paid. Net remitted: ' . strip_tags(currency(wd_net_display($wd))) . '.');
+        }
     }
 
     $redir = 'withdrawals.php';
@@ -196,6 +204,17 @@ $tdsTotal = (float) $pdo->query("SELECT COALESCE(SUM(tds_amount),0) FROM withdra
 
 require_once __DIR__ . '/../includes/header.php';
 ?>
+
+<div class="ops-cycle-banner <?= $opsPayoutGate['ok'] ? 'is-ok' : 'is-wait' ?>">
+    <div>
+        <strong>Bank payout window · <?= e(ops_payout_days_label()) ?></strong>
+        <p><?= e($opsPayoutGate['message']) ?> Approve any day after Saturday closing; mark paid only in this window.</p>
+    </div>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+        <a class="btn btn-outline btn-sm" href="weekly-reconciliation.php">Weekly recon</a>
+        <a class="btn btn-outline btn-sm" href="settings.php?tab=operations">Operations</a>
+    </div>
+</div>
 
 <div class="stats-grid">
     <div class="stat-card accent"><div class="label">Pending Requests</div><div class="value"><?= $pendingCount ?></div></div>
@@ -277,8 +296,12 @@ require_once __DIR__ . '/../includes/header.php';
                         <?php elseif ($r['status'] === 'approved'): ?>
                         <form method="post" class="action-icons" style="flex-wrap:wrap;max-width:220px">
                             <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
-                            <input type="text" name="payout_ref" placeholder="UTR / ref" style="width:100%;padding:0.3rem;font-size:0.8rem;border:1px solid var(--border);border-radius:6px;margin-bottom:0.25rem" maxlength="120">
-                            <?= action_paid_btn('Confirm bank remittance of net amount?') ?>
+                            <input type="text" name="payout_ref" placeholder="UTR / ref" style="width:100%;padding:0.3rem;font-size:0.8rem;border:1px solid var(--border);border-radius:6px;margin-bottom:0.25rem" maxlength="120" <?= !$opsPayoutGate['ok'] ? 'disabled' : '' ?>>
+                            <?php if ($opsPayoutGate['ok']): ?>
+                                <?= action_paid_btn('Confirm bank remittance of net amount?') ?>
+                            <?php else: ?>
+                                <small class="muted">Pay <?= e(ops_payout_days_label()) ?></small>
+                            <?php endif; ?>
                         </form>
                         <?php else: ?>
                         <small><?= e($r['admin_note'] ?? '') ?></small>

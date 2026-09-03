@@ -98,7 +98,9 @@ $flash = get_flash();
     </div>
     <div class="up-head-actions">
         <a href="wallet-topup.php" class="up-btn up-btn-outline">Topup Wallet</a>
-        <a href="wallet-transfer.php" class="up-btn up-btn-outline">Transfer to Shopping</a>
+        <?php if (feature_module_allowed('products')): ?>
+        <a href="wallet-transfer.php?from=topup&to=shopping" class="up-btn up-btn-outline">Transfer to Shopping</a>
+        <?php endif; ?>
         <a href="register.php?ref=<?= e(urlencode((string) $user['member_id'])) ?>" class="up-btn up-btn-primary" target="_blank" rel="noopener">Add new member</a>
     </div>
 </div>
@@ -151,16 +153,30 @@ $flash = get_flash();
             <div class="up-form-grid">
                 <div class="up-field full">
                     <label>Who to activate</label>
-                    <div class="wal-radio-row">
+                    <div class="wal-radio-row" role="radiogroup" aria-label="Who to activate">
                         <?php if ($selfNeeds || $selfUpgrade): ?>
-                        <label class="wal-radio">
+                        <label class="wal-radio<?= $targetType === 'self' ? ' is-on' : '' ?>">
                             <input type="radio" name="target_type" value="self" <?= $targetType === 'self' ? 'checked' : '' ?> data-wta-target>
-                            Myself <?= $selfUpgrade ? '(Upgrade)' : '(Activate)' ?>
+                            <span class="wal-radio-ico" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            </span>
+                            <span class="wal-radio-copy">
+                                <strong>Myself</strong>
+                                <small><?= $selfUpgrade ? 'Upgrade my current package' : 'Activate my own ID' ?></small>
+                            </span>
+                            <span class="wal-radio-tick" aria-hidden="true"></span>
                         </label>
                         <?php endif; ?>
-                        <label class="wal-radio">
+                        <label class="wal-radio<?= ($targetType === 'downline' || (!$selfNeeds && !$selfUpgrade)) ? ' is-on' : '' ?>">
                             <input type="radio" name="target_type" value="downline" <?= $targetType === 'downline' || (!$selfNeeds && !$selfUpgrade) ? 'checked' : '' ?> data-wta-target>
-                            Sponsored member
+                            <span class="wal-radio-ico" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+                            </span>
+                            <span class="wal-radio-copy">
+                                <strong>Sponsored member</strong>
+                                <small>Activate someone in your team</small>
+                            </span>
+                            <span class="wal-radio-tick" aria-hidden="true"></span>
                         </label>
                     </div>
                 </div>
@@ -178,24 +194,29 @@ $flash = get_flash();
                     <?php endif; ?>
                 </div>
 
-                <div class="up-field">
+                <div class="up-field wal-pkg-field">
                     <label for="package_id">Package</label>
-                    <select name="package_id" id="package_id" required>
-                        <option value="">Select package</option>
-                        <?php foreach ($packages as $pkg): ?>
-                            <option value="<?= (int) $pkg['id'] ?>" <?= $packageId === (int) $pkg['id'] ? 'selected' : '' ?>
-                                data-amt="<?= e(number_format((float) $pkg['amount'], 2, '.', '')) ?>">
-                                <?= e($pkg['name']) ?> — <?= strip_tags(currency((float) $pkg['amount'])) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
+                    <div class="wal-select">
+                        <select name="package_id" id="package_id" required>
+                            <option value="">Select package</option>
+                            <?php foreach ($packages as $pkg): ?>
+                                <option value="<?= (int) $pkg['id'] ?>" <?= $packageId === (int) $pkg['id'] ? 'selected' : '' ?>
+                                    data-amt="<?= e(number_format((float) $pkg['amount'], 2, '.', '')) ?>">
+                                    <?= e($pkg['name'] . ' — ' . currency_symbol() . number_format((float) $pkg['amount'], 2)) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                     <?php if ($selfUpgrade): ?>
                         <small class="wal-hint">For self upgrade, only higher packages are accepted (difference amount is charged).</small>
                     <?php endif; ?>
                 </div>
                 <div class="up-field">
-                    <label>Payable now</label>
-                    <input type="text" id="wtaPayable" readonly value="—">
+                    <label for="wtaPayable">Payable now</label>
+                    <div class="wal-payable">
+                        <span class="wal-payable-cur" aria-hidden="true"><?= currency_symbol_html() ?></span>
+                        <input type="text" id="wtaPayable" readonly value="—" aria-live="polite">
+                    </div>
                     <small class="wal-hint">Debited instantly from Topup Wallet (no admin wait).</small>
                 </div>
             </div>
@@ -263,12 +284,20 @@ $flash = get_flash();
         if (!pkg || !payable) return;
         var opt = pkg.options[pkg.selectedIndex];
         var amt = opt && opt.getAttribute('data-amt');
-        payable.value = amt ? ('₹ ' + amt) : '—';
+        payable.value = amt ? amt : '—';
+        if (pkg.closest) {
+            var wrap = pkg.closest('.wal-select');
+            if (wrap) wrap.classList.toggle('has-value', !!(opt && opt.value));
+        }
     }
     function syncTarget() {
         var self = document.querySelector('input[name="target_type"][value="self"]');
         var isSelf = self && self.checked;
         if (downWrap) downWrap.hidden = !!isSelf;
+        document.querySelectorAll('.wal-radio').forEach(function (lab) {
+            var input = lab.querySelector('input[type="radio"]');
+            lab.classList.toggle('is-on', !!(input && input.checked));
+        });
     }
     if (pkg) pkg.addEventListener('change', syncPay);
     document.querySelectorAll('[data-wta-target]').forEach(function (el) {

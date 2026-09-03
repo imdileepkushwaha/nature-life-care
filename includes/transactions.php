@@ -9,7 +9,7 @@ function txn_type_label(string $source, string $type): string
         return 'Withdrawal';
     }
     $map = [
-        'binary' => 'Binary Income',
+        'binary' => 'Matching Income',
         'referral' => 'Referral Income',
         'matching' => 'Matching Income',
         'level' => 'Level Income',

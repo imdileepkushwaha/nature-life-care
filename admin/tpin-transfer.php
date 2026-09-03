@@ -30,13 +30,21 @@ if (isset($_GET['ajax'])) {
 
     if ($ajax === 'available') {
         $code = trim((string) ($_GET['member_id'] ?? ''));
-        $member = $code !== '' ? tpin_find_member_by_code($pdo, $code) : null;
+        if ($code === '') {
+            echo json_encode([
+                'ok' => true,
+                'source' => 'company',
+                'packages' => tpin_package_availability($pdo, 0),
+            ]);
+            exit;
+        }
+        $member = tpin_find_member_by_code($pdo, $code);
         if (!$member || ($member['status'] ?? '') === 'blocked') {
             echo json_encode(['ok' => false, 'packages' => []]);
             exit;
         }
-        $packages = tpin_member_package_availability($pdo, (int) $member['id']);
-        echo json_encode(['ok' => true, 'packages' => $packages]);
+        $packages = tpin_source_package_availability($pdo, (int) $member['id']);
+        echo json_encode(['ok' => true, 'source' => tpin_is_company_source($pdo, (int) $member['id']) ? 'company' : 'member', 'packages' => $packages]);
         exit;
     }
 
@@ -49,15 +57,18 @@ $postFrom = trim((string) ($_POST['from_user_id'] ?? ''));
 $postTo = trim((string) ($_POST['to_user_id'] ?? ''));
 $postPkg = (int) ($_POST['package_id'] ?? 0);
 $postQty = (int) ($_POST['qty'] ?? 0);
-$postFromName = '';
+$postFromName = 'Company stock';
 $postToName = '';
-$availPackages = [];
+$availPackages = tpin_package_availability($pdo, 0);
 
 if ($postFrom !== '') {
     $fm = tpin_find_member_by_code($pdo, $postFrom);
     if ($fm && ($fm['status'] ?? '') !== 'blocked') {
         $postFromName = (string) $fm['full_name'];
-        $availPackages = tpin_member_package_availability($pdo, (int) $fm['id']);
+        $availPackages = tpin_source_package_availability($pdo, (int) $fm['id']);
+    } else {
+        $postFromName = '';
+        $availPackages = [];
     }
 }
 if ($postTo !== '') {
@@ -68,10 +79,11 @@ if ($postTo !== '') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $from = tpin_find_member_by_code($pdo, $postFrom);
+    $fromCompany = $postFrom === '';
+    $from = $fromCompany ? null : tpin_find_member_by_code($pdo, $postFrom);
     $to = tpin_find_member_by_code($pdo, $postTo);
 
-    if (!$from || ($from['status'] ?? '') === 'blocked') {
+    if (!$fromCompany && (!$from || ($from['status'] ?? '') === 'blocked')) {
         $errors[] = 'From Member ID not found or blocked.';
     } elseif (!$to || ($to['status'] ?? '') === 'blocked') {
         $errors[] = 'Transfer User ID not found or blocked.';
@@ -82,26 +94,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $res = tpin_admin_bulk_transfer(
             $pdo,
-            (int) $from['id'],
+            $fromCompany ? 0 : (int) $from['id'],
             (int) $to['id'],
             $postPkg,
             $postQty,
             $adminId ?: null
         );
         if ($res['ok']) {
+            $fromLabel = $fromCompany ? 'company stock' : $from['member_id'];
             flash(
                 'success',
-                $res['transferred'] . ' T-Pin(s) transferred from ' . $from['member_id'] . ' to ' . $to['member_id'] . '.'
+                $res['transferred'] . ' T-Pin(s) transferred from ' . $fromLabel . ' to ' . $to['member_id'] . '.'
             );
             log_activity(
                 'tpin_transfer',
-                $res['transferred'] . ' pins pkg#' . $postPkg . ' ' . $from['member_id'] . ' → ' . $to['member_id']
+                $res['transferred'] . ' pins pkg#' . $postPkg . ' ' . $fromLabel . ' → ' . $to['member_id']
             );
             header('Location: tpin-transfer.php');
             exit;
         }
         $errors[] = $res['error'] ?? 'Transfer failed.';
-        $availPackages = tpin_member_package_availability($pdo, (int) $from['id']);
+        $availPackages = tpin_source_package_availability($pdo, $fromCompany ? 0 : (int) $from['id']);
     }
 }
 
@@ -157,7 +170,7 @@ $flash = get_flash();
     <div class="panel-header">
         <div>
             <h2>Transfer T-Pin</h2>
-            <p class="tpin-panel-sub">Move unused pins from one member wallet to another</p>
+            <p class="tpin-panel-sub">Move unused pins from company stock or a member wallet</p>
         </div>
         <a href="tpin-report.php" class="btn btn-outline btn-sm">View report</a>
     </div>
@@ -180,11 +193,11 @@ $flash = get_flash();
             <div class="tpin-gen-grid">
                 <div class="form-group">
                     <label for="from_user_id">User ID *</label>
-                    <input type="text" name="from_user_id" id="from_user_id" value="<?= e($postFrom) ?>" placeholder="Sender Member ID" required autocomplete="off">
+                    <input type="text" name="from_user_id" id="from_user_id" value="<?= e($postFrom) ?>" placeholder="Blank = company stock" autocomplete="off">
                 </div>
                 <div class="form-group">
                     <label for="from_user_name">User name</label>
-                    <input type="text" id="from_user_name" value="<?= e($postFromName) ?>" readonly tabindex="-1" placeholder="Auto-filled from user ID" class="tpin-readonly">
+                    <input type="text" id="from_user_name" value="<?= e($postFromName) ?>" readonly tabindex="-1" placeholder="Company stock" class="tpin-readonly">
                 </div>
             </div>
 
@@ -205,7 +218,7 @@ $flash = get_flash();
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <span class="tpin-hint">Amounts load after sender Member ID is matched.</span>
+                    <span class="tpin-hint">Blank From = company stock. Root member also uses company stock.</span>
                 </div>
                 <div class="form-group">
                     <label for="available_epin">Available T-Pin</label>
@@ -272,8 +285,8 @@ $flash = get_flash();
                         <span class="tpin-pkg-amt"><?= currency((float) $t['package_amount']) ?></span>
                     </td>
                     <td>
-                        <strong><?= e($t['from_name']) ?></strong>
-                        <span class="tpin-meta"><?= e($t['from_code']) ?></span>
+                        <strong><?= e($t['from_name'] ?: 'Company stock') ?></strong>
+                        <span class="tpin-meta"><?= e($t['from_code'] ?: 'COMPANY') ?></span>
                     </td>
                     <td>
                         <strong><?= e($t['to_name']) ?></strong>
@@ -400,13 +413,8 @@ $flash = get_flash();
 
     function loadAvailable(code) {
         code = (code || '').trim();
-        if (!code) {
-            fillPackages([]);
-            return;
-        }
-        fetch('tpin-transfer.php?ajax=available&member_id=' + encodeURIComponent(code), {
-            headers: { 'Accept': 'application/json' }
-        })
+        const url = 'tpin-transfer.php?ajax=available' + (code ? '&member_id=' + encodeURIComponent(code) : '');
+        fetch(url, { headers: { 'Accept': 'application/json' } })
             .then((r) => r.json())
             .then((data) => {
                 fillPackages((data && data.ok) ? (data.packages || []) : [], true);
@@ -414,10 +422,19 @@ $flash = get_flash();
             .catch(() => fillPackages([]));
     }
 
+    function useCompanyStock() {
+        if (fromName) fromName.value = 'Company stock';
+        loadAvailable('');
+    }
+
     if (fromId) {
         fromId.addEventListener('input', () => {
             clearTimeout(fromTimer);
             fromTimer = setTimeout(() => {
+                if (!fromId.value.trim()) {
+                    useCompanyStock();
+                    return;
+                }
                 lookupMember(fromId.value, fromName, (ok) => {
                     if (ok) loadAvailable(fromId.value);
                     else fillPackages([]);
@@ -425,11 +442,18 @@ $flash = get_flash();
             }, 280);
         });
         fromId.addEventListener('blur', () => {
+            if (!fromId.value.trim()) {
+                useCompanyStock();
+                return;
+            }
             lookupMember(fromId.value, fromName, (ok) => {
                 if (ok) loadAvailable(fromId.value);
                 else fillPackages([]);
             });
         });
+        if (!fromId.value.trim()) {
+            useCompanyStock();
+        }
     }
     if (toId) {
         toId.addEventListener('input', () => {

@@ -208,8 +208,8 @@ $flash = get_flash();
                             <span class="tpin-pkg-amt"><?= currency((float) $t['package_amount']) ?></span>
                         </td>
                         <td>
-                            <strong><?= e($t['from_name']) ?></strong>
-                            <span class="tpin-meta"><?= e($t['from_code']) ?></span>
+                            <strong><?= e($t['from_name'] ?: 'Company stock') ?></strong>
+                            <span class="tpin-meta"><?= e($t['from_code'] ?: 'COMPANY') ?></span>
                         </td>
                         <td>
                             <strong><?= e($t['to_name']) ?></strong>

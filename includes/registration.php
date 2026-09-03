@@ -24,6 +24,8 @@ function ensure_member_registration_columns(PDO $pdo): void
             // ignore
         }
     }
+    require_once __DIR__ . '/nominee.php';
+    nominee_ensure_schema($pdo);
     $done = true;
 }
 
@@ -113,7 +115,7 @@ function reg_lookup_sponsor(PDO $pdo, string $code): ?array
     ");
     $stmt->execute([$code, $code]);
     $row = $stmt->fetch();
-    if (!$row || ($row['status'] ?? '') === 'blocked') {
+    if (!$row || member_is_login_blocked($row)) {
         return null;
     }
     return $row;

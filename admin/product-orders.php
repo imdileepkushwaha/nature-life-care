@@ -17,7 +17,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
         'delivery_note' => (string) ($_POST['delivery_note'] ?? ''),
     ]);
     if ($res['ok']) {
-        flash('success', 'Delivery status updated for order #' . $oid . '.');
+        flash('success', 'Delivery status updated for order #' . $oid . '. Eligible PV is netted if this is a return/cancel.');
+    } else {
+        flash('error', $res['error'] ?? 'Update failed.');
+    }
+    header('Location: product-orders.php?id=' . $oid);
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'set_payment') {
+    $oid = (int) ($_POST['order_id'] ?? 0);
+    $pay = (string) ($_POST['payment_status'] ?? '');
+    $credit = isset($_POST['credit_wallet']);
+    $res = product_orders_admin_set_payment($pdo, $oid, $pay, $credit);
+    if ($res['ok']) {
+        flash('success', 'Payment status updated. Matching volume now uses net eligible PV.');
     } else {
         flash('error', $res['error'] ?? 'Update failed.');
     }
@@ -398,13 +412,25 @@ endif;
             <div class="table-wrap" style="margin-top:1rem">
                 <table class="data">
                     <thead>
-                        <tr><th>Product</th><th>Qty</th><th>Amount</th></tr>
+                        <tr>
+                            <th>Product</th>
+                            <th>Qty</th>
+                            <th>MRP</th>
+                            <th>Tax</th>
+                            <th>Customer Value</th>
+                            <th>Amount</th>
+                        </tr>
                     </thead>
                     <tbody>
-                    <?php foreach ($viewItems as $it): ?>
+                    <?php foreach ($viewItems as $it):
+                        $it = invoice_enrich_line($it);
+                    ?>
                         <tr>
                             <td><?= e($it['product_name']) ?><?= !empty($it['sku']) ? ' <small>(' . e($it['sku']) . ')</small>' : '' ?></td>
                             <td><?= (int) $it['qty'] ?></td>
+                            <td><?= currency((float) $it['unit_mrp']) ?></td>
+                            <td><?= number_format((float) $it['tax_percent'], 2) ?>% · <?= currency((float) $it['tax_amount']) ?></td>
+                            <td><?= currency((float) $it['customer_value']) ?></td>
                             <td><?= currency((float) $it['line_total']) ?></td>
                         </tr>
                     <?php endforeach; ?>
@@ -439,9 +465,28 @@ endif;
                 </div>
                 <button type="submit" class="btn btn-primary">Save delivery status</button>
             </form>
+            <h3 style="margin:1.25rem 0 0.75rem;font-size:0.95rem">Return / refund</h3>
+            <form method="post" class="form-grid" style="display:grid;gap:0.75rem">
+                <input type="hidden" name="action" value="set_payment">
+                <input type="hidden" name="order_id" value="<?= (int) $viewOrder['id'] ?>">
+                <div class="form-group">
+                    <label>Payment status</label>
+                    <select name="payment_status" required>
+                        <?php foreach (['paid' => 'Paid (eligible PV)', 'cancelled' => 'Cancelled (net off PV)', 'refunded' => 'Refunded (net off PV)'] as $k => $lab): ?>
+                        <option value="<?= e($k) ?>" <?= (string) $viewOrder['status'] === $k ? 'selected' : '' ?>><?= e($lab) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <label style="display:flex;align-items:center;gap:0.45rem;font-size:0.85rem">
+                    <input type="checkbox" name="credit_wallet" value="1">
+                    Also credit Shopping Wallet (refund amount)
+                </label>
+                <button type="submit" class="btn btn-outline" data-confirm="Update payment and net eligible matching volume?">Save payment / return</button>
+            </form>
             <p class="muted" style="margin:0.75rem 0 0;font-size:0.8rem">
                 Payment: <strong><?= e(ucfirst((string) $viewOrder['status'])) ?></strong>
                 · Delivery: <strong><?= e(product_delivery_label($ds)) ?></strong>
+                · Matching uses company-approved eligible PV after returns.
             </p>
         </div>
     </div>

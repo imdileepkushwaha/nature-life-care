@@ -2,6 +2,7 @@
 $pageTitle = 'Withdrawal Fund';
 require_once __DIR__ . '/../includes/withdrawal.php';
 require_once __DIR__ . '/../includes/kyc.php';
+require_once __DIR__ . '/../includes/ops_cycle.php';
 
 require_once __DIR__ . '/includes/auth.php';
 require_user();
@@ -31,6 +32,7 @@ $feePct = wd_fee_percent();
 $sampleBreak = wd_calc_breakdown($pdo, max($minAmt, 1000));
 $kycGate = wd_kyc_gate_check($pdo, $uid);
 $kycBlocked = !$kycGate['ok'];
+$opsPayoutGate = ops_payout_gate();
 
 $allowedMethods = ['Bank Transfer', 'UPI', 'Other'];
 $form = [
@@ -114,7 +116,7 @@ require_once __DIR__ . '/includes/header.php';
 <div class="up-page-head">
     <div>
         <h1>Withdrawal Fund</h1>
-        <p>Request a payout from your Income Wallet.</p>
+        <p>Request a payout from your Income Wallet. Verified bank credit is <?= e(ops_payout_days_label()) ?> after Saturday closing.</p>
     </div>
     <a href="withdrawal-report.php" class="up-btn up-btn-outline">View Report</a>
 </div>
@@ -182,6 +184,12 @@ require_once __DIR__ . '/includes/header.php';
                 <div class="up-alert up-alert-info">Available balance is below the minimum withdrawal of <?= currency($minAmt) ?>.</div>
             <?php endif; ?>
 
+            <div class="up-alert up-alert-info">
+                Saturday weekly closing, then bank credit on <?= e(ops_payout_days_label()) ?>.
+                <?= e($opsPayoutGate['message']) ?>
+                TDS and admin charges appear on your request statement.
+            </div>
+
             <form method="post" class="wd-form" autocomplete="off" id="wdForm"<?= $kycBlocked ? ' onsubmit="return false;"' : '' ?>>
                 <div class="wd-form-strip">
                     <div class="wd-form-chip">
@@ -222,7 +230,7 @@ require_once __DIR__ . '/includes/header.php';
                             <small class="wd-hint">Max <?= currency($withdrawMax) ?></small>
                         </label>
                         <div class="wd-amount">
-                            <span class="wd-amount-prefix" aria-hidden="true">&#8377;</span>
+                            <span class="wd-amount-prefix" aria-hidden="true"><?= currency_symbol_html() ?></span>
                             <input type="number" step="0.01" min="<?= e((string) $minAmt) ?>" max="<?= e((string) $withdrawMax) ?>"
                                    id="amount" name="amount" value="<?= e($form['amount']) ?>"
                                    placeholder="0.00" required <?= $available < $minAmt ? 'disabled' : '' ?>>
@@ -325,8 +333,8 @@ require_once __DIR__ . '/includes/header.php';
                 <li>
                     <span class="wd-tl-num" aria-hidden="true">4</span>
                     <div>
-                        <strong>Marked paid</strong>
-                        <p>Funds reach your payout method</p>
+                        <strong>Bank credit <?= e(ops_payout_days_label()) ?></strong>
+                        <p>Verified net amount after Saturday closing</p>
                     </div>
                 </li>
             </ol>
@@ -366,8 +374,8 @@ require_once __DIR__ . '/includes/header.php';
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                     </span>
                     <div>
-                        <strong>Track every request</strong>
-                        <p>Follow status anytime in Withdrawal Report</p>
+                        <strong>Transparent statement</strong>
+                        <p>TDS and admin charges are shown before you submit</p>
                     </div>
                 </li>
             </ul>
@@ -389,9 +397,10 @@ require_once __DIR__ . '/includes/header.php';
     var feePct = <?= json_encode($feePct) ?>;
     var otherPct = <?= json_encode((float) ($sampleBreak['other_percent'] ?? 0)) ?>;
     var otherFixed = <?= json_encode((float) ($sampleBreak['other_fixed'] ?? 0)) ?>;
+    var curSym = <?= json_encode(currency_symbol(), JSON_UNESCAPED_UNICODE) ?>;
 
     function fmt(n) {
-        return '₹' + (Math.max(0, n)).toFixed(2);
+        return curSym + (Math.max(0, n)).toFixed(2);
     }
     function refreshBreak() {
         var g = parseFloat(amount && amount.value ? amount.value : '0') || 0;

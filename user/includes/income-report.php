@@ -3,11 +3,12 @@
  * Shared income report UI.
  * Expects $incomeType (binary|referral|matching|level|other) set before include.
  */
+require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/../../includes/income.php';
 
 $meta = income_type_meta($incomeType ?? '');
 if (!$meta) {
-    header('Location: income-binary.php');
+    header('Location: income-summary.php');
     exit;
 }
 
