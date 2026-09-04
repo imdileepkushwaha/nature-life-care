@@ -57,9 +57,6 @@ $form = [
     'email' => $_POST['email'] ?? $user['email'],
     'nominee_name' => $_POST['nominee_name'] ?? ($user['nominee_name'] ?? ''),
     'nominee_relation' => $_POST['nominee_relation'] ?? ($user['nominee_relation'] ?? ''),
-    'nominee_phone' => $_POST['nominee_phone'] ?? ($user['nominee_phone'] ?? ''),
-    'nominee_email' => $_POST['nominee_email'] ?? ($user['nominee_email'] ?? ''),
-    'nominee_address' => $_POST['nominee_address'] ?? ($user['nominee_address'] ?? ''),
 ];
 nominee_ensure_schema($pdo);
 
@@ -248,18 +245,6 @@ require_once __DIR__ . '/includes/header.php';
                                         <option value="<?= e($rel) ?>" <?= (string) $form['nominee_relation'] === $rel ? 'selected' : '' ?>><?= e($rel) ?></option>
                                     <?php endforeach; ?>
                                 </select>
-                            </div>
-                            <div class="up-field">
-                                <label for="nominee_phone">Nominee mobile</label>
-                                <input type="text" id="nominee_phone" name="nominee_phone" value="<?= e((string) $form['nominee_phone']) ?>">
-                            </div>
-                            <div class="up-field">
-                                <label for="nominee_email">Nominee email</label>
-                                <input type="email" id="nominee_email" name="nominee_email" value="<?= e((string) $form['nominee_email']) ?>">
-                            </div>
-                            <div class="up-field full">
-                                <label for="nominee_address">Nominee address</label>
-                                <input type="text" id="nominee_address" name="nominee_address" value="<?= e((string) $form['nominee_address']) ?>">
                             </div>
                         </div>
                     </div>

@@ -59,9 +59,6 @@ $form = [
     'agree' => isset($_POST['agree']),
     'nominee_name' => trim($_POST['nominee_name'] ?? ''),
     'nominee_relation' => trim($_POST['nominee_relation'] ?? ''),
-    'nominee_phone' => trim($_POST['nominee_phone'] ?? ''),
-    'nominee_email' => trim($_POST['nominee_email'] ?? ''),
-    'nominee_address' => trim($_POST['nominee_address'] ?? ''),
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -94,9 +91,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'agree' => isset($_POST['agree']),
         'nominee_name' => trim($_POST['nominee_name'] ?? ''),
         'nominee_relation' => trim($_POST['nominee_relation'] ?? ''),
-        'nominee_phone' => trim($_POST['nominee_phone'] ?? ''),
-        'nominee_email' => trim($_POST['nominee_email'] ?? ''),
-        'nominee_address' => trim($_POST['nominee_address'] ?? ''),
     ];
 
     $sponsor = reg_lookup_sponsor($pdo, $sponsorCode);
@@ -210,8 +204,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 INSERT INTO members (
                     member_id, username, email, password, full_name, name_title, gender, date_of_birth, phone,
                     sponsor_id, placement_id, position, status,
-                    nominee_name, nominee_relation, nominee_phone, nominee_email, nominee_address
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    nominee_name, nominee_relation
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ');
             $nom = $nomCheck['data'];
             $stmt->execute([
@@ -230,9 +224,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'inactive',
                 $nom['nominee_name'] !== '' ? $nom['nominee_name'] : null,
                 $nom['nominee_relation'] !== '' ? $nom['nominee_relation'] : null,
-                $nom['nominee_phone'] !== '' ? $nom['nominee_phone'] : null,
-                $nom['nominee_email'] !== '' ? $nom['nominee_email'] : null,
-                $nom['nominee_address'] !== '' ? $nom['nominee_address'] : null,
             ]);
             if ($useBinaryPlacement && $placementId && $position) {
                 reg_update_upline_counts($pdo, $placementId, $position);
@@ -504,27 +495,6 @@ $months = [
                                     <option value="<?= e($rel) ?>" <?= ($form['nominee_relation'] ?? '') === $rel ? 'selected' : '' ?>><?= e($rel) ?></option>
                                 <?php endforeach; ?>
                             </select>
-                        </div>
-                    </div>
-                    <div class="ureg-field">
-                        <label for="nominee_phone">Nominee mobile</label>
-                        <div class="ureg-input-ico">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
-                            <input type="tel" id="nominee_phone" name="nominee_phone" value="<?= e($form['nominee_phone']) ?>" placeholder="Optional">
-                        </div>
-                    </div>
-                    <div class="ureg-field">
-                        <label for="nominee_email">Nominee email</label>
-                        <div class="ureg-input-ico">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                            <input type="email" id="nominee_email" name="nominee_email" value="<?= e($form['nominee_email']) ?>" placeholder="Optional">
-                        </div>
-                    </div>
-                    <div class="ureg-field" style="grid-column:1/-1">
-                        <label for="nominee_address">Nominee address</label>
-                        <div class="ureg-input-ico">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                            <input type="text" id="nominee_address" name="nominee_address" value="<?= e($form['nominee_address']) ?>" placeholder="Optional">
                         </div>
                     </div>
                 </div>

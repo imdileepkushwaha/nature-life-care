@@ -117,9 +117,6 @@ function nominee_profile_fields(array $row): array
     return [
         'nominee_name' => trim((string) ($row['nominee_name'] ?? '')),
         'nominee_relation' => trim((string) ($row['nominee_relation'] ?? '')),
-        'nominee_phone' => trim((string) ($row['nominee_phone'] ?? '')),
-        'nominee_email' => trim((string) ($row['nominee_email'] ?? '')),
-        'nominee_address' => trim((string) ($row['nominee_address'] ?? '')),
     ];
 }
 
@@ -131,24 +128,15 @@ function nominee_validate_input(array $post, bool $requireName = false): array
     $data = [
         'nominee_name' => trim((string) ($post['nominee_name'] ?? '')),
         'nominee_relation' => trim((string) ($post['nominee_relation'] ?? '')),
-        'nominee_phone' => trim((string) ($post['nominee_phone'] ?? '')),
-        'nominee_email' => trim((string) ($post['nominee_email'] ?? '')),
-        'nominee_address' => trim((string) ($post['nominee_address'] ?? '')),
     ];
     $errors = [];
-    $filled = $data['nominee_name'] !== '' || $data['nominee_relation'] !== '' || $data['nominee_phone'] !== '';
+    $filled = $data['nominee_name'] !== '' || $data['nominee_relation'] !== '';
     if ($requireName || $filled) {
         if ($data['nominee_name'] === '' || mb_strlen($data['nominee_name']) < 2) {
             $errors[] = 'Nominee full name is required.';
         }
         if ($data['nominee_relation'] === '' || !in_array($data['nominee_relation'], nominee_relations(), true)) {
             $errors[] = 'Select nominee relationship.';
-        }
-        if ($data['nominee_phone'] !== '' && !preg_match('/^[0-9+\-\s]{8,20}$/', $data['nominee_phone'])) {
-            $errors[] = 'Enter a valid nominee mobile number.';
-        }
-        if ($data['nominee_email'] !== '' && !filter_var($data['nominee_email'], FILTER_VALIDATE_EMAIL)) {
-            $errors[] = 'Enter a valid nominee email.';
         }
     }
     return ['ok' => $errors === [], 'errors' => $errors, 'data' => $data];
@@ -159,14 +147,12 @@ function nominee_save_member(PDO $pdo, int $memberId, array $data): void
     nominee_ensure_schema($pdo);
     $pdo->prepare('
         UPDATE members SET
-            nominee_name = ?, nominee_relation = ?, nominee_phone = ?, nominee_email = ?, nominee_address = ?
+            nominee_name = ?, nominee_relation = ?,
+            nominee_phone = NULL, nominee_email = NULL, nominee_address = NULL
         WHERE id = ?
     ')->execute([
         $data['nominee_name'] !== '' ? $data['nominee_name'] : null,
         $data['nominee_relation'] !== '' ? $data['nominee_relation'] : null,
-        $data['nominee_phone'] !== '' ? $data['nominee_phone'] : null,
-        $data['nominee_email'] !== '' ? $data['nominee_email'] : null,
-        $data['nominee_address'] !== '' ? $data['nominee_address'] : null,
         $memberId,
     ]);
 }
@@ -262,8 +248,9 @@ function nominee_open_case(PDO $pdo, int $memberId, ?int $adminId, ?string $deat
         if ($existing && ($existing['status'] ?? '') === 'rejected') {
             $pdo->prepare('
                 UPDATE member_nominee_settlements SET
-                    status = ?, death_date = ?, nominee_name = ?, nominee_relation = ?, nominee_phone = ?,
-                    nominee_email = ?, nominee_address = ?, accrued_wallet = ?, accrued_pending_wd = ?,
+                    status = ?, death_date = ?, nominee_name = ?, nominee_relation = ?,
+                    nominee_phone = NULL, nominee_email = NULL, nominee_address = NULL,
+                    accrued_wallet = ?, accrued_pending_wd = ?,
                     admin_note = ?, reported_by = ?, verified_by = NULL, settled_by = NULL,
                     verified_at = NULL, settled_at = NULL
                 WHERE id = ?
@@ -272,9 +259,6 @@ function nominee_open_case(PDO $pdo, int $memberId, ?int $adminId, ?string $deat
                 $death,
                 $m['nominee_name'] ?? null,
                 $m['nominee_relation'] ?? null,
-                $m['nominee_phone'] ?? null,
-                $m['nominee_email'] ?? null,
-                $m['nominee_address'] ?? null,
                 $acc['wallet'],
                 $acc['pending_wd'],
                 $note !== '' ? $note : null,
@@ -285,18 +269,16 @@ function nominee_open_case(PDO $pdo, int $memberId, ?int $adminId, ?string $deat
         } else {
             $pdo->prepare('
                 INSERT INTO member_nominee_settlements (
-                    member_id, status, death_date, nominee_name, nominee_relation, nominee_phone,
-                    nominee_email, nominee_address, accrued_wallet, accrued_pending_wd, admin_note, reported_by
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+                    member_id, status, death_date, nominee_name, nominee_relation,
+                    nominee_phone, nominee_email, nominee_address,
+                    accrued_wallet, accrued_pending_wd, admin_note, reported_by
+                ) VALUES (?,?,?,?,?,NULL,NULL,NULL,?,?,?,?)
             ')->execute([
                 $memberId,
                 'docs_pending',
                 $death,
                 $m['nominee_name'] ?? null,
                 $m['nominee_relation'] ?? null,
-                $m['nominee_phone'] ?? null,
-                $m['nominee_email'] ?? null,
-                $m['nominee_address'] ?? null,
                 $acc['wallet'],
                 $acc['pending_wd'],
                 $note !== '' ? $note : null,

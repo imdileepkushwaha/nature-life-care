@@ -41,6 +41,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Member ID and password are required.';
         } elseif (!preg_match('/^[A-Z]{2,10}\d{3,8}$/', $login)) {
             $error = 'Enter a valid Member ID, like BS000002.';
+        } elseif (strlen($password) < 6) {
+            $error = 'Password must be at least 6 characters.';
         } else {
             $stmt = $pdo->prepare('
                 SELECT * FROM members
@@ -174,12 +176,13 @@ if ($flash && $flash['type'] === 'error' && (
                     <a href="forgot-password.php" class="ulog-forgot">Forgot?</a>
                 </div>
                 <div class="up-password-wrap">
-                    <input type="password" id="password" name="password" placeholder="Your password" required<?= $portalLocked ? ' disabled' : '' ?>>
+                    <input type="password" id="password" name="password" placeholder="Your password" required minlength="6" maxlength="128" autocomplete="current-password"<?= $portalLocked ? ' disabled' : '' ?> aria-describedby="passwordHint">
                     <button type="button" class="up-eye" data-password-toggle aria-label="Show password"<?= $portalLocked ? ' disabled' : '' ?>>
                         <svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                         <svg class="eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
                     </button>
                 </div>
+                <p class="ulog-field-hint" id="passwordHint" data-password-hint hidden>Password must be at least 6 characters.</p>
             </div>
 
             <button type="submit" class="ulog-submit"<?= $portalLocked ? ' disabled' : '' ?>>
@@ -269,5 +272,36 @@ if ($flash && $flash['type'] === 'error' && (
 <?php endif; ?>
 
 <script src="assets/js/user.js?v=<?= (int) @filemtime(__DIR__ . '/assets/js/user.js') ?>"></script>
+<?php if (!$portalLocked): ?>
+<script>
+(function () {
+    var form = document.querySelector('.ulog-form');
+    var input = document.getElementById('password');
+    var hint = document.getElementById('passwordHint');
+    if (!form || !input || !hint) return;
+
+    function syncHint() {
+        var len = (input.value || '').length;
+        var short = len > 0 && len < 6;
+        hint.hidden = !short;
+        hint.classList.toggle('is-warn', short);
+        input.setCustomValidity(short ? 'Password must be at least 6 characters.' : '');
+        input.classList.toggle('is-invalid', short);
+    }
+
+    input.addEventListener('input', syncHint);
+    input.addEventListener('blur', syncHint);
+    form.addEventListener('submit', function (e) {
+        syncHint();
+        if ((input.value || '').length < 6) {
+            e.preventDefault();
+            hint.hidden = false;
+            hint.classList.add('is-warn');
+            input.focus();
+        }
+    });
+})();
+</script>
+<?php endif; ?>
 </body>
 </html>

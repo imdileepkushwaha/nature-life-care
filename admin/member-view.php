@@ -169,7 +169,7 @@ $effectiveStatus = member_effective_status($member);
     <div class="panel-body">
         <p class="muted" style="margin:0">
             <?= trim((string) ($member['nominee_name'] ?? '')) !== ''
-                ? e($member['nominee_name'] . ' · ' . ($member['nominee_relation'] ?? '') . ' · ' . ($member['nominee_phone'] ?? ''))
+                ? e(trim(($member['nominee_name'] ?? '') . ' · ' . ($member['nominee_relation'] ?? ''), ' ·'))
                 : 'No nominee on file. Member can add one in Edit Profile, or you can set it in Edit Member.' ?>
         </p>
     </div>

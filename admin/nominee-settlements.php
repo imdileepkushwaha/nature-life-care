@@ -36,14 +36,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 nominee_save_member($pdo, (int) $case['member_id'], $check['data']);
                 $pdo->prepare('
                     UPDATE member_nominee_settlements SET
-                        nominee_name = ?, nominee_relation = ?, nominee_phone = ?, nominee_email = ?, nominee_address = ?
+                        nominee_name = ?, nominee_relation = ?,
+                        nominee_phone = NULL, nominee_email = NULL, nominee_address = NULL
                     WHERE id = ?
                 ')->execute([
                     $check['data']['nominee_name'],
                     $check['data']['nominee_relation'],
-                    $check['data']['nominee_phone'] !== '' ? $check['data']['nominee_phone'] : null,
-                    $check['data']['nominee_email'] !== '' ? $check['data']['nominee_email'] : null,
-                    $check['data']['nominee_address'] !== '' ? $check['data']['nominee_address'] : null,
                     $sid,
                 ]);
                 flash('success', 'Nominee details saved.');
@@ -187,9 +185,9 @@ require_once __DIR__ . '/../includes/header.php';
         <div class="rpt-hero-main">
             <span class="rpt-hero-ico"><?= $icoUser ?></span>
             <div>
-                <p class="rpt-kicker">Legal · KYC</p>
+                <p class="rpt-kicker">Legal � KYC</p>
                 <h1>Nominee Settlement</h1>
-                <p class="rpt-sub">Death of an eligible member → nominee KYC and legal papers → settle accrued Income Wallet benefits.</p>
+                <p class="rpt-sub">Death of an eligible member ? nominee KYC and legal papers ? settle accrued Income Wallet benefits.</p>
             </div>
         </div>
     </header>
@@ -197,11 +195,11 @@ require_once __DIR__ . '/../includes/header.php';
     <?php if ($case): ?>
         <div class="ops-cycle-banner <?= ($case['status'] === 'settled') ? 'is-ok' : 'is-wait' ?>">
             <div>
-                <strong><?= e($case['full_name']) ?> · <?= e($case['mid']) ?></strong>
+                <strong><?= e($case['full_name']) ?> � <?= e($case['mid']) ?></strong>
                 <p>
-                    Case #<?= (int) $case['id'] ?> · <?= e(ucfirst(str_replace('_', ' ', (string) $case['status']))) ?>
-                    <?= !empty($case['death_date']) ? ' · Date of death ' . e(date('d M Y', strtotime((string) $case['death_date']))) : '' ?>
-                    · Member KYC <?= e($memberKyc !== '' ? $memberKyc : 'n/a') ?>
+                    Case #<?= (int) $case['id'] ?> � <?= e(ucfirst(str_replace('_', ' ', (string) $case['status']))) ?>
+                    <?= !empty($case['death_date']) ? ' � Date of death ' . e(date('d M Y', strtotime((string) $case['death_date']))) : '' ?>
+                    � Member KYC <?= e($memberKyc !== '' ? $memberKyc : 'n/a') ?>
                 </p>
             </div>
             <a class="btn btn-outline btn-sm" href="member-view.php?id=<?= (int) $case['member_id'] ?>">Member profile</a>
@@ -229,7 +227,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <div>
                     <span class="rpt-stat-label">Approved unpaid</span>
                     <strong><?= currency((float) $accrued['approved_wd_net']) ?></strong>
-                    <small>Already deducted — pay via withdrawals</small>
+                    <small>Already deducted � pay via withdrawals</small>
                 </div>
             </article>
             <article class="rpt-stat">
@@ -256,9 +254,8 @@ require_once __DIR__ . '/../includes/header.php';
                 <div class="rpt-panel-body">
                     <?php if (in_array($case['status'], ['settled', 'rejected'], true)): ?>
                         <p class="cls-help">
-                            <strong><?= e((string) ($case['nominee_name'] ?? '—')) ?></strong>
-                            · <?= e((string) ($case['nominee_relation'] ?? '—')) ?>
-                            · <?= e((string) ($case['nominee_phone'] ?? '—')) ?>
+                            <strong><?= e((string) ($case['nominee_name'] ?? '-')) ?></strong>
+                            · <?= e((string) ($case['nominee_relation'] ?? '-')) ?>
                         </p>
                     <?php else: ?>
                     <form method="post" class="form-grid" style="grid-template-columns:1fr 1fr;gap:0.85rem">
@@ -276,18 +273,6 @@ require_once __DIR__ . '/../includes/header.php';
                                     <option value="<?= e($rel) ?>" <?= ($case['nominee_relation'] ?? '') === $rel ? 'selected' : '' ?>><?= e($rel) ?></option>
                                 <?php endforeach; ?>
                             </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Mobile</label>
-                            <input type="text" name="nominee_phone" value="<?= e((string) ($case['nominee_phone'] ?? '')) ?>">
-                        </div>
-                        <div class="form-group">
-                            <label>Email</label>
-                            <input type="email" name="nominee_email" value="<?= e((string) ($case['nominee_email'] ?? '')) ?>">
-                        </div>
-                        <div class="form-group" style="grid-column:1/-1">
-                            <label>Address</label>
-                            <input type="text" name="nominee_address" value="<?= e((string) ($case['nominee_address'] ?? '')) ?>">
                         </div>
                         <div>
                             <button type="submit" class="btn btn-primary">Save nominee</button>
@@ -316,7 +301,7 @@ require_once __DIR__ . '/../includes/header.php';
                         <div class="ops-check <?= $st === 'approved' ? 'is-ok' : 'is-wait' ?>" style="margin-bottom:0.65rem">
                             <div style="flex:1">
                                 <strong><?= e($label) ?></strong>
-                                <p><?= e(ucfirst($st)) ?><?= !empty($d['admin_note']) ? ' · ' . e((string) $d['admin_note']) : '' ?></p>
+                                <p><?= e(ucfirst($st)) ?><?= !empty($d['admin_note']) ? ' � ' . e((string) $d['admin_note']) : '' ?></p>
                                 <?php if ($url): ?>
                                     <p><a href="<?= e($url) ?>" target="_blank" rel="noopener">View file</a></p>
                                 <?php endif; ?>
@@ -384,9 +369,9 @@ require_once __DIR__ . '/../includes/header.php';
                     ?>
                     <p class="cls-help">
                         Gross <?= currency($preview['gross']) ?>
-                        · TDS <?= currency($preview['tds_amount']) ?>
-                        · Admin charges <?= currency((float) $preview['fee_amount'] + (float) $preview['other_deduction']) ?>
-                        · <strong>Net <?= currency($preview['net_amount']) ?></strong>
+                        � TDS <?= currency($preview['tds_amount']) ?>
+                        � Admin charges <?= currency((float) $preview['fee_amount'] + (float) $preview['other_deduction']) ?>
+                        � <strong>Net <?= currency($preview['net_amount']) ?></strong>
                     </p>
                     <form method="post" class="cls-confirm-form" onsubmit="return confirm('Remit net amount to the nominee and close this ID?');">
                         <input type="hidden" name="action" value="settle">
@@ -415,14 +400,14 @@ require_once __DIR__ . '/../includes/header.php';
                 <div class="rpt-panel-body">
                     <p class="cls-help">
                         <?= $case['status'] === 'settled'
-                            ? 'Settled net ' . strip_tags(currency((float) $case['net_amount'])) . ' · UTR ' . e((string) ($case['payout_ref'] ?? '—'))
+                            ? 'Settled net ' . strip_tags(currency((float) $case['net_amount'])) . ' � UTR ' . e((string) ($case['payout_ref'] ?? '�'))
                             : 'Case rejected. ' . e((string) ($case['admin_note'] ?? '')) ?>
                     </p>
                 </div>
             </section>
         <?php endif; ?>
 
-        <p><a href="nominee-settlements.php">← All cases</a></p>
+        <p><a href="nominee-settlements.php">? All cases</a></p>
     <?php else: ?>
 
         <section class="rpt-panel">
@@ -461,9 +446,9 @@ require_once __DIR__ . '/../includes/header.php';
                             <tr>
                                 <td>
                                     <strong><?= e($h['full_name']) ?></strong>
-                                    <small class="cls-muted"><?= e($h['member_id']) ?> · <?= e((string) $h['status']) ?></small>
+                                    <small class="cls-muted"><?= e($h['member_id']) ?> � <?= e((string) $h['status']) ?></small>
                                 </td>
-                                <td><?= e((string) ($h['nominee_name'] ?: '—')) ?></td>
+                                <td><?= e((string) ($h['nominee_name'] ?: '�')) ?></td>
                                 <td><?= currency((float) $h['wallet_balance']) ?></td>
                                 <td>
                                     <?php if ($openAlready && ($openAlready['status'] ?? '') !== 'rejected'): ?>
@@ -531,7 +516,7 @@ require_once __DIR__ . '/../includes/header.php';
                                 <strong><?= e($r['full_name']) ?></strong>
                                 <small class="cls-muted"><?= e($r['mid']) ?></small>
                             </td>
-                            <td><?= e((string) ($r['nominee_name'] ?? '—')) ?></td>
+                            <td><?= e((string) ($r['nominee_name'] ?? '�')) ?></td>
                             <td><?= status_badge((string) $r['status']) ?></td>
                             <td><?= currency((float) $r['accrued_wallet']) ?></td>
                             <td><a href="nominee-settlements.php?id=<?= (int) $r['id'] ?>">Manage</a></td>

@@ -28,7 +28,8 @@ $featActivations = feature_module_allowed('activations');
 $featWalletTopup = feature_module_allowed('wallet_topup');
 $featWalletActivate = feature_module_allowed('wallet_activate');
 $featProducts = feature_module_allowed('products');
-$featWalletTransfer = $featWalletTopup || $featProducts;
+$showProductPurchaseNav = feature_user_product_purchase_nav();
+$featWalletTransfer = $featWalletTopup || ($featProducts && $showProductPurchaseNav);
 $featWithdrawals = feature_module_allowed('withdrawals');
 $featKyc = feature_module_allowed('kyc');
 $featIncomeBinary = feature_module_allowed('income_binary');
@@ -42,7 +43,7 @@ $productActivatesNav = feature_enabled('feature_product_activates_package');
 $productMinActivate = product_activate_min_amount();
 
 $needsActivationNav = $featActivations && empty($user['package_id']);
-$needsShopActivationNav = !$featActivations && $productActivatesNav && $featProducts && empty($user['package_id']);
+$needsShopActivationNav = $showProductPurchaseNav && !$featActivations && $productActivatesNav && $featProducts && empty($user['package_id']);
 $canUpgradeNav = $featActivations && !$needsActivationNav && activation_can_upgrade($pdo, $user);
 $actPendingNav = $featActivations ? activation_pending_request($pdo, (int) $user['id']) : null;
 $showPlanNav = $featActivations && ($needsActivationNav || $canUpgradeNav || $actPendingNav);
@@ -89,7 +90,7 @@ if ($featWalletTopup) {
 if ($featWalletActivate) {
     $walletPages[] = 'wallet-topup-activate';
 }
-if ($featProducts) {
+if ($featProducts && $showProductPurchaseNav) {
     $walletPages[] = 'wallet-shopping';
 }
 if ($featWalletTransfer) {
@@ -411,7 +412,7 @@ $chevron = '<svg class="up-nav-chevron" viewBox="0 0 24 24" fill="none" stroke="
                             <?php if ($featWalletActivate): ?>
                             <a href="wallet-topup-activate.php" class="up-nav-sublink<?= $currentPage === 'wallet-topup-activate' ? ' is-active' : '' ?>">Activate Member</a>
                             <?php endif; ?>
-                            <?php if ($featProducts): ?>
+                            <?php if ($featProducts && $showProductPurchaseNav): ?>
                             <a href="wallet-shopping.php" class="up-nav-sublink<?= $currentPage === 'wallet-shopping' ? ' is-active' : '' ?>">Shopping Wallet</a>
                             <?php endif; ?>
                             <?php if ($featWalletTransfer): ?>
@@ -422,7 +423,7 @@ $chevron = '<svg class="up-nav-chevron" viewBox="0 0 24 24" fill="none" stroke="
                 </div>
             </div>
 
-            <?php if ($featProducts): ?>
+            <?php if ($featProducts && $showProductPurchaseNav): ?>
             <div class="up-nav-section">
                 <div class="up-nav-label">Shopping</div>
                 <div class="up-nav-group<?= $shopOpen ? ' is-open' : '' ?>" data-up-nav-group>
@@ -555,7 +556,7 @@ $chevron = '<svg class="up-nav-chevron" viewBox="0 0 24 24" fill="none" stroke="
                     <?php if ($featWalletActivate): ?>
                     <a href="wallet-topup-activate.php" data-search="activate member topup">Activate with Topup</a>
                     <?php endif; ?>
-                    <?php if ($featProducts): ?>
+                    <?php if ($featProducts && $showProductPurchaseNav): ?>
                     <a href="wallet-shopping.php" data-search="shopping wallet">Shopping Wallet</a>
                     <a href="purchase-product.php" data-search="purchase product shop buy cart">Purchase Product</a>
                     <a href="purchase-cart.php" data-search="cart checkout">Cart / Checkout</a>

@@ -23,7 +23,7 @@ $kitNo = 'KIT/' . ($user['member_id'] ?? '') . '/' . ($pkg['id'] ?? '0');
     <div class="doc-toolbar no-print">
         <div>
             <h1 class="doc-title">Kit Invoice</h1>
-            <p class="doc-sub">Product list, quantity, MRP, taxes and customer value for your package</p>
+            <p class="doc-sub">Product list, quantity, MRP, taxes and MRP value for your package</p>
         </div>
         <div class="doc-toolbar-actions">
             <?php if ($pkg && $invoiceLines): ?>
@@ -40,7 +40,7 @@ $kitNo = 'KIT/' . ($user['member_id'] ?? '') . '/' . ($pkg['id'] ?? '0');
         <section class="shop-card no-print">
             <div class="shop-empty">
                 <strong>No kit assigned</strong>
-                <p>Activate a package to see its product list, MRP, taxes and customer value on this invoice.</p>
+                <p>Activate a package to see its product list, MRP, taxes and MRP value on this invoice.</p>
                 <?php if (feature_module_allowed('activations')): ?>
                     <p><a href="activate.php">Activate now</a></p>
                 <?php endif; ?>
@@ -96,7 +96,7 @@ $kitNo = 'KIT/' . ($user['member_id'] ?? '') . '/' . ($pkg['id'] ?? '0');
                     <strong><?= (int) $kitTotals['total_qty'] ?> pcs</strong>
                 </div>
                 <div>
-                    <span>Customer value</span>
+                    <span>MRP Value</span>
                     <strong><?= currency($kitTotals['customer_value']) ?></strong>
                 </div>
             </div>
@@ -113,7 +113,8 @@ $kitNo = 'KIT/' . ($user['member_id'] ?? '') . '/' . ($pkg['id'] ?? '0');
                     <span class="shop-inv-label">Kit value</span>
                     <strong><?= e((string) $pkg['name']) ?></strong>
                     <p>Package price <?= currency((float) $pkg['amount']) ?></p>
-                    <p>Customer value (MRP) <?= currency($kitTotals['customer_value']) ?></p>
+                    <p>Package PV <?= number_format((float) ($pkg['bv'] ?? 0), 0) ?></p>
+                    <p>MRP Value <?= currency($kitTotals['customer_value']) ?></p>
                     <p>Taxes (GST in MRP) <?= currency($kitTotals['tax_amount']) ?></p>
                 </div>
             </div>
@@ -123,11 +124,11 @@ $kitNo = 'KIT/' . ($user['member_id'] ?? '') . '/' . ($pkg['id'] ?? '0');
             <div class="shop-inv-totals">
                 <div class="shop-inv-notes">
                     <span class="shop-inv-label">Clear kit disclosure</span>
-                    <p>Har package ki product list, quantity, MRP, taxes aur customer value is invoice par spasht hai. GST MRP me included maana gaya hai.</p>
+                    <p>Har package ki product list, quantity, MRP, taxes aur MRP value is invoice par spasht hai. GST MRP me included maana gaya hai.</p>
                 </div>
                 <div class="shop-inv-sum">
                     <div><span>Total quantity</span><strong><?= (int) $kitTotals['total_qty'] ?> pcs</strong></div>
-                    <div><span>Customer value (MRP)</span><strong><?= currency($kitTotals['customer_value']) ?></strong></div>
+                    <div><span>MRP Value</span><strong><?= currency($kitTotals['customer_value']) ?></strong></div>
                     <div><span>Taxable value</span><strong><?= currency($kitTotals['taxable']) ?></strong></div>
                     <div><span>Taxes (GST)</span><strong><?= currency($kitTotals['tax_amount']) ?></strong></div>
                     <div class="is-grand"><span>Kit price</span><strong><?= currency((float) $pkg['amount']) ?></strong></div>

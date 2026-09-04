@@ -12,7 +12,7 @@ $invoiceLines = $invoiceLines ?? [];
         <th class="is-num">MRP</th>
         <th class="is-num">Tax %</th>
         <th class="is-num">Tax</th>
-        <th class="is-num">Customer Value</th>
+        <th class="is-num">MRP Value</th>
         <?php if (!empty($invoiceShowPaid)): ?>
         <th class="is-num">Amount</th>
         <?php endif; ?>

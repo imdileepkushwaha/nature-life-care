@@ -711,6 +711,16 @@ function feature_guard_admin_page(?string $page = null): void
     }
 }
 
+/**
+ * User-facing product shop / purchase menu.
+ * Keep shop code; set true later when members may buy products directly.
+ * Products are currently assigned via packages only.
+ */
+function feature_user_product_purchase_nav(): bool
+{
+    return false;
+}
+
 function feature_guard_user_page(?string $page = null): void
 {
     $page = $page ?? basename($_SERVER['PHP_SELF'] ?? '', '.php');

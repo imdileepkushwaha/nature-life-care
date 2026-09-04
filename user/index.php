@@ -39,7 +39,7 @@ $canUpgrade = $featActivations && !$needsActivation && activation_can_upgrade($p
 $upgradePending = $actPending && (($actPending['request_type'] ?? '') === 'upgrade');
 $showUpgradeCta = $canUpgrade || $upgradePending;
 $showActivateCta = $needsActivation && $featActivations;
-$showShopActivateHint = $needsActivation && !$featActivations && $productActivates && $featProducts;
+$showShopActivateHint = $needsActivation && !$featActivations && $productActivates && $featProducts && feature_user_product_purchase_nav();
 $productMinActivate = product_activate_min_amount();
 $productOnly = feature_product_only_activation();
 $shopActivateCopy = $productOnly
@@ -76,7 +76,7 @@ try {
         $paid = income_sum($pdo, $uid, $key, 'paid');
         $pending = income_sum($pdo, $uid, $key, 'pending');
         $tone = (string) ($meta['tone'] ?? 'orange');
-        $g = in_array($tone, ['blue', 'green', 'orange', 'purple', 'mint', 'coral', 'teal', 'slate'], true)
+        $g = in_array($tone, ['blue', 'green', 'orange', 'purple', 'mint', 'coral', 'teal', 'slate', 'gold'], true)
             ? $tone
             : 'orange';
         $incomeTypeCards[] = [
@@ -328,18 +328,6 @@ try {
                 <div class="up-stat-label">Open Pairs</div>
                 <div class="up-stat-value"><?= number_format($openPairs, $openPairs == floor($openPairs) ? 0 : 2) ?></div>
                 <div class="up-stat-foot"><span>match</span> PV <?= number_format((float) ($openMatch['matched_bv'] ?? 0), 0) ?></div>
-            </div>
-        </div>
-    </article>
-    <article class="up-stat g-slate">
-        <div class="up-stat-inner">
-            <span class="up-stat-ico" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-            </span>
-            <div class="up-stat-copy">
-                <div class="up-stat-label">Pair Size</div>
-                <div class="up-stat-value"><?= number_format($pairBv, 0) ?></div>
-                <div class="up-stat-foot"><span>1:2 / 2:1</span> Eligible PV</div>
             </div>
         </div>
     </article>

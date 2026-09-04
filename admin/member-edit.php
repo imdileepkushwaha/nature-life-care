@@ -216,19 +216,6 @@ require_once __DIR__ . '/../includes/header.php';
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="form-group">
-                <label>Nominee mobile</label>
-                <input type="text" name="nominee_phone" value="<?= e((string) ($member['nominee_phone'] ?? '')) ?>">
-            </div>
-            <div class="form-group">
-                <label>Nominee email</label>
-                <input type="email" name="nominee_email" value="<?= e((string) ($member['nominee_email'] ?? '')) ?>">
-            </div>
-            <div class="form-group" style="grid-column:1 / -1">
-                <label>Nominee address</label>
-                <input type="text" name="nominee_address" value="<?= e((string) ($member['nominee_address'] ?? '')) ?>">
-            </div>
-
             <div class="form-group" style="grid-column:1 / -1">
                 <p class="muted" style="margin:0;font-size:0.85rem">Sponsor, placement, and package are not edited here. Use Activate Package / Tree tools for structure changes.</p>
             </div>
