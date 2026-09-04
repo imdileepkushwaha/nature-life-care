@@ -1,11 +1,15 @@
 <?php
 $pageTitle = 'My Income';
 require_once __DIR__ . '/../includes/income.php';
+require_once __DIR__ . '/../includes/activation.php';
 require_once __DIR__ . '/includes/header.php';
 
 $uid = (int) $user['id'];
 $types = income_types();
 $showWithdrawUi = feature_module_allowed('withdrawals');
+$featActivations = feature_module_allowed('activations');
+$featProducts = feature_module_allowed('products');
+$productActivates = feature_enabled('feature_product_activates_package');
 
 $paidTotal = income_sum($pdo, $uid, null, 'paid');
 $pendingTotal = income_sum($pdo, $uid, null, 'pending');
@@ -23,29 +27,21 @@ foreach ($types as $key => $meta) {
 }
 
 // Recent across all types
-$recent = [];
-try {
-    $rs = $pdo->prepare("
-        SELECT c.*, fm.member_id AS from_mid, fm.full_name AS from_name
-        FROM commissions c
-        LEFT JOIN members fm ON fm.id = c.from_member_id
-        WHERE c.member_id = ?
-        ORDER BY c.id DESC
-        LIMIT 10
-    ");
-    $rs->execute([$uid]);
-    $recent = $rs->fetchAll();
-} catch (Throwable $e) {
-    $recent = [];
-}
+$recent = income_recent_rows($pdo, $uid, 10);
 
 $needsActivation = empty($user['package_id']);
-$canUpgrade = !$needsActivation && activation_can_upgrade($pdo, $user);
+$canUpgrade = $featActivations && !$needsActivation && activation_can_upgrade($pdo, $user);
 $upgradePending = false;
+$actPending = $featActivations ? activation_pending_request($pdo, $uid) : null;
 if (!$needsActivation) {
-    $upPending = activation_pending_request($pdo, (int) $user['id']);
-    $upgradePending = $upPending && (($upPending['request_type'] ?? '') === 'upgrade');
+    $upgradePending = $actPending && (($actPending['request_type'] ?? '') === 'upgrade');
 }
+$showActivateCta = $needsActivation && $featActivations;
+$showShopActivateHint = $needsActivation && !$featActivations && $productActivates && $featProducts && feature_user_product_purchase_nav();
+$showUpgradeCta = $canUpgrade || $upgradePending;
+$activateHref = $showShopActivateHint ? 'purchase-product.php' : 'activate.php';
+$activateLabel = $showShopActivateHint ? 'Shop to Activate' : 'Activate Account';
+$upgradeLabel = $upgradePending ? 'View Upgrade' : 'Upgrade Plan';
 ?>
 <div class="up-page-head">
     <div>
@@ -96,7 +92,7 @@ if (!$needsActivation) {
             <div>
                 <span class="inc-kicker">Income hub</span>
                 <h2>Browse by type</h2>
-                <p>Open a report for binary, referral, matching, level, or other credits.</p>
+                <p>Open a report for matching, referral, DSI, level, or other credits.</p>
             </div>
         </div>
     </div>
@@ -147,14 +143,14 @@ if (!$needsActivation) {
                 <tr>
                     <td colspan="6">
                         <div class="inc-empty">
-                            <?php if ($needsActivation): ?>
+                            <?php if ($showActivateCta || $showShopActivateHint): ?>
                                 <strong>No income records yet</strong>
                                 <p>Activate your plan and grow your team to start earning.</p>
-                                <a href="activate.php" class="up-btn up-btn-primary">Activate Account</a>
-                            <?php elseif ($canUpgrade || $upgradePending): ?>
+                                <a href="<?= e($activateHref) ?>" class="up-btn up-btn-primary"><?= e($activateLabel) ?></a>
+                            <?php elseif ($showUpgradeCta): ?>
                                 <strong>No income records yet</strong>
                                 <p>Grow your team to earn — or upgrade your plan (pay only the difference) to unlock a higher package.</p>
-                                <a href="activate.php" class="up-btn up-btn-primary"><?= $upgradePending ? 'View Upgrade' : 'Upgrade Plan' ?></a>
+                                <a href="activate.php" class="up-btn up-btn-primary"><?= e($upgradeLabel) ?></a>
                             <?php else: ?>
                                 <strong>No income records yet</strong>
                                 <p>Share your referral links and grow your team to start earning.</p>

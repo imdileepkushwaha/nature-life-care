@@ -78,6 +78,7 @@ $queryBase = http_build_query(array_filter([
             <select name="kind" onchange="this.form.submit()" aria-label="Filter type">
                 <option value="">All types</option>
                 <option value="income" <?= $kind === 'income' ? 'selected' : '' ?>>Income only</option>
+                <option value="wallet" <?= $kind === 'wallet' ? 'selected' : '' ?>>Wallet only</option>
                 <option value="withdrawal" <?= $kind === 'withdrawal' ? 'selected' : '' ?>>Withdrawals only</option>
             </select>
             <select name="status" onchange="this.form.submit()" aria-label="Filter status">
@@ -108,7 +109,7 @@ $queryBase = http_build_query(array_filter([
                     <td colspan="7">
                         <div class="txn-empty">
                             <strong>No transactions yet</strong>
-                            <p>Income credits and withdrawal requests will appear here.</p>
+                            <p>Income, wallet moves, and withdrawal requests will appear here.</p>
                             <div class="txn-empty-actions">
                                 <a href="income-summary.php" class="up-btn up-btn-outline">My Income</a>
                                 <?php if ($showWithdrawUi): ?>

@@ -16,7 +16,10 @@ $modules = [
     ['Binary income / tree', $s['binary']],
     ['Level income', $s['level']],
     ['Referral income', $s['referral']],
-    ['Matching income', $s['matching']],
+    ['Matching bonus', $s['matching']],
+    ['DSI', !empty($s['dsi'])],
+    ['Ranks', !empty($s['ranks'])],
+    ['Rewards', !empty($s['rewards'])],
     ['Packages', $s['package']],
     ['T-PIN', $s['tpin']],
     ['UTR activation', $s['utr']],
@@ -26,6 +29,7 @@ $modules = [
     ['Product Only mode', !empty($s['product_only'])],
     ['Withdrawals', $s['withdrawals']],
     ['KYC', $s['kyc']],
+    ['Rates frozen', !empty($s['rates_frozen'])],
 ];
 $onCount = count(array_filter(array_column($modules, 1)));
 $licenseOk = !empty($s['license_ok']);

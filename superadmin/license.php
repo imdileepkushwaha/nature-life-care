@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
+require_superadmin();
 $pageTitle = 'Client License';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

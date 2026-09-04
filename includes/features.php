@@ -48,6 +48,7 @@ function feature_defaults(): array
         'dsi_level_2_percent' => '20',
         'dsi_level_3_percent' => '15',
         'dsi_level_4_percent' => '10',
+        'dsi_level_5_percent' => '5',
         'commission_rates_frozen' => '0',
         'commission_rates_frozen_at' => '',
         'commission_rates_frozen_note' => '',
@@ -144,7 +145,7 @@ function feature_presets(): array
                 'feature_level_income' => '1',
                 'feature_referral_income' => '1',
                 'feature_matching_income' => '0',
-                'feature_dsi_income' => '1',
+                'feature_dsi_income' => '0',
                 'feature_ranks_enabled' => '0',
                 'feature_rewards_enabled' => '0',
                 'feature_withdrawals_enabled' => '1',
@@ -219,7 +220,7 @@ function feature_presets(): array
                 'feature_level_income' => '1',
                 'feature_referral_income' => '1',
                 'feature_matching_income' => '0',
-                'feature_dsi_income' => '1',
+                'feature_dsi_income' => '0',
                 'feature_ranks_enabled' => '0',
                 'feature_rewards_enabled' => '0',
                 'feature_withdrawals_enabled' => '1',
@@ -245,7 +246,7 @@ function feature_presets(): array
                 'feature_level_income' => '1',
                 'feature_referral_income' => '1',
                 'feature_matching_income' => '0',
-                'feature_dsi_income' => '1',
+                'feature_dsi_income' => '0',
                 'feature_ranks_enabled' => '0',
                 'feature_rewards_enabled' => '0',
                 'feature_withdrawals_enabled' => '1',
@@ -515,15 +516,31 @@ function feature_save_from_post(PDO $pdo, array $post): void
     // Mode constraints (income topology only — do not wipe activation rails)
     if ($mode === 'binary') {
         feature_save($pdo, 'feature_binary_income', '1');
-        feature_save($pdo, 'feature_level_income', isset($post['feature_level_income']) ? '1' : '0');
+        // Level ladder is not paid in pure binary mode (use hybrid for both).
+        feature_save($pdo, 'feature_level_income', '0');
     } elseif ($mode === 'level' || $mode === 'unilevel') {
         feature_save($pdo, 'feature_binary_income', '0');
         feature_save($pdo, 'feature_level_income', '1');
         feature_save($pdo, 'feature_matching_income', '0');
+        // DSI settles only on binary closing — disable on non-binary plans.
+        feature_save($pdo, 'feature_dsi_income', '0');
+        feature_save($pdo, 'feature_ranks_enabled', '0');
+        feature_save($pdo, 'feature_rewards_enabled', '0');
     } elseif ($mode === 'matrix') {
         feature_save($pdo, 'feature_binary_income', '0');
         feature_save($pdo, 'feature_level_income', '1');
         feature_save($pdo, 'feature_matching_income', '0');
+        feature_save($pdo, 'feature_dsi_income', '0');
+        feature_save($pdo, 'feature_ranks_enabled', '0');
+        feature_save($pdo, 'feature_rewards_enabled', '0');
+    } elseif ($mode === 'hybrid') {
+        // If binary income is off in hybrid, DSI/matching/ranks cannot settle or pay.
+        if (!isset($post['feature_binary_income'])) {
+            feature_save($pdo, 'feature_matching_income', '0');
+            feature_save($pdo, 'feature_dsi_income', '0');
+            feature_save($pdo, 'feature_ranks_enabled', '0');
+            feature_save($pdo, 'feature_rewards_enabled', '0');
+        }
     }
 
     feature_save($pdo, 'binary_income_enabled', feature_enabled('feature_binary_income') ? '1' : '0');
@@ -600,10 +617,13 @@ function feature_admin_page_map(): array
         'direct-member-login' => 'utility',
         'reports' => 'reports',
         'report-commission' => 'reports',
+        'report-dsi' => 'reports',
+        'report-matching' => 'reports',
         'report-joining' => 'reports',
         'report-package-sales' => 'reports',
         'report-top-earners' => 'reports',
         'tds-report' => 'reports',
+        'weekly-reconciliation' => 'reports',
     ];
 }
 
@@ -630,6 +650,8 @@ function feature_user_page_map(): array
         'income-referral' => 'income_referral',
         'income-matching' => 'income_matching',
         'income-dsi' => 'income_dsi',
+        'report-matching' => 'income_matching',
+        'report-dsi' => 'income_dsi',
         'income-rank' => 'ranks',
         'income-reward' => 'rewards',
         'rank' => 'ranks',
@@ -1023,6 +1045,7 @@ function feature_audit_snapshot(PDO $pdo, ?array $keys = null): array
             'dsi_level_2_percent',
             'dsi_level_3_percent',
             'dsi_level_4_percent',
+            'dsi_level_5_percent',
             'commission_rates_frozen',
         ]);
         $keys = array_values(array_unique($keys));

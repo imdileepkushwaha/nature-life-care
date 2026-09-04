@@ -33,6 +33,8 @@ $grandTotal = $paidSum + $pendingSum;
 
 $toneClass = 'is-' . ($meta['tone'] ?? 'blue');
 $types = income_types();
+$isMatchingMix = ($meta['key'] === 'matching');
+$statusOptions = $meta['key'] === 'dsi' ? ['paid', 'cancelled'] : ['paid', 'pending', 'cancelled'];
 ?>
 <div class="up-page-head">
     <div>
@@ -96,7 +98,7 @@ $types = income_types();
         <form method="get" class="inc-filters">
             <select name="status" onchange="this.form.submit()" aria-label="Filter status">
                 <option value="">All statuses</option>
-                <?php foreach (['paid', 'pending', 'cancelled'] as $s): ?>
+                <?php foreach ($statusOptions as $s): ?>
                     <option value="<?= $s ?>" <?= $statusFilter === $s ? 'selected' : '' ?>><?= ucfirst($s) ?></option>
                 <?php endforeach; ?>
             </select>
@@ -108,6 +110,7 @@ $types = income_types();
             <thead>
                 <tr>
                     <th>ID</th>
+                    <?php if ($isMatchingMix): ?><th>Type</th><?php endif; ?>
                     <th>Amount</th>
                     <th>From</th>
                     <th>Description</th>
@@ -118,7 +121,7 @@ $types = income_types();
             <tbody>
             <?php if (!$rows): ?>
                 <tr>
-                    <td colspan="6">
+                    <td colspan="<?= $isMatchingMix ? 7 : 6 ?>">
                         <div class="inc-empty">
                             <strong>No <?= e(strtolower($meta['short'])) ?> income yet</strong>
                             <p>When this income type is credited to your account, it will appear here.</p>
@@ -126,9 +129,13 @@ $types = income_types();
                         </div>
                     </td>
                 </tr>
-            <?php else: foreach ($rows as $r): ?>
+            <?php else: foreach ($rows as $r):
+                $rowType = (string) ($r['type'] ?? $meta['key']);
+                $rowTypeLabel = $rowType === 'binary' ? 'Pair' : ($rowType === 'matching' ? 'Bonus' : ucfirst($rowType));
+            ?>
                 <tr>
                     <td><strong>#<?= (int) $r['id'] ?></strong></td>
+                    <?php if ($isMatchingMix): ?><td><?= e($rowTypeLabel) ?></td><?php endif; ?>
                     <td><strong class="inc-amt"><?= currency((float) $r['amount']) ?></strong></td>
                     <td>
                         <?php if (!empty($r['from_mid'])): ?>

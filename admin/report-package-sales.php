@@ -1,11 +1,14 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/report_helpers.php';
+require_once __DIR__ . '/../includes/activation.php';
 $pageTitle = 'Package Sales';
 
 [$from, $to] = report_parse_dates();
 $packageId = (int) ($_GET['package_id'] ?? 0);
 $q = trim((string) ($_GET['q'] ?? ''));
+
+activation_ensure_requests_table($pdo);
 
 $allPackages = $pdo->query("SELECT id, name, amount, status FROM packages ORDER BY amount ASC")->fetchAll();
 
@@ -20,12 +23,25 @@ if ($q !== '') {
     $params[] = '%' . $q . '%';
 }
 
+// Sales dated by activation/upgrade approval; legacy members without request fall back to join_date.
 $sql = '
     SELECT p.id, p.name, p.amount, p.status,
-           COUNT(m.id) AS cnt,
-           COALESCE(SUM(p.amount),0) AS revenue
+           COUNT(s.sale_id) AS cnt,
+           COALESCE(COUNT(s.sale_id), 0) * p.amount AS revenue
     FROM packages p
-    LEFT JOIN members m ON m.package_id = p.id AND DATE(m.join_date) BETWEEN ? AND ?
+    LEFT JOIN (
+        SELECT ar.id AS sale_id, ar.package_id, COALESCE(ar.processed_at, ar.created_at) AS sale_at
+        FROM activation_requests ar
+        WHERE ar.status = \'approved\' AND ar.package_id IS NOT NULL
+        UNION ALL
+        SELECT m.id AS sale_id, m.package_id, m.join_date AS sale_at
+        FROM members m
+        WHERE m.package_id IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1 FROM activation_requests ar2
+              WHERE ar2.member_id = m.id AND ar2.status = \'approved\' AND ar2.package_id IS NOT NULL
+          )
+    ) s ON s.package_id = p.id AND DATE(s.sale_at) BETWEEN ? AND ?
     WHERE ' . implode(' AND ', $where) . '
     GROUP BY p.id, p.name, p.amount, p.status
     ORDER BY revenue DESC, p.amount ASC
@@ -48,7 +64,7 @@ require_once __DIR__ . '/../includes/header.php';
     <div class="panel-header">
         <div>
             <h2>Package Sales</h2>
-            <p class="tpin-panel-sub">Members joined on each package in the period</p>
+            <p class="tpin-panel-sub">Approved activations / upgrades in the period (catalog price × sales)</p>
         </div>
         <a href="packages.php" class="btn btn-outline btn-sm">Packages</a>
     </div>
@@ -64,7 +80,7 @@ require_once __DIR__ . '/../includes/header.php';
         ]);
         ?>
         <div class="stats-grid tpin-stats">
-            <div class="stat-card accent"><div class="label">Members</div><div class="value"><?= $totalMembers ?></div></div>
+            <div class="stat-card accent"><div class="label">Sales</div><div class="value"><?= $totalMembers ?></div></div>
             <div class="stat-card"><div class="label">Revenue</div><div class="value" style="font-size:1.2rem"><?= currency($totalRevenue) ?></div></div>
         </div>
     </div>
@@ -75,7 +91,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <th>Package</th>
                 <th>Price</th>
                 <th>Status</th>
-                <th>Members (period)</th>
+                <th>Sales (period)</th>
                 <th>Revenue</th>
             </tr>
             </thead>

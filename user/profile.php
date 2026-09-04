@@ -72,13 +72,28 @@ for ($i = 6; $i >= 0; $i--) {
     $labels[] = date('D', strtotime("-{$i} days"));
 }
 try {
+    require_once __DIR__ . '/../includes/income_tables.php';
+    income_tables_ensure($pdo);
     $ws = $pdo->prepare("
-        SELECT DATE(created_at) AS d, SUM(amount) AS total
-        FROM commissions
-        WHERE member_id = ? AND created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
-        GROUP BY DATE(created_at)
+        SELECT d, SUM(total) AS total FROM (
+            SELECT DATE(created_at) AS d, amount AS total
+            FROM commissions
+            WHERE member_id = ? AND status != 'cancelled'
+              AND created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+            UNION ALL
+            SELECT DATE(created_at) AS d, amount AS total
+            FROM income_matching
+            WHERE member_id = ? AND status != 'cancelled'
+              AND created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+            UNION ALL
+            SELECT DATE(created_at) AS d, amount AS total
+            FROM income_dsi
+            WHERE member_id = ? AND status = 'paid'
+              AND created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+        ) x
+        GROUP BY d
     ");
-    $ws->execute([$uid]);
+    $ws->execute([$uid, $uid, $uid]);
     $byDay = [];
     foreach ($ws->fetchAll() as $row) {
         $byDay[$row['d']] = (float) $row['total'];
@@ -109,15 +124,11 @@ foreach ($weekly as $v) {
 
 $transactions = [];
 try {
-    $cs = $pdo->prepare('
-        SELECT id, type, amount, description, status, created_at AS txn_at, \'commission\' AS source
-        FROM commissions
-        WHERE member_id = ?
-        ORDER BY created_at DESC
-        LIMIT 8
-    ');
-    $cs->execute([$uid]);
-    foreach ($cs->fetchAll() as $row) {
+    require_once __DIR__ . '/../includes/income.php';
+    require_once __DIR__ . '/../includes/transactions.php';
+    foreach (income_recent_rows($pdo, $uid, 8) as $row) {
+        $row['txn_at'] = $row['created_at'];
+        $row['source'] = 'commission';
         $transactions[] = $row;
     }
 } catch (Throwable $e) {
@@ -730,12 +741,16 @@ $transactions = array_slice($transactions, 0, 8);
                     <?php foreach ($transactions as $txn):
                         $isOut = ($txn['source'] ?? '') === 'withdrawal';
                         $typeRaw = strtolower((string) ($txn['type'] ?? 'other'));
-                        $typeLabel = ucfirst(str_replace('_', ' ', $typeRaw));
+                        $typeLabel = $isOut
+                            ? 'Withdrawal'
+                            : (function_exists('txn_type_label')
+                                ? txn_type_label('commission', $typeRaw)
+                                : (ucfirst(str_replace('_', ' ', $typeRaw)) . ' Income'));
                         $desc = trim((string) ($txn['description'] ?? ''));
-                        $title = $isOut ? 'Withdrawal Request' : ($typeLabel . ' Income');
+                        $title = $isOut ? 'Withdrawal Request' : $typeLabel;
                         $st = strtolower((string) ($txn['status'] ?? ''));
                         $amt = (float) ($txn['amount'] ?? 0);
-                        $badgeClass = $isOut ? 'withdraw' : preg_replace('/[^a-z]/', '', $typeRaw);
+                        $badgeClass = $isOut ? 'withdraw' : preg_replace('/[^a-z]/', '', $typeRaw === 'binary' ? 'matching' : $typeRaw);
                     ?>
                     <li class="<?= $isOut ? 'is-out' : 'is-in' ?>">
                         <span class="pp-txn-ico <?= $isOut ? 'out' : 'in' ?>" aria-hidden="true">

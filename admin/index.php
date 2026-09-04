@@ -1,19 +1,25 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/closing.php';
+require_once __DIR__ . '/../includes/income_tables.php';
+require_once __DIR__ . '/../includes/withdrawal.php';
 $pageTitle = 'Dashboard';
 require_once __DIR__ . '/../includes/header.php';
+
+income_tables_ensure($pdo);
+$incomeTotals = income_admin_wallet_totals($pdo);
 
 $totalMembers = (int) $pdo->query("SELECT COUNT(*) FROM members")->fetchColumn();
 $activeMembers = (int) $pdo->query("SELECT COUNT(*) FROM members WHERE status = 'active'")->fetchColumn();
 $totalPackages = (int) $pdo->query("SELECT COUNT(*) FROM packages WHERE status = 'active'")->fetchColumn();
 $pendingWithdrawals = (int) $pdo->query("SELECT COUNT(*) FROM withdrawals WHERE status = 'pending'")->fetchColumn();
-$totalCommissions = (float) $pdo->query("SELECT COALESCE(SUM(amount),0) FROM commissions WHERE status != 'cancelled'")->fetchColumn();
-$totalPaidOut = (float) $pdo->query("SELECT COALESCE(SUM(amount),0) FROM withdrawals WHERE status IN ('approved','paid')")->fetchColumn();
+$totalCommissions = (float) $incomeTotals['active'];
+$netExpr = wd_net_sql_expr('w');
+$totalPaidOut = (float) $pdo->query("SELECT COALESCE(SUM({$netExpr}),0) FROM withdrawals w WHERE w.status IN ('approved','paid')")->fetchColumn();
 $todayJoins = (int) $pdo->query("SELECT COUNT(*) FROM members WHERE DATE(join_date) = CURDATE()")->fetchColumn();
 $walletTotal = (float) $pdo->query("SELECT COALESCE(SUM(wallet_balance),0) FROM members")->fetchColumn();
 $newsCount = (int) $pdo->query("SELECT COUNT(*) FROM news WHERE status = 'active'")->fetchColumn();
-$pendingComm = (int) $pdo->query("SELECT COUNT(*) FROM commissions WHERE status = 'pending'")->fetchColumn();
+$pendingComm = (int) $incomeTotals['pending_count'];
 
 $closingSummary = ['eligible_members' => 0, 'pairs' => 0, 'matched_bv' => 0, 'est_binary_gross' => 0];
 $lastClosing = null;
@@ -112,13 +118,7 @@ $recentMembers = $pdo->query("
     LIMIT 8
 ")->fetchAll();
 
-$recentCommissions = $pdo->query("
-    SELECT c.*, m.full_name, m.member_id AS mid
-    FROM commissions c
-    JOIN members m ON m.id = c.member_id
-    ORDER BY c.created_at DESC
-    LIMIT 8
-")->fetchAll();
+$recentCommissions = income_admin_recent_rows($pdo, null, 8);
 
 $iconUsers = '<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>';
 $iconCheck = '<svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
@@ -185,7 +185,7 @@ $iconOut = '<svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d=
     <div class="stat-card g-orange">
         <div class="bg-icon"><?= $iconOut ?></div>
         <div class="value"><?= currency($totalPaidOut) ?></div>
-        <div class="label">Paid Out</div>
+        <div class="label">Net Paid Out</div>
         <a class="more" href="withdrawals.php">More info →</a>
     </div>
     <?php endif; ?>

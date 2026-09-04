@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/plan_incentives.php';
+require_superadmin();
 $pageTitle = 'Commission Rates';
 
 plan_incentives_ensure($pdo);
@@ -70,13 +71,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $saveSetting($pdo, 'binary_income_enabled', $wantBinary ? '1' : '0');
         $saveSetting($pdo, 'feature_binary_income', $wantBinary ? '1' : '0');
-        if (!$wantBinary && in_array($mode, ['level', 'unilevel', 'matrix'], true)) {
-            $saveSetting($pdo, 'feature_matching_income', '0');
+        $wantMatching = $wantBinary && isset($_POST['feature_matching_income']);
+        if (!$wantBinary) {
+            $wantMatching = false;
+            $saveSetting($pdo, 'feature_dsi_income', '0');
+            $saveSetting($pdo, 'feature_ranks_enabled', '0');
+            $saveSetting($pdo, 'feature_rewards_enabled', '0');
         }
+        $saveSetting($pdo, 'feature_matching_income', $wantMatching ? '1' : '0');
         $auditKeys = [
             'binary_commission_percent', 'referral_commission_percent', 'matching_commission_percent',
-            'binary_flush_pairs', 'binary_pair_bv', 'daily_closing_admin_charge',
-            'binary_income_enabled', 'feature_binary_income', 'feature_matching_income',
+            'binary_flush_pairs', 'binary_pair_bv', 'binary_match_ratio', 'daily_closing_admin_charge',
+            'binary_income_enabled', 'feature_binary_income', 'feature_matching_income', 'feature_dsi_income',
         ];
     } elseif ($postSub === 'level') {
         $levelCount = max(1, min(20, (int) ($_POST['level_income_levels'] ?? 10)));
@@ -84,6 +90,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $wantLevel = isset($_POST['level_income_enabled']);
         if (in_array($mode, ['level', 'unilevel', 'matrix'], true)) {
             $wantLevel = true;
+        } elseif ($mode === 'binary') {
+            $wantLevel = false;
         }
         $saveSetting($pdo, 'level_income_enabled', $wantLevel ? '1' : '0');
         $saveSetting($pdo, 'feature_level_income', $wantLevel ? '1' : '0');
@@ -100,15 +108,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $auditKeys[] = 'level_' . $i . '_percent';
         }
     } elseif ($postSub === 'dsi') {
-        $saveSetting($pdo, 'feature_dsi_income', isset($_POST['feature_dsi_income']) ? '1' : '0');
-        foreach (['dsi_pool_percent', 'dsi_level_1_percent', 'dsi_level_2_percent', 'dsi_level_3_percent', 'dsi_level_4_percent'] as $key) {
+        $wantDsi = isset($_POST['feature_dsi_income']);
+        if (!plan_uses_binary() || !feature_enabled('feature_binary_income')) {
+            $wantDsi = false;
+        }
+        $splitTotal = 0.0;
+        foreach (['dsi_level_1_percent', 'dsi_level_2_percent', 'dsi_level_3_percent', 'dsi_level_4_percent', 'dsi_level_5_percent'] as $key) {
+            $val = isset($_POST[$key]) ? trim((string) $_POST[$key]) : '0';
+            if ($val === '' || !is_numeric($val)) {
+                $val = '0';
+            }
+            $splitTotal += max(0.0, (float) $val);
+        }
+        if ($splitTotal > 100.0001) {
+            flash('error', 'DSI level split cannot exceed 100% of the pool (currently ' . round($splitTotal, 2) . '%).');
+            header('Location: commission.php?sub=dsi');
+            exit;
+        }
+        $saveSetting($pdo, 'feature_dsi_income', $wantDsi ? '1' : '0');
+        foreach (['dsi_pool_percent', 'dsi_level_1_percent', 'dsi_level_2_percent', 'dsi_level_3_percent', 'dsi_level_4_percent', 'dsi_level_5_percent'] as $key) {
             $val = isset($_POST[$key]) ? trim((string) $_POST[$key]) : '0';
             if ($val === '' || !is_numeric($val)) {
                 $val = '0';
             }
             $saveSetting($pdo, $key, $val);
         }
-        $auditKeys = ['feature_dsi_income', 'dsi_pool_percent', 'dsi_level_1_percent', 'dsi_level_2_percent', 'dsi_level_3_percent', 'dsi_level_4_percent'];
+        $auditKeys = ['feature_dsi_income', 'dsi_pool_percent', 'dsi_level_1_percent', 'dsi_level_2_percent', 'dsi_level_3_percent', 'dsi_level_4_percent', 'dsi_level_5_percent'];
     } else {
         $saveSetting($pdo, 'feature_ranks_enabled', isset($_POST['feature_ranks_enabled']) ? '1' : '0');
         $saveSetting($pdo, 'feature_rewards_enabled', isset($_POST['feature_rewards_enabled']) ? '1' : '0');
@@ -158,7 +183,8 @@ $rewards = plan_rewards_list($pdo, false);
 $dsiSplit = (float) ($settings['dsi_level_1_percent'] ?? 50)
     + (float) ($settings['dsi_level_2_percent'] ?? 20)
     + (float) ($settings['dsi_level_3_percent'] ?? 15)
-    + (float) ($settings['dsi_level_4_percent'] ?? 10);
+    + (float) ($settings['dsi_level_4_percent'] ?? 10)
+    + (float) ($settings['dsi_level_5_percent'] ?? 5);
 ?>
 <section class="sa-hero">
     <div>
@@ -231,10 +257,14 @@ $dsiSplit = (float) ($settings['dsi_level_1_percent'] ?? 50)
             <input type="checkbox" name="binary_income_enabled" value="1" <?= ($settings['binary_income_enabled'] ?? '1') === '1' ? 'checked' : '' ?><?= $lockAttr ?>>
             Binary income enabled
         </label>
+        <label class="sa-toggle-row">
+            <input type="checkbox" name="feature_matching_income" value="1" <?= ($settings['feature_matching_income'] ?? '1') === '1' ? 'checked' : '' ?><?= $lockAttr ?>>
+            Matching bonus enabled (sponsor % on downline binary gross)
+        </label>
         <div class="sa-form-grid">
             <div class="form-group">
                 <label>Binary commission %</label>
-                <input type="number" step="0.01" min="0" name="binary_commission_percent" value="<?= e($settings['binary_commission_percent'] ?? '10') ?>"<?= $lockAttr ?>>
+                <input type="number" step="0.01" min="0" name="binary_commission_percent" value="<?= e($settings['binary_commission_percent'] ?? '15') ?>"<?= $lockAttr ?>>
             </div>
             <div class="form-group">
                 <label>Referral commission %</label>
@@ -243,18 +273,20 @@ $dsiSplit = (float) ($settings['dsi_level_1_percent'] ?? 50)
             <div class="form-group">
                 <label>Matching commission %</label>
                 <input type="number" step="0.01" min="0" name="matching_commission_percent" value="<?= e($settings['matching_commission_percent'] ?? '0') ?>"<?= $lockAttr ?>>
+                <span class="sa-field-hint">0 = no matching bonus even if toggle is on</span>
             </div>
             <div class="form-group">
-                <label>Pair PV</label>
-                <input type="number" step="0.01" min="0" name="binary_pair_bv" value="<?= e($settings['binary_pair_bv'] ?? '1000') ?>"<?= $lockAttr ?>>
+                <label>Pair PV (unit)</label>
+                <input type="number" step="0.01" min="1" name="binary_pair_bv" value="<?= e($settings['binary_pair_bv'] ?? '1000') ?>"<?= $lockAttr ?>>
+                <span class="sa-field-hint">Used for flush cap, rank/reward pair units, and consume mode</span>
             </div>
             <div class="form-group">
                 <label>Match ratio</label>
                 <select name="binary_match_ratio"<?= $lockAttr ?>>
                     <?php $ratio = (string) ($settings['binary_match_ratio'] ?? '1:2'); ?>
-                    <option value="1:2" <?= !in_array($ratio, ['1:1', 'consume'], true) ? 'selected' : '' ?>>1:2 / 2:1 — weaker eligible volume (10k + 10k → 10k)</option>
-                    <option value="1:1" <?= $ratio === '1:1' ? 'selected' : '' ?>>1:1 equal legs (same weaker-side match)</option>
-                    <option value="consume" <?= $ratio === 'consume' ? 'selected' : '' ?>>Strict consume (1 weak + 2 strong; 10k + 10k → 5k)</option>
+                    <option value="1:2" <?= !in_array($ratio, ['1:1', 'consume'], true) ? 'selected' : '' ?>>1:2 / 2:1 — weaker PV when unequal; equal legs → no pay</option>
+                    <option value="1:1" <?= $ratio === '1:1' ? 'selected' : '' ?>>1:1 — match min(L,R) including equal legs</option>
+                    <option value="consume" <?= $ratio === 'consume' ? 'selected' : '' ?>>Strict consume (Pair-PV units: 1 weak + 2 strong)</option>
                 </select>
             </div>
             <div class="form-group">
@@ -264,6 +296,7 @@ $dsiSplit = (float) ($settings['dsi_level_1_percent'] ?? 50)
             <div class="form-group">
                 <label>Daily closing admin charge %</label>
                 <input type="number" step="0.01" min="0" name="daily_closing_admin_charge" value="<?= e($settings['daily_closing_admin_charge'] ?? '0') ?>"<?= $lockAttr ?>>
+                <span class="sa-field-hint">Deducted from binary net; matching bonus uses binary gross before this charge</span>
             </div>
         </div>
         <?php if (!$frozen): ?>
@@ -279,14 +312,20 @@ $dsiSplit = (float) ($settings['dsi_level_1_percent'] ?? 50)
     <div class="sa-panel-head">
         <div>
             <h2>Level income ladder</h2>
-            <p>Percent of package amount paid up the sponsor chain</p>
+            <p>Percent of package amount paid up the sponsor chain<?= plan_mode() === 'binary' ? ' — not paid in pure binary mode (switch to Hybrid to combine)' : '' ?></p>
         </div>
     </div>
     <div class="sa-panel-body">
+        <?php if (plan_mode() === 'binary'): ?>
+        <div class="alert alert-warning" style="margin-bottom:1rem">Plan mode is Binary only. Level income is forced off. Use Hybrid mode to enable both binary and level.</div>
+        <?php endif; ?>
         <label class="sa-toggle-row">
-            <input type="checkbox" name="level_income_enabled" value="1" <?= ($settings['level_income_enabled'] ?? '1') === '1' ? 'checked' : '' ?><?= $lockAttr ?>>
+            <input type="checkbox" name="level_income_enabled" value="1" <?= ($settings['level_income_enabled'] ?? '1') === '1' ? 'checked' : '' ?><?= $lockAttr ?><?= plan_mode() === 'binary' ? ' disabled' : '' ?>>
             Level income enabled
         </label>
+        <?php if (plan_mode() === 'binary'): ?>
+        <input type="hidden" name="level_income_enabled" value="0">
+        <?php endif; ?>
         <div class="sa-form-grid" style="margin-bottom:1rem">
             <div class="form-group">
                 <label>Number of levels (1–20)</label>
@@ -315,25 +354,31 @@ $dsiSplit = (float) ($settings['dsi_level_1_percent'] ?? 50)
     <div class="sa-panel-head">
         <div>
             <h2>Direct Sponsor Incentive</h2>
-            <p>On kit activation and every paid product order, a pool (% of amount) is split up 4 sponsor levels. Recipients must be active with a package. Remaining pool stays with the company.</p>
+            <p>On kit activation and paid product orders, a pool is queued up 5 sponsor levels and settled on <strong>binary closing</strong>. Requires binary income. Recipients must be active with a package.</p>
         </div>
     </div>
     <div class="sa-panel-body">
+        <?php if (!plan_uses_binary() || ($settings['feature_binary_income'] ?? '1') !== '1'): ?>
+        <div class="alert alert-warning" style="margin-bottom:1rem">DSI cannot settle without binary income / closing. Enable binary plan income first, or DSI will stay off.</div>
+        <?php endif; ?>
         <label class="sa-toggle-row">
-            <input type="checkbox" name="feature_dsi_income" value="1" <?= ($settings['feature_dsi_income'] ?? '1') === '1' ? 'checked' : '' ?><?= $lockAttr ?>>
+            <input type="checkbox" name="feature_dsi_income" value="1" <?= ($settings['feature_dsi_income'] ?? '1') === '1' ? 'checked' : '' ?><?= $lockAttr ?><?= (!plan_uses_binary() || ($settings['feature_binary_income'] ?? '1') !== '1') ? ' disabled' : '' ?>>
             DSI enabled
         </label>
+        <?php if (!plan_uses_binary() || ($settings['feature_binary_income'] ?? '1') !== '1'): ?>
+        <input type="hidden" name="feature_dsi_income" value="0">
+        <?php endif; ?>
         <div class="sa-form-grid">
             <div class="form-group">
                 <label>Distributable pool % of activity amount</label>
                 <input type="number" step="0.01" min="0" name="dsi_pool_percent" value="<?= e($settings['dsi_pool_percent'] ?? '10') ?>"<?= $lockAttr ?>>
             </div>
             <div class="form-group">
-                <label>Level 1 (direct sponsor) % of pool</label>
+                <label>Level 1 — First Direct % of pool</label>
                 <input type="number" step="0.01" min="0" name="dsi_level_1_percent" value="<?= e($settings['dsi_level_1_percent'] ?? '50') ?>"<?= $lockAttr ?>>
             </div>
             <div class="form-group">
-                <label>Level 2 % of pool</label>
+                <label>Level 2 — Indirect % of pool</label>
                 <input type="number" step="0.01" min="0" name="dsi_level_2_percent" value="<?= e($settings['dsi_level_2_percent'] ?? '20') ?>"<?= $lockAttr ?>>
             </div>
             <div class="form-group">
@@ -344,8 +389,12 @@ $dsiSplit = (float) ($settings['dsi_level_1_percent'] ?? 50)
                 <label>Level 4 % of pool</label>
                 <input type="number" step="0.01" min="0" name="dsi_level_4_percent" value="<?= e($settings['dsi_level_4_percent'] ?? '10') ?>"<?= $lockAttr ?>>
             </div>
+            <div class="form-group">
+                <label>Level 5 % of pool</label>
+                <input type="number" step="0.01" min="0" name="dsi_level_5_percent" value="<?= e($settings['dsi_level_5_percent'] ?? '5') ?>"<?= $lockAttr ?>>
+            </div>
         </div>
-        <p class="sa-field-hint">Level split currently totals <?= e(rtrim(rtrim(number_format($dsiSplit, 2, '.', ''), '0'), '.')) ?>% of the pool. Anything under 100% is retained by the company.</p>
+        <p class="sa-field-hint">Level split currently totals <?= e(rtrim(rtrim(number_format($dsiSplit, 2, '.', ''), '0'), '.')) ?>% of the pool<?= $dsiSplit > 100 ? ' — must be ≤ 100%' : '' ?>. Under 100% is retained by the company.</p>
         <?php if (!$frozen): ?>
         <div class="sa-form-actions">
             <button type="submit" class="btn btn-primary">Save DSI rates</button>

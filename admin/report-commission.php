@@ -15,12 +15,6 @@ if (feature_enabled('feature_binary_income') && plan_uses_binary()) {
 if (feature_enabled('feature_referral_income')) {
     $enabledTypes[] = 'referral';
 }
-if (feature_enabled('feature_matching_income') && plan_uses_binary()) {
-    $enabledTypes[] = 'matching';
-}
-if (feature_enabled('feature_dsi_income')) {
-    $enabledTypes[] = 'dsi';
-}
 if (feature_enabled('feature_ranks_enabled') && plan_uses_binary()) {
     $enabledTypes[] = 'rank';
 }
@@ -71,6 +65,11 @@ $sumStmt = $pdo->prepare($sumSql);
 $sumStmt->execute($params);
 $totalAmt = (float) $sumStmt->fetchColumn();
 
+$countSql = 'SELECT COUNT(*) FROM commissions c JOIN members m ON m.id = c.member_id WHERE ' . implode(' AND ', $where);
+$countStmt = $pdo->prepare($countSql);
+$countStmt->execute($params);
+$totalRows = (int) $countStmt->fetchColumn();
+
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
@@ -78,7 +77,7 @@ require_once __DIR__ . '/../includes/header.php';
     <div class="panel-header">
         <div>
             <h2>Commission Report</h2>
-            <p class="tpin-panel-sub">Filter by date, type, status and member</p>
+            <p class="tpin-panel-sub">Filter by date, type, status and member · DSI / Matching have separate reports</p>
         </div>
         <a href="commissions.php" class="btn btn-outline btn-sm">Manage commissions</a>
     </div>
@@ -93,7 +92,8 @@ require_once __DIR__ . '/../includes/header.php';
         ]);
         ?>
         <div class="stats-grid tpin-stats">
-            <div class="stat-card accent"><div class="label">Rows</div><div class="value"><?= count($rows) ?></div></div>
+            <div class="stat-card accent"><div class="label">Total rows</div><div class="value"><?= $totalRows ?></div></div>
+            <div class="stat-card"><div class="label">Showing</div><div class="value"><?= count($rows) ?></div></div>
             <div class="stat-card"><div class="label">Total amount</div><div class="value" style="font-size:1.2rem"><?= currency($totalAmt) ?></div></div>
         </div>
     </div>

@@ -36,7 +36,16 @@ $rows = $stmt->fetchAll();
 $pendingCount = wd_pending_count($pdo, $uid);
 $pendingSum = wd_pending_sum($pdo, $uid);
 
-$ps = $pdo->prepare("SELECT COALESCE(SUM(amount),0) FROM withdrawals WHERE member_id = ? AND status IN ('approved','paid')");
+$ps = $pdo->prepare("
+    SELECT COALESCE(SUM(
+        CASE
+            WHEN net_amount IS NOT NULL THEN net_amount
+            ELSE GREATEST(0, amount - COALESCE(tds_amount,0) - COALESCE(fee_amount,0) - COALESCE(other_deduction,0))
+        END
+    ),0)
+    FROM withdrawals
+    WHERE member_id = ? AND status IN ('approved','paid')
+");
 $ps->execute([$uid]);
 $paidSum = (float) $ps->fetchColumn();
 
@@ -64,7 +73,7 @@ $allCount = (int) $ac->fetchColumn();
     <article class="wd-stat g-green">
         <span class="wd-stat-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
         <div>
-            <span class="wd-stat-label">Approved / Paid</span>
+            <span class="wd-stat-label">Approved / Paid (net)</span>
             <strong class="is-sm"><?= currency($paidSum) ?></strong>
         </div>
     </article>

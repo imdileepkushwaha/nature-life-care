@@ -40,6 +40,10 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $rows = $stmt->fetchAll();
 
+$countStmt = $pdo->prepare('SELECT COUNT(*) FROM members m WHERE ' . implode(' AND ', $where));
+$countStmt->execute($params);
+$joinsTotal = (int) $countStmt->fetchColumn();
+
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
@@ -66,7 +70,10 @@ require_once __DIR__ . '/../includes/header.php';
         ]);
         ?>
         <div class="stats-grid tpin-stats">
-            <div class="stat-card accent"><div class="label">Joins</div><div class="value"><?= count($rows) ?></div></div>
+            <div class="stat-card accent"><div class="label">Joins</div><div class="value"><?= $joinsTotal ?></div></div>
+            <?php if ($joinsTotal > count($rows)): ?>
+            <div class="stat-card"><div class="label">Showing</div><div class="value"><?= count($rows) ?></div></div>
+            <?php endif; ?>
         </div>
     </div>
     <div class="table-wrap">

@@ -412,6 +412,7 @@ require_once __DIR__ . '/../includes/utility.php';
 require_once __DIR__ . '/../includes/features.php';
 require_once __DIR__ . '/../includes/matrix.php';
 require_once __DIR__ . '/../includes/plan_incentives.php';
+require_once __DIR__ . '/../includes/income_tables.php';
 
 // Ensure feature defaults + super_admins when DB is ready (no-op if tables missing).
 try {
@@ -420,6 +421,7 @@ try {
     currency_symbol_heal($pdo);
     settings_mojibake_heal($pdo);
     plan_incentives_ensure($pdo);
+    income_tables_ensure($pdo);
 } catch (Throwable $e) {
     // ignore during early install
 }

@@ -17,6 +17,25 @@ $gstin = invoice_gstin();
 $logoUrl = company_logo_url();
 $signatureUrl = company_signature_url();
 $joinDate = !empty($user['join_date']) ? date('d M Y', strtotime((string) $user['join_date'])) : date('d M Y');
+$activationDate = $joinDate;
+try {
+    require_once __DIR__ . '/../includes/activation.php';
+    activation_ensure_requests_table($pdo);
+    $as = $pdo->prepare("
+        SELECT COALESCE(processed_at, created_at) AS act_at
+        FROM activation_requests
+        WHERE member_id = ? AND status = 'approved' AND package_id = ?
+        ORDER BY id DESC
+        LIMIT 1
+    ");
+    $as->execute([(int) $user['id'], $packageId]);
+    $actAt = $as->fetchColumn();
+    if ($actAt) {
+        $activationDate = date('d M Y', strtotime((string) $actAt));
+    }
+} catch (Throwable $e) {
+    // keep join date fallback
+}
 $kitNo = 'KIT/' . ($user['member_id'] ?? '') . '/' . ($pkg['id'] ?? '0');
 ?>
 <div class="doc-page shop-invoice-page">
@@ -89,7 +108,7 @@ $kitNo = 'KIT/' . ($user['member_id'] ?? '') . '/' . ($pkg['id'] ?? '0');
                 </div>
                 <div>
                     <span>Activation date</span>
-                    <strong><?= e($joinDate) ?></strong>
+                    <strong><?= e($activationDate) ?></strong>
                 </div>
                 <div>
                     <span>Quantity</span>

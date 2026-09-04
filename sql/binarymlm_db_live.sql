@@ -145,7 +145,7 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('company_name', 'Binary MLM'),
 ('member_id_prefix', 'MLM'),
 ('member_id_pad', '5'),
-('binary_commission_percent', '10'),
+('binary_commission_percent', '15'),
 ('referral_commission_percent', '5'),
 ('matching_commission_percent', '0'),
 ('binary_flush_pairs', '0'),

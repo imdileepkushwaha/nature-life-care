@@ -48,7 +48,8 @@ $packageOpen = in_array($currentPage, $packagePages, true);
 
 $reportPages = [
     'reports', 'report-commission', 'report-joining', 'report-package-sales',
-    'report-top-earners', 'report-binary-closing', 'tds-report', 'stock-report', 'tpin-report',
+    'report-top-earners', 'report-binary-closing', 'report-dsi', 'report-matching',
+    'tds-report', 'stock-report', 'tpin-report',
     'weekly-reconciliation',
 ];
 $reportOpen = in_array($currentPage, $reportPages, true);
@@ -376,6 +377,12 @@ $chevronDown = '<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke=
                     <div class="nav-submenu">
                         <a href="reports.php" class="<?= $currentPage === 'reports' ? 'active' : '' ?>"><span class="dot"></span>Overview</a>
                         <a href="report-commission.php" class="<?= $currentPage === 'report-commission' ? 'active' : '' ?>"><span class="dot"></span>Commission Report</a>
+                        <?php if (feature_enabled('feature_dsi_income')): ?>
+                        <a href="report-dsi.php" class="<?= $currentPage === 'report-dsi' ? 'active' : '' ?>"><span class="dot"></span>DSI Report</a>
+                        <?php endif; ?>
+                        <?php if (feature_enabled('feature_matching_income') && plan_uses_binary()): ?>
+                        <a href="report-matching.php" class="<?= $currentPage === 'report-matching' ? 'active' : '' ?>"><span class="dot"></span>Matching Report</a>
+                        <?php endif; ?>
                         <a href="report-joining.php" class="<?= $currentPage === 'report-joining' ? 'active' : '' ?>"><span class="dot"></span>Joining Report</a>
                         <?php if ($featPackages): ?>
                         <a href="report-package-sales.php" class="<?= $currentPage === 'report-package-sales' ? 'active' : '' ?>"><span class="dot"></span>Package Sales</a>

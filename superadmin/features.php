@@ -1,10 +1,27 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
+require_superadmin();
 $pageTitle = 'Plan & Features';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? 'save';
     $before = feature_audit_snapshot($pdo);
+
+    // Freeze locks income topology / payout-related toggles and presets.
+    $incomeKeysTouched = $action === 'preset'
+        || isset($_POST['plan_mode'])
+        || isset($_POST['feature_binary_income'])
+        || isset($_POST['feature_level_income'])
+        || isset($_POST['feature_matching_income'])
+        || isset($_POST['feature_dsi_income'])
+        || isset($_POST['feature_ranks_enabled'])
+        || isset($_POST['feature_rewards_enabled'])
+        || isset($_POST['feature_referral_income']);
+    if (commission_rates_frozen() && $incomeKeysTouched) {
+        flash('error', 'Payout rates are frozen. Unlock them on Commission Rates before changing income features or presets.');
+        header('Location: features.php');
+        exit;
+    }
 
     if ($action === 'preset') {
         $preset = trim((string) ($_POST['preset'] ?? ''));
@@ -280,10 +297,10 @@ $switch = static function (string $name, string $label, string $hint, bool $on, 
         <h3 class="sa-section-title"><?= $secIco('<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>') ?> Income modules</h3>
         <div class="sa-switch-grid">
             <?= $switch('feature_binary_income', 'Binary income', 'Pair matching / binary closing payouts', feature_enabled('feature_binary_income')) ?>
-            <?= $switch('feature_level_income', 'Level income', 'Sponsor-level % on activations', feature_enabled('feature_level_income')) ?>
+            <?= $switch('feature_level_income', 'Level income', 'Sponsor-level % on activations (hybrid / level / matrix / unilevel — ignored in pure binary mode)', feature_enabled('feature_level_income')) ?>
             <?= $switch('feature_referral_income', 'Referral income', 'Direct sponsor bonus on activation', feature_enabled('feature_referral_income')) ?>
-            <?= $switch('feature_matching_income', 'Matching income', 'Matching bonus on downline earnings', feature_enabled('feature_matching_income')) ?>
-            <?= $switch('feature_dsi_income', 'DSI — Direct Sponsor', 'L1–L4 share of the distributable incentive pool on product / kit activity', feature_enabled('feature_dsi_income')) ?>
+            <?= $switch('feature_matching_income', 'Matching bonus', 'Sponsor bonus % on downline binary gross (pair income still shows under Matching Income when binary is on)', feature_enabled('feature_matching_income')) ?>
+            <?= $switch('feature_dsi_income', 'DSI — Direct Sponsor', 'L1–L5 pool on kit/product activity — settled only on binary closing (requires binary income)', feature_enabled('feature_dsi_income')) ?>
             <?= $switch('feature_ranks_enabled', 'Rank & promotion', 'Auto-promote Executive → Director from lifetime pairs', feature_enabled('feature_ranks_enabled')) ?>
             <?= $switch('feature_rewards_enabled', 'Business rewards', 'Pair-milestone gifts; Client Admin fulfills / credits cash', feature_enabled('feature_rewards_enabled')) ?>
         </div>

@@ -15,15 +15,27 @@ $joinsStmt = $pdo->prepare('SELECT COUNT(*) FROM members WHERE DATE(join_date) B
 $joinsStmt->execute([$from, $to]);
 $joins = (int) $joinsStmt->fetchColumn();
 
+require_once __DIR__ . '/../includes/income_tables.php';
+income_tables_ensure($pdo);
+
 $commStmt = $pdo->prepare("SELECT COALESCE(SUM(amount),0) FROM commissions WHERE status != 'cancelled' AND DATE(created_at) BETWEEN ? AND ?");
 $commStmt->execute([$from, $to]);
 $commTotal = (float) $commStmt->fetchColumn();
+$mStmt = $pdo->prepare("SELECT COALESCE(SUM(amount),0) FROM income_matching WHERE status != 'cancelled' AND DATE(created_at) BETWEEN ? AND ?");
+$mStmt->execute([$from, $to]);
+$commTotal += (float) $mStmt->fetchColumn();
+$dStmt = $pdo->prepare("SELECT COALESCE(SUM(amount),0) FROM income_dsi WHERE status != 'cancelled' AND DATE(created_at) BETWEEN ? AND ?");
+$dStmt->execute([$from, $to]);
+$commTotal += (float) $dStmt->fetchColumn();
 
 $wdTotal = 0.0;
 $pendingWdCount = 0;
 $pendingWdSum = 0.0;
 if ($showWithdrawals) {
-    $wdStmt = $pdo->prepare("SELECT COALESCE(SUM(amount),0) FROM withdrawals WHERE status IN ('approved','paid') AND DATE(COALESCE(processed_at, requested_at)) BETWEEN ? AND ?");
+    require_once __DIR__ . '/../includes/withdrawal.php';
+    wd_ensure_columns($pdo);
+    $netExpr = wd_net_sql_expr('w');
+    $wdStmt = $pdo->prepare("SELECT COALESCE(SUM({$netExpr}),0) FROM withdrawals w WHERE w.status IN ('approved','paid') AND DATE(COALESCE(w.processed_at, w.requested_at)) BETWEEN ? AND ?");
     $wdStmt->execute([$from, $to]);
     $wdTotal = (float) $wdStmt->fetchColumn();
 
@@ -59,7 +71,7 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
             <?php if ($showWithdrawals): ?>
             <div class="stat-card">
-                <div class="label">Payouts</div>
+                <div class="label">Net Payouts</div>
                 <div class="value" style="font-size:1.25rem"><?= currency($wdTotal) ?></div>
             </div>
             <div class="stat-card">
@@ -78,6 +90,12 @@ require_once __DIR__ . '/../includes/header.php';
 
         <div class="tpin-gen-grid" style="margin-top:1rem">
             <a class="btn btn-outline" href="report-commission.php?from=<?= e($from) ?>&to=<?= e($to) ?>">Commission Report</a>
+            <?php if (feature_enabled('feature_dsi_income')): ?>
+            <a class="btn btn-outline" href="report-dsi.php?from=<?= e($from) ?>&to=<?= e($to) ?>">DSI Report</a>
+            <?php endif; ?>
+            <?php if (feature_enabled('feature_matching_income') && plan_uses_binary()): ?>
+            <a class="btn btn-outline" href="report-matching.php?from=<?= e($from) ?>&to=<?= e($to) ?>">Matching Report</a>
+            <?php endif; ?>
             <a class="btn btn-outline" href="report-joining.php?from=<?= e($from) ?>&to=<?= e($to) ?>">Joining Report</a>
             <?php if ($showPackages): ?>
             <a class="btn btn-outline" href="report-package-sales.php?from=<?= e($from) ?>&to=<?= e($to) ?>">Package Sales</a>

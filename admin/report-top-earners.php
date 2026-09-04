@@ -1,7 +1,10 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/report_helpers.php';
+require_once __DIR__ . '/../includes/income_tables.php';
 $pageTitle = 'Top Earners';
+
+income_tables_ensure($pdo);
 
 [$from, $to] = report_parse_dates();
 $q = trim((string) ($_GET['q'] ?? ''));
@@ -13,7 +16,7 @@ $minEarnVal = is_numeric($minEarn) ? (float) $minEarn : null;
 $packages = $pdo->query('SELECT id, name FROM packages ORDER BY amount ASC')->fetchAll();
 
 $where = ['1=1'];
-$params = [$from, $to]; // for period commissions subquery
+$params = [$from, $to, $from, $to, $from, $to]; // period earn unions
 
 if ($packageId > 0) {
     $where[] = 'm.package_id = ?';
@@ -24,8 +27,10 @@ if ($status !== '' && in_array($status, ['active', 'inactive', 'blocked'], true)
     $params[] = $status;
 }
 if ($minEarnVal !== null) {
-    $where[] = 'm.total_earnings >= ?';
+    $where[] = 'COALESCE(pe.period_earn, 0) >= ?';
     $params[] = $minEarnVal;
+} else {
+    $where[] = 'COALESCE(pe.period_earn, 0) > 0';
 }
 if ($q !== '') {
     $where[] = '(m.member_id LIKE ? OR m.full_name LIKE ? OR m.username LIKE ?)';
@@ -42,8 +47,16 @@ $sql = '
     LEFT JOIN packages p ON p.id = m.package_id
     LEFT JOIN (
         SELECT member_id, COALESCE(SUM(amount),0) AS period_earn
-        FROM commissions
-        WHERE status != \'cancelled\' AND DATE(created_at) BETWEEN ? AND ?
+        FROM (
+            SELECT member_id, amount FROM commissions
+            WHERE status != \'cancelled\' AND DATE(created_at) BETWEEN ? AND ?
+            UNION ALL
+            SELECT member_id, amount FROM income_matching
+            WHERE status != \'cancelled\' AND DATE(created_at) BETWEEN ? AND ?
+            UNION ALL
+            SELECT member_id, amount FROM income_dsi
+            WHERE status != \'cancelled\' AND DATE(created_at) BETWEEN ? AND ?
+        ) x
         GROUP BY member_id
     ) pe ON pe.member_id = m.id
     WHERE ' . implode(' AND ', $where) . '

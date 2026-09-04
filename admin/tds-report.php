@@ -38,6 +38,7 @@ if ($minTdsVal !== null) {
 }
 
 $whereSql = implode(' AND ', $where);
+$netExpr = wd_net_sql_expr('w');
 
 if (isset($_GET['export']) && $_GET['export'] === 'csv') {
     $exportWhere = $where;
@@ -84,7 +85,7 @@ $sumStmt = $pdo->prepare("
         COALESCE(SUM(w.tds_amount),0) AS tds,
         COALESCE(SUM(w.fee_amount),0) AS fee,
         COALESCE(SUM(w.other_deduction),0) AS other_ded,
-        COALESCE(SUM(COALESCE(w.net_amount, w.amount)),0) AS net
+        COALESCE(SUM({$netExpr}),0) AS net
     FROM withdrawals w
     JOIN members m ON m.id = w.member_id
     WHERE {$whereSql}

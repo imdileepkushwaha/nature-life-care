@@ -170,6 +170,18 @@ function wd_net_display(array $row): float
     return round(max(0, $gross - $tds - $fee - $other), 2);
 }
 
+/** SQL expression for remitted net (never falls back to gross alone). */
+function wd_net_sql_expr(string $alias = 'w'): string
+{
+    return "CASE
+        WHEN {$alias}.net_amount IS NOT NULL THEN {$alias}.net_amount
+        ELSE GREATEST(0, {$alias}.amount
+            - COALESCE({$alias}.tds_amount, 0)
+            - COALESCE({$alias}.fee_amount, 0)
+            - COALESCE({$alias}.other_deduction, 0))
+    END";
+}
+
 function wd_status_pill(string $status): string
 {
     $s = strtolower($status);

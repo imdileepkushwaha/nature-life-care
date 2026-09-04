@@ -12,12 +12,12 @@ function income_types_catalog(): array
     return [
         'binary' => [
             'key' => 'binary',
-            'label' => 'Binary Income',
-            'short' => 'Binary',
-            'file' => 'income-binary.php',
-            'kicker' => 'Pair matching',
-            'desc' => 'Earnings from 1:2 / 2:1 matching on company-approved eligible volume.',
-            'tone' => 'blue',
+            'label' => 'Matching Income',
+            'short' => 'Matching',
+            'file' => 'income-matching.php',
+            'kicker' => '1:2 / 2:1 pair',
+            'desc' => 'Earnings from completed pairs on eligible PV.',
+            'tone' => 'orange',
         ],
         'referral' => [
             'key' => 'referral',
@@ -34,7 +34,8 @@ function income_types_catalog(): array
             'short' => 'Matching',
             'file' => 'income-matching.php',
             'kicker' => '1:2 / 2:1 pair',
-            'desc' => 'Income from completed 1:2 / 2:1 pairs on eligible PV, plus any matching bonus on your team.',
+            'desc' => 'Income from completed 1:2 / 2:1 pairs on eligible PV'
+                . (feature_enabled('feature_matching_income') ? ', plus matching bonus on your team\'s binary gross.' : '.'),
             'tone' => 'orange',
         ],
         'level' => [
@@ -52,7 +53,7 @@ function income_types_catalog(): array
             'short' => 'DSI',
             'file' => 'income-dsi.php',
             'kicker' => 'Direct sponsor',
-            'desc' => 'Share of the distributable incentive from product and kit activity in your sponsor line.',
+            'desc' => 'Share of the distributable incentive from product and kit activity in your sponsor line. Credited to your wallet only after binary closing.',
             'tone' => 'green',
         ],
         'rank' => [
@@ -164,42 +165,151 @@ function income_type_sql_types(?string $type): array
     return [$type];
 }
 
-function income_sum(PDO $pdo, int $memberId, ?string $type = null, ?string $status = null): float
+function income_commissions_sum(PDO $pdo, int $memberId, array $types, ?string $status = null): float
 {
-    $where = ['member_id = ?'];
-    $params = [$memberId];
-    $types = income_type_sql_types($type);
-    if ($types) {
-        $where[] = 'type IN (' . implode(',', array_fill(0, count($types), '?')) . ')';
-        array_push($params, ...$types);
+    if (!$types) {
+        return 0.0;
     }
+    $where = ['member_id = ?', 'type IN (' . implode(',', array_fill(0, count($types), '?')) . ')'];
+    $params = array_merge([$memberId], $types);
     if ($status !== null && $status !== '') {
         $where[] = 'status = ?';
         $params[] = $status;
     }
-    $sql = 'SELECT COALESCE(SUM(amount), 0) FROM commissions WHERE ' . implode(' AND ', $where);
-    $stmt = $pdo->prepare($sql);
+    $stmt = $pdo->prepare('SELECT COALESCE(SUM(amount), 0) FROM commissions WHERE ' . implode(' AND ', $where));
     $stmt->execute($params);
     return (float) $stmt->fetchColumn();
 }
 
-function income_count(PDO $pdo, int $memberId, ?string $type = null, ?string $status = null): int
+function income_commissions_count(PDO $pdo, int $memberId, array $types, ?string $status = null): int
 {
+    if (!$types) {
+        return 0;
+    }
+    $where = ['member_id = ?', 'type IN (' . implode(',', array_fill(0, count($types), '?')) . ')'];
+    $params = array_merge([$memberId], $types);
+    if ($status !== null && $status !== '') {
+        $where[] = 'status = ?';
+        $params[] = $status;
+    } else {
+        $where[] = "status != 'cancelled'";
+    }
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM commissions WHERE ' . implode(' AND ', $where));
+    $stmt->execute($params);
+    return (int) $stmt->fetchColumn();
+}
+
+function income_sum(PDO $pdo, int $memberId, ?string $type = null, ?string $status = null): float
+{
+    require_once __DIR__ . '/income_tables.php';
+    income_tables_ensure($pdo);
+
+    // DSI is held until binary closing — never surface as visible pending.
+    if ($status === 'pending' && $type === 'dsi') {
+        return 0.0;
+    }
+
+    if ($type === 'dsi') {
+        $st = ($status === null || $status === '') ? null : $status;
+        $sum = income_split_sum($pdo, 'dsi', $memberId, $st);
+        if ($status === null || $status === '') {
+            // Unfiltered = exclude held pending.
+            $sum -= income_split_sum($pdo, 'dsi', $memberId, 'pending');
+        }
+        return max(0.0, $sum);
+    }
+
+    if ($type === 'matching') {
+        $matchStatus = $status;
+        $sum = income_split_sum($pdo, 'matching', $memberId, $matchStatus);
+        // Pair binary still listed under Matching Income in the user panel.
+        $sum += income_commissions_sum($pdo, $memberId, ['binary'], $status);
+        return $sum;
+    }
+
+    if ($type !== null && $type !== '') {
+        return income_commissions_sum($pdo, $memberId, income_type_sql_types($type), $status);
+    }
+
+    // All types: commissions + matching table + (paid) DSI.
     $where = ['member_id = ?'];
     $params = [$memberId];
-    $types = income_type_sql_types($type);
-    if ($types) {
-        $where[] = 'type IN (' . implode(',', array_fill(0, count($types), '?')) . ')';
-        array_push($params, ...$types);
-    }
     if ($status !== null && $status !== '') {
         $where[] = 'status = ?';
         $params[] = $status;
     }
-    $sql = 'SELECT COUNT(*) FROM commissions WHERE ' . implode(' AND ', $where);
-    $stmt = $pdo->prepare($sql);
+    $stmt = $pdo->prepare('SELECT COALESCE(SUM(amount), 0) FROM commissions WHERE ' . implode(' AND ', $where));
     $stmt->execute($params);
-    return (int) $stmt->fetchColumn();
+    $sum = (float) $stmt->fetchColumn();
+    $sum += income_split_sum($pdo, 'matching', $memberId, $status);
+    if ($status === 'pending') {
+        // Held DSI excluded from dashboard pending.
+    } elseif ($status === 'paid') {
+        $sum += income_split_sum($pdo, 'dsi', $memberId, 'paid');
+    } elseif ($status === 'cancelled') {
+        $sum += income_split_sum($pdo, 'dsi', $memberId, 'cancelled');
+    } else {
+        $sum += income_split_sum($pdo, 'dsi', $memberId, 'paid');
+        $sum += income_split_sum($pdo, 'dsi', $memberId, 'cancelled');
+    }
+    return $sum;
+}
+
+function income_count(PDO $pdo, int $memberId, ?string $type = null, ?string $status = null): int
+{
+    require_once __DIR__ . '/income_tables.php';
+    income_tables_ensure($pdo);
+
+    if ($status === 'pending' && $type === 'dsi') {
+        return 0;
+    }
+
+    if ($type === 'dsi') {
+        if ($status === null || $status === '') {
+            return income_split_count($pdo, 'dsi', $memberId, 'paid');
+        }
+        return income_split_count($pdo, 'dsi', $memberId, $status);
+    }
+
+    if ($type === 'matching') {
+        if ($status === null || $status === '') {
+            return income_split_count($pdo, 'matching', $memberId, 'paid')
+                + income_split_count($pdo, 'matching', $memberId, 'pending')
+                + income_commissions_count($pdo, $memberId, ['binary'], null);
+        }
+        return income_split_count($pdo, 'matching', $memberId, $status)
+            + income_commissions_count($pdo, $memberId, ['binary'], $status);
+    }
+
+    if ($type !== null && $type !== '') {
+        return income_commissions_count($pdo, $memberId, income_type_sql_types($type), $status);
+    }
+
+    $where = ['member_id = ?'];
+    $params = [$memberId];
+    if ($status !== null && $status !== '') {
+        $where[] = 'status = ?';
+        $params[] = $status;
+    } else {
+        $where[] = "status != 'cancelled'";
+    }
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM commissions WHERE ' . implode(' AND ', $where));
+    $stmt->execute($params);
+    $n = (int) $stmt->fetchColumn();
+    if ($status === 'pending') {
+        $n += income_split_count($pdo, 'matching', $memberId, 'pending');
+    } elseif ($status === 'paid') {
+        $n += income_split_count($pdo, 'matching', $memberId, 'paid');
+        $n += income_split_count($pdo, 'dsi', $memberId, 'paid');
+    } elseif ($status === 'cancelled') {
+        $n += income_split_count($pdo, 'matching', $memberId, 'cancelled');
+        $n += income_split_count($pdo, 'dsi', $memberId, 'cancelled');
+    } else {
+        $n += income_split_count($pdo, 'matching', $memberId, 'paid');
+        $n += income_split_count($pdo, 'matching', $memberId, 'pending');
+        $n += income_split_count($pdo, 'dsi', $memberId, 'paid');
+    }
+    return $n;
 }
 
 /**
@@ -208,14 +318,26 @@ function income_count(PDO $pdo, int $memberId, ?string $type = null, ?string $st
  */
 function income_fetch_rows(PDO $pdo, int $memberId, string $type, string $statusFilter = '', int $page = 1, int $perPage = 15): array
 {
+    require_once __DIR__ . '/income_tables.php';
+    income_tables_ensure($pdo);
+
     $page = max(1, $page);
     $perPage = max(5, min(50, $perPage));
-    $offset = ($page - 1) * $perPage;
 
+    if ($type === 'dsi') {
+        return income_split_fetch_rows($pdo, 'dsi', $memberId, $statusFilter, $page, $perPage);
+    }
+
+    if ($type === 'matching') {
+        return income_matching_fetch_rows($pdo, $memberId, $statusFilter, $page, $perPage);
+    }
+
+    $offset = ($page - 1) * $perPage;
     $types = income_type_sql_types($type);
     if (!$types) {
         $types = [$type];
     }
+
     $where = ['c.member_id = ?', 'c.type IN (' . implode(',', array_fill(0, count($types), '?')) . ')'];
     $params = array_merge([$memberId], $types);
     if (in_array($statusFilter, ['pending', 'paid', 'cancelled'], true)) {
@@ -249,3 +371,110 @@ function income_fetch_rows(PDO $pdo, int $memberId, string $type, string $status
         'page' => $page,
     ];
 }
+
+/**
+ * Matching Income report = matching bonus table + binary pair commissions.
+ * @return array{rows:array,total:int,total_pages:int,page:int}
+ */
+function income_matching_fetch_rows(
+    PDO $pdo,
+    int $memberId,
+    string $statusFilter = '',
+    int $page = 1,
+    int $perPage = 15
+): array {
+    $page = max(1, $page);
+    $perPage = max(5, min(50, $perPage));
+    $offset = ($page - 1) * $perPage;
+
+    $mWhere = ['c.member_id = ?'];
+    $bWhere = ["c.member_id = ?", "c.type = 'binary'"];
+    $params = [$memberId];
+    $bParams = [$memberId];
+    if (in_array($statusFilter, ['pending', 'paid', 'cancelled'], true)) {
+        $mWhere[] = 'c.status = ?';
+        $bWhere[] = 'c.status = ?';
+        $params[] = $statusFilter;
+        $bParams[] = $statusFilter;
+    }
+    $mSql = implode(' AND ', $mWhere);
+    $bSql = implode(' AND ', $bWhere);
+    $allParams = array_merge($params, $bParams);
+
+    $countStmt = $pdo->prepare("
+        SELECT (
+            (SELECT COUNT(*) FROM income_matching c WHERE {$mSql})
+            + (SELECT COUNT(*) FROM commissions c WHERE {$bSql})
+        )
+    ");
+    $countStmt->execute($allParams);
+    $total = (int) $countStmt->fetchColumn();
+    $totalPages = max(1, (int) ceil($total / $perPage));
+
+    $stmt = $pdo->prepare("
+        SELECT * FROM (
+            SELECT c.id, c.member_id, c.from_member_id, 'matching' AS type, c.amount, c.description, c.status, c.created_at,
+                   fm.member_id AS from_mid, fm.full_name AS from_name, fm.username AS from_username
+            FROM income_matching c
+            LEFT JOIN members fm ON fm.id = c.from_member_id
+            WHERE {$mSql}
+            UNION ALL
+            SELECT c.id, c.member_id, c.from_member_id, c.type, c.amount, c.description, c.status, c.created_at,
+                   fm.member_id AS from_mid, fm.full_name AS from_name, fm.username AS from_username
+            FROM commissions c
+            LEFT JOIN members fm ON fm.id = c.from_member_id
+            WHERE {$bSql}
+        ) AS u
+        ORDER BY u.created_at DESC, u.id DESC
+        LIMIT {$perPage} OFFSET {$offset}
+    ");
+    $stmt->execute($allParams);
+
+    return [
+        'rows' => $stmt->fetchAll(),
+        'total' => $total,
+        'total_pages' => $totalPages,
+        'page' => $page,
+    ];
+}
+
+/**
+ * Recent income rows across commissions + split tables.
+ * @return list<array>
+ */
+function income_recent_rows(PDO $pdo, int $memberId, int $limit = 10): array
+{
+    require_once __DIR__ . '/income_tables.php';
+    income_tables_ensure($pdo);
+    $limit = max(1, min(50, $limit));
+    try {
+        $stmt = $pdo->prepare("
+            SELECT * FROM (
+                SELECT c.id, c.member_id, c.from_member_id, c.type, c.amount, c.description, c.status, c.created_at,
+                       fm.member_id AS from_mid, fm.full_name AS from_name
+                FROM commissions c
+                LEFT JOIN members fm ON fm.id = c.from_member_id
+                WHERE c.member_id = ?
+                UNION ALL
+                SELECT c.id, c.member_id, c.from_member_id, 'matching' AS type, c.amount, c.description, c.status, c.created_at,
+                       fm.member_id AS from_mid, fm.full_name AS from_name
+                FROM income_matching c
+                LEFT JOIN members fm ON fm.id = c.from_member_id
+                WHERE c.member_id = ?
+                UNION ALL
+                SELECT c.id, c.member_id, c.from_member_id, 'dsi' AS type, c.amount, c.description, c.status, c.created_at,
+                       fm.member_id AS from_mid, fm.full_name AS from_name
+                FROM income_dsi c
+                LEFT JOIN members fm ON fm.id = c.from_member_id
+                WHERE c.member_id = ? AND c.status <> 'pending'
+            ) AS u
+            ORDER BY u.created_at DESC, u.id DESC
+            LIMIT {$limit}
+        ");
+        $stmt->execute([$memberId, $memberId, $memberId]);
+        return $stmt->fetchAll();
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+

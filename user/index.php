@@ -3,6 +3,7 @@ $pageTitle = 'Dashboard';
 require_once __DIR__ . '/../includes/closing.php';
 require_once __DIR__ . '/../includes/activation.php';
 require_once __DIR__ . '/../includes/income.php';
+require_once __DIR__ . '/../includes/withdrawal.php';
 require_once __DIR__ . '/includes/header.php';
 
 $showBinaryUi = plan_uses_binary();
@@ -60,12 +61,12 @@ $openPairs = (float) ($openMatch['pairs'] ?? 0);
 $uid = (int) ($user['id'] ?? 0);
 $pendingIncome = 0.0;
 try {
-    // Pending commissions exist in `commissions` but are not yet credited to `members.wallet_balance`.
-    // Add them to show "all income" on the dashboard overview.
     $pendingIncome = income_sum($pdo, $uid, null, 'pending');
 } catch (Throwable $e) {
     $pendingIncome = 0.0;
 }
+$incomeWalletBal = (float) ($user['wallet_balance'] ?? 0);
+$incomeWalletAvailable = $showWithdrawUi ? wd_available_balance($pdo, $user) : $incomeWalletBal;
 
 $incomeTypeCards = [];
 try {
@@ -195,8 +196,15 @@ try {
             </span>
             <div class="up-stat-copy">
                 <div class="up-stat-label">Income Wallet</div>
-                <div class="up-stat-value"><?= currency((float) $user['wallet_balance'] + (float) $pendingIncome) ?></div>
-                <div class="up-stat-foot"><a href="wallet.php">All wallets</a> · Available payout + pending</div>
+                <div class="up-stat-value"><?= currency($incomeWalletBal) ?></div>
+                <div class="up-stat-foot">
+                    <a href="wallet.php">All wallets</a>
+                    <?php if ($showWithdrawUi): ?>
+                        · Available <?= currency($incomeWalletAvailable) ?>
+                    <?php else: ?>
+                        · Credited balance
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
     </article>
@@ -210,8 +218,14 @@ try {
             </span>
             <div class="up-stat-copy">
                 <div class="up-stat-label">Total Earnings</div>
-                <div class="up-stat-value"><?= currency((float) $user['total_earnings'] + (float) $pendingIncome) ?></div>
-                <div class="up-stat-foot"><span>+ income</span> Lifetime total + pending</div>
+                <div class="up-stat-value"><?= currency((float) $user['total_earnings']) ?></div>
+                <div class="up-stat-foot">
+                    <?php if ($pendingIncome > 0): ?>
+                        <span>+<?= currency($pendingIncome) ?></span> pending
+                    <?php else: ?>
+                        <span>lifetime</span> Credited total
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
     </article>

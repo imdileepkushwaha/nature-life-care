@@ -394,13 +394,25 @@ function ops_week_snapshot(PDO $pdo, array $week): array
     }
 
     try {
+        require_once __DIR__ . '/income_tables.php';
+        income_tables_ensure($pdo);
         $st = $pdo->prepare("
-            SELECT DATE(created_at) AS d, COALESCE(SUM(amount), 0) AS amt
-            FROM commissions
-            WHERE status != 'cancelled' AND DATE(created_at) BETWEEN ? AND ?
-            GROUP BY DATE(created_at)
+            SELECT d, COALESCE(SUM(amt), 0) AS amt FROM (
+                SELECT DATE(created_at) AS d, amount AS amt
+                FROM commissions
+                WHERE status != 'cancelled' AND DATE(created_at) BETWEEN ? AND ?
+                UNION ALL
+                SELECT DATE(created_at) AS d, amount AS amt
+                FROM income_matching
+                WHERE status != 'cancelled' AND DATE(created_at) BETWEEN ? AND ?
+                UNION ALL
+                SELECT DATE(created_at) AS d, amount AS amt
+                FROM income_dsi
+                WHERE status != 'cancelled' AND DATE(created_at) BETWEEN ? AND ?
+            ) x
+            GROUP BY d
         ");
-        $st->execute([$from, $to]);
+        $st->execute([$from, $to, $from, $to, $from, $to]);
         foreach ($st->fetchAll() as $r) {
             $d = (string) $r['d'];
             if (isset($days[$d])) {

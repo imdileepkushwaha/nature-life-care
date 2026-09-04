@@ -5,13 +5,15 @@
  * Rules (fixed & consistent):
  * 1) On package activation → package BV walks the PLACEMENT upline and adds to left_bv / right_bv.
  * 2) Level income (if enabled) → % of package amount up the SPONSOR chain (L1 = direct sponsor).
- * 3) Binary closing → 1:2 / 2:1 means either leg can be the power leg; matching volume = weaker eligible PV.
- *    Example: 10,000 + 10,000 → 10,000 matched; 10,000 + 20,000 → 10,000 matched, leftover on the stronger leg.
+ * 3) Binary closing → 1:2 / 2:1 matches the weaker leg's full eligible PV only when legs differ.
+ *    Example: 1,600 + 3,200 → match 1,600 (carry 1,600 on strong). Equal legs (3,200 + 3,200) → no pay.
+ *    Income = matched PV × binary %.
  * 4) Matching payout uses company-approved eligible PV only (paid kit / paid product, not reversed).
  * 5) Return / cancel / refund reverses unmatched eligible PV (net settlement). Already-paid pairs are not clawed back.
  * 6) Matching bonus → % of that member's binary gross to their direct sponsor.
  * 7) Admin charge % (optional) is deducted from binary before wallet credit.
- * 8) DSI — distributable pool from kit/product activity, split L1–L4 up the sponsor chain.
+ * 8) DSI — distributable pool from kit/product activity, queued as pending on activation/upgrade,
+ *    then paid to L1–L5 sponsor chain only when binary closing commits.
  * 9) After closing, lifetime pairs update rank promotions and unlock pair rewards.
  */
 
@@ -569,8 +571,10 @@ function closing_rebuild_bv(PDO $pdo): array
 
 /**
  * Compute binary match from current eligible PV legs.
- * Plan: 1:2 / 2:1 — either leg may be stronger; matching volume = weaker eligible PV.
- * Optional Super Admin 1:1 is the same weaker-side match (equal legs also pay the min).
+ *
+ * 1:1 — classic equal matching: match min(L,R) including when legs are equal.
+ * 1:2 / 2:1 — match weaker PV only when legs are unequal; equal → no pay.
+ * Strict "consume" mode still uses Pair-PV units (1 weak + 2 strong).
  */
 function closing_compute_match(float $leftBv, float $rightBv, float $pairBv, int $flushPairs): array
 {
@@ -578,13 +582,13 @@ function closing_compute_match(float $leftBv, float $rightBv, float $pairBv, int
     $rightBv = max(0.0, round($rightBv, 2));
     $pairBv = $pairBv > 0 ? $pairBv : 1.0;
 
-    $leftUnits = (int) floor($leftBv / $pairBv + 1e-9);
-    $rightUnits = (int) floor($rightBv / $pairBv + 1e-9);
-    $leftRem = round($leftBv - ($leftUnits * $pairBv), 2);
-    $rightRem = round($rightBv - ($rightUnits * $pairBv), 2);
-
     $ratio = closing_match_ratio();
     if ($ratio === 'consume') {
+        $leftUnits = (int) floor($leftBv / $pairBv + 1e-9);
+        $rightUnits = (int) floor($rightBv / $pairBv + 1e-9);
+        $leftRem = round($leftBv - ($leftUnits * $pairBv), 2);
+        $rightRem = round($rightBv - ($rightUnits * $pairBv), 2);
+
         if ($leftUnits <= $rightUnits) {
             $weak = $leftUnits;
             $strong = $rightUnits;
@@ -608,20 +612,55 @@ function closing_compute_match(float $leftBv, float $rightBv, float $pairBv, int
             $leftUnitsAfter = $strongAfter;
             $rightUnitsAfter = $weakAfter;
         }
-    } else {
-        // 1:2 / 2:1 plan and 1:1 — matching volume is the weaker eligible side
-        $pairs = (float) min($leftUnits, $rightUnits);
-        if ($flushPairs > 0) {
-            $pairs = min($pairs, (float) $flushPairs);
-        }
-        $p = (int) $pairs;
-        $leftUnitsAfter = $leftUnits - $p;
-        $rightUnitsAfter = $rightUnits - $p;
+
+        $matched = round($pairs * $pairBv, 2);
+        $leftAfter = max(0.0, round($leftRem + ($leftUnitsAfter * $pairBv), 2));
+        $rightAfter = max(0.0, round($rightRem + ($rightUnitsAfter * $pairBv), 2));
+
+        return [
+            'pairs' => $pairs,
+            'matched_bv' => $matched,
+            'left_before' => $leftBv,
+            'right_before' => $rightBv,
+            'left_after' => $leftAfter,
+            'right_after' => $rightAfter,
+        ];
     }
 
-    $matched = round($pairs * $pairBv, 2);
-    $leftAfter = max(0.0, round($leftRem + ($leftUnitsAfter * $pairBv), 2));
-    $rightAfter = max(0.0, round($rightRem + ($rightUnitsAfter * $pairBv), 2));
+    // 1:2 — equal legs do not pay (need imbalance).
+    if ($ratio !== '1:1' && abs($leftBv - $rightBv) < 0.00001) {
+        return [
+            'pairs' => 0.0,
+            'matched_bv' => 0.0,
+            'left_before' => $leftBv,
+            'right_before' => $rightBv,
+            'left_after' => $leftBv,
+            'right_after' => $rightBv,
+        ];
+    }
+
+    $matched = round(min($leftBv, $rightBv), 2);
+    if ($flushPairs > 0) {
+        $maxMatch = round($flushPairs * $pairBv, 2);
+        if ($maxMatch > 0 && $matched > $maxMatch) {
+            $matched = $maxMatch;
+        }
+    }
+    if ($matched <= 0) {
+        return [
+            'pairs' => 0.0,
+            'matched_bv' => 0.0,
+            'left_before' => $leftBv,
+            'right_before' => $rightBv,
+            'left_after' => $leftBv,
+            'right_after' => $rightBv,
+        ];
+    }
+
+    $leftAfter = max(0.0, round($leftBv - $matched, 2));
+    $rightAfter = max(0.0, round($rightBv - $matched, 2));
+    // Rank / "pairs" progress still uses Pair PV as a unit size (not for chunking match).
+    $pairs = round($matched / $pairBv, 4);
 
     return [
         'pairs' => $pairs,
@@ -673,7 +712,7 @@ function closing_run_binary(PDO $pdo, ?int $adminId = null, bool $commit = true,
     }
 
     $pairBv = closing_pair_bv();
-    $binaryPct = (float) setting('binary_commission_percent', '10');
+    $binaryPct = (float) setting('binary_commission_percent', '15');
     $matchingPct = feature_enabled('feature_matching_income')
         ? (float) setting('matching_commission_percent', '0')
         : 0.0;
@@ -811,20 +850,15 @@ function closing_run_binary(PDO $pdo, ?int $adminId = null, bool $commit = true,
 
             if ($matchingAmt > 0 && $matchingTo) {
                 $descM = 'Matching bonus on binary of ' . $m['member_id'];
-                $insComm->execute([
-                    $matchingTo,
-                    $mid,
-                    'matching',
-                    $matchingAmt,
-                    $descM,
-                    'paid',
-                ]);
-                $cid = (int) $pdo->lastInsertId();
-                wallet_credit($pdo, $matchingTo, 'income', $matchingAmt, 'commission', $cid ?: null, $descM);
+                require_once __DIR__ . '/income_tables.php';
+                $cid = income_split_insert($pdo, 'matching', (int) $matchingTo, $mid, $matchingAmt, $descM, 'paid');
+                wallet_credit($pdo, $matchingTo, 'income', $matchingAmt, 'income_matching', $cid ?: null, $descM);
             }
         }
 
         $closingId = null;
+        $dsiPaid = 0;
+        $dsiAmt = 0.0;
         if ($commit) {
             $insRun = $pdo->prepare("
                 INSERT INTO closing_runs (
@@ -878,9 +912,14 @@ function closing_run_binary(PDO $pdo, ?int $adminId = null, bool $commit = true,
 
             plan_closing_apply_pairs($pdo, $items);
 
+            $dsiSettle = plan_dsi_settle_pending($pdo);
+            $dsiPaid = (int) ($dsiSettle['settled'] ?? 0);
+            $dsiAmt = (float) ($dsiSettle['amount'] ?? 0);
+
             $pdo->commit();
             if ($adminId) {
-                log_activity('binary_closing', "Closing #{$closingId}: paid {$paid} member(s), binary net " . round($binaryNetTotal, 2));
+                $extra = $dsiPaid > 0 ? "; DSI settled {$dsiPaid} (₹" . number_format($dsiAmt, 2, '.', '') . ')' : '';
+                log_activity('binary_closing', "Closing #{$closingId}: paid {$paid} member(s), binary net " . round($binaryNetTotal, 2) . $extra);
             }
         }
 
@@ -892,6 +931,9 @@ function closing_run_binary(PDO $pdo, ?int $adminId = null, bool $commit = true,
                 ? "Preview: {$paid} member(s) would be paid."
                 : 'Preview: no pairs available to match.');
 
+        if ($commit && !empty($dsiPaid) && $dsiPaid > 0) {
+            $msg .= ' DSI settled for ' . $dsiPaid . ' entr' . ($dsiPaid === 1 ? 'y' : 'ies') . '.';
+        }
         return [
             'ok' => true,
             'message' => $msg,
@@ -923,7 +965,7 @@ function closing_open_pair_summary(PDO $pdo): array
     closing_ensure_tables($pdo);
     $pairBv = closing_pair_bv();
     $flush = max(0, (int) setting('binary_flush_pairs', '0'));
-    $binaryPct = (float) setting('binary_commission_percent', '10');
+    $binaryPct = (float) setting('binary_commission_percent', '15');
 
     $rows = $pdo->query("
         SELECT left_bv, right_bv FROM members

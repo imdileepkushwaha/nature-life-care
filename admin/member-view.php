@@ -5,8 +5,10 @@ require_once __DIR__ . '/../includes/closing.php';
 require_once __DIR__ . '/../includes/withdrawal.php';
 require_once __DIR__ . '/../includes/plan_incentives.php';
 require_once __DIR__ . '/../includes/nominee.php';
+require_once __DIR__ . '/../includes/income_tables.php';
 $pageTitle = 'Member Details';
 nominee_ensure_schema($pdo);
+income_tables_ensure($pdo);
 
 $showBinary = plan_uses_binary();
 $showMatrix = plan_uses_matrix();
@@ -103,17 +105,17 @@ if ($showBinary) {
     $right = $rightChild->fetch();
 }
 
-$comms = $pdo->prepare('SELECT * FROM commissions WHERE member_id = ? ORDER BY created_at DESC LIMIT 20');
-$comms->execute([$id]);
-$commissions = $comms->fetchAll();
+require_once __DIR__ . '/../includes/income_tables.php';
+income_tables_ensure($pdo);
+
+$comms = income_admin_recent_rows($pdo, $id, 20);
+$commissions = $comms;
 
 $withdrawals = $pdo->prepare('SELECT * FROM withdrawals WHERE member_id = ? ORDER BY requested_at DESC LIMIT 10');
 $withdrawals->execute([$id]);
 $wdList = $withdrawals->fetchAll();
 
-$ct = $pdo->prepare("SELECT COALESCE(SUM(amount),0) FROM commissions WHERE member_id = ? AND status != 'cancelled'");
-$ct->execute([$id]);
-$commTotal = (float) $ct->fetchColumn();
+$commTotal = income_member_earned_total($pdo, $id);
 
 $nomCase = nominee_case_for_member($pdo, $id);
 
@@ -233,13 +235,13 @@ $effectiveStatus = member_effective_status($member);
     <div class="mv-kpi g-purple">
         <span class="mv-kpi-label">Open Pairs</span>
         <strong><?= number_format((float)$openMatch['pairs'], 2) ?></strong>
-        <small style="display:block;font-size:0.7rem;font-weight:600;color:#8392ab;margin-top:0.2rem">Match PV <?= number_format((float)$openMatch['matched_bv'], 0) ?></small>
+        <small style="display:block;font-size:0.7rem;font-weight:600;margin-top:0.2rem">Match PV <?= number_format((float)$openMatch['matched_bv'], 0) ?></small>
     </div>
     <?php if (feature_enabled('feature_ranks_enabled')): ?>
     <div class="mv-kpi g-mint">
         <span class="mv-kpi-label">Rank</span>
         <strong><?= e(plan_rank_title($pdo, (string) ($member['rank_key'] ?? ''))) ?></strong>
-        <small style="display:block;font-size:0.7rem;font-weight:600;color:#8392ab;margin-top:0.2rem"><?= number_format((float) ($member['lifetime_pairs'] ?? 0), 0) ?> lifetime pairs</small>
+        <small style="display:block;font-size:0.7rem;font-weight:600;margin-top:0.2rem"><?= number_format((float) ($member['lifetime_pairs'] ?? 0), 0) ?> lifetime pairs</small>
     </div>
     <?php endif; ?>
     <?php endif; ?>
