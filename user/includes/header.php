@@ -179,7 +179,7 @@ if ($needsActivationNav) {
     $userNotifyItems[] = [
         'href' => 'activate.php',
         'title' => 'Upgrade your plan',
-        'small' => 'Pay only the package difference',
+        'small' => 'Pay full new package amount',
         'tone' => 'blue',
     ];
 }
@@ -603,7 +603,7 @@ $chevron = '<svg class="up-nav-chevron" viewBox="0 0 24 24" fill="none" stroke="
                     <?php elseif ($needsShopActivationNav): ?>
                     <a href="purchase-product.php" data-search="activate product shop purchase">Activate via Shop</a>
                     <?php elseif ($canUpgradeNav || $planNavPending): ?>
-                    <a href="activate.php" data-search="upgrade package difference">Upgrade Plan</a>
+                    <a href="activate.php" data-search="upgrade package full amount">Upgrade Plan</a>
                     <?php endif; ?>
                 </div>
             </div>

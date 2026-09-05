@@ -210,7 +210,7 @@ $flash = get_flash();
                         </select>
                     </div>
                     <?php if ($selfUpgrade): ?>
-                        <small class="wal-hint">For self upgrade, only higher packages are accepted (difference amount is charged).</small>
+                        <small class="wal-hint">For self upgrade, the full new package amount is charged from Topup Wallet.</small>
                     <?php endif; ?>
                 </div>
                 <div class="up-field">

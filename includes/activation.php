@@ -374,7 +374,7 @@ function activation_submit_request(
 }
 
 /**
- * Submit package upgrade request — payable amount is difference only.
+ * Submit package upgrade request — payable amount is the full new package price.
  * @return array{ok:bool,error:?string,request_id:?int}
  */
 function activation_submit_upgrade_request(
@@ -422,9 +422,13 @@ function activation_submit_upgrade_request(
         return ['ok' => false, 'error' => 'You are already on this package.', 'request_id' => null];
     }
 
-    $diff = activation_diff_amount($fromPkg, $toPkg);
-    if ($diff <= 0) {
+    if (activation_diff_amount($fromPkg, $toPkg) <= 0) {
         return ['ok' => false, 'error' => 'You can only upgrade to a higher package.', 'request_id' => null];
+    }
+
+    $fullAmount = round((float) ($toPkg['amount'] ?? 0), 2);
+    if ($fullAmount <= 0) {
+        return ['ok' => false, 'error' => 'Invalid package amount.', 'request_id' => null];
     }
 
     $pay = activation_validate_payment($paymentMethod, $utr, $slipPath);
@@ -441,7 +445,7 @@ function activation_submit_upgrade_request(
         (int) $toPkg['id'],
         (int) $fromPkg['id'],
         'upgrade',
-        $diff,
+        $fullAmount,
         $pay['payment_method'],
         $pay['utr'],
         $pay['slip'],
@@ -453,7 +457,7 @@ function activation_submit_upgrade_request(
 }
 
 /**
- * Apply package upgrade (difference BV / referral / level).
+ * Apply package upgrade (difference BV; level income on full new package amount — no referral).
  * @return array{ok:bool,error:?string,package:?array,diff:float}
  */
 function activation_apply_upgrade(PDO $pdo, array $user, int $newPackageId, ?int $requestId = null): array
@@ -486,7 +490,6 @@ function activation_apply_upgrade(PDO $pdo, array $user, int $newPackageId, ?int
     }
 
     $uid = (int) $user['id'];
-    $memberCode = (string) ($user['member_id'] ?? '');
     closing_ensure_tables($pdo);
 
     try {
@@ -496,10 +499,6 @@ function activation_apply_upgrade(PDO $pdo, array $user, int $newPackageId, ?int
         if ($upd->rowCount() < 1) {
             $pdo->rollBack();
             return ['ok' => false, 'error' => 'Package changed meanwhile. Refresh and try again.', 'package' => null, 'diff' => 0.0];
-        }
-
-        if (!empty($user['sponsor_id'])) {
-            activation_pay_referral($pdo, (int) $user['sponsor_id'], $uid, $memberCode, $diff);
         }
 
         $eventKey = $requestId ? ('upgrade:' . $requestId) : ('upgrade:' . $uid . ':' . $newPackageId);
@@ -552,9 +551,9 @@ function activation_approve_request(PDO $pdo, int $requestId, ?int $adminId = nu
             WHERE id = ? AND status = 'pending'
         ")->execute([$adminNote !== '' ? $adminNote : null, $adminId, $requestId]);
 
-        $diff = currency((float) ($result['diff'] ?? $req['amount']));
+        $paid = currency((float) ($req['amount'] ?? $result['package']['amount'] ?? 0));
         $pkgName = (string) ($result['package']['name'] ?? 'package');
-        return ['ok' => true, 'message' => "Upgrade approved to {$pkgName}. Difference credited: {$diff}."];
+        return ['ok' => true, 'message' => "Upgrade approved to {$pkgName}. Payable amount: {$paid}."];
     }
 
     if (!empty($member['package_id'])) {

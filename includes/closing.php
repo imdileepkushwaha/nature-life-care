@@ -469,7 +469,7 @@ function closing_on_activation(PDO $pdo, array $user, array $pkg): void
 }
 
 /**
- * Post-upgrade hooks: difference BV + level income on difference amount.
+ * Post-upgrade hooks: difference BV only; level income on full new package amount.
  */
 function closing_on_upgrade(PDO $pdo, array $user, array $oldPkg, array $newPkg, ?string $eventKey = null): void
 {
@@ -480,16 +480,16 @@ function closing_on_upgrade(PDO $pdo, array $user, array $oldPkg, array $newPkg,
     }
 
     $deltaBv = round((float) ($newPkg['bv'] ?? 0) - (float) ($oldPkg['bv'] ?? 0), 2);
-    $deltaAmount = round((float) ($newPkg['amount'] ?? 0) - (float) ($oldPkg['amount'] ?? 0), 2);
+    $fullAmount = round((float) ($newPkg['amount'] ?? 0), 2);
     $code = (string) ($user['member_id'] ?? '');
     $packageId = isset($newPkg['id']) ? (int) $newPkg['id'] : null;
 
     if ($deltaBv > 0 && plan_uses_binary()) {
         closing_credit_eligible($pdo, $uid, $deltaBv, 'upgrade', $packageId ?: $uid);
     }
-    if ($deltaAmount > 0 && plan_uses_level()) {
+    if ($fullAmount > 0 && plan_uses_level()) {
         $key = $eventKey !== null && $eventKey !== '' ? $eventKey : ('upgrade:' . $uid . ':' . ($packageId ?? 0));
-        closing_pay_level_income($pdo, $uid, $code, $deltaAmount, $key);
+        closing_pay_level_income($pdo, $uid, $code, $fullAmount, $key);
     }
 }
 

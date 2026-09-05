@@ -246,7 +246,7 @@ require_once __DIR__ . '/../includes/header.php';
             <button type="submit" class="btn btn-primary">Filter</button>
             <a href="activations.php" class="btn btn-outline">Reset</a>
         </form>
-        <p class="muted" style="margin:0.75rem 0 0;font-size:0.85rem">Approve only after verifying UTR / payment. Activation assigns the package; upgrade takes difference amount only and credits difference PV / commissions.</p>
+        <p class="muted" style="margin:0.75rem 0 0;font-size:0.85rem">Approve only after verifying UTR / payment. Upgrade requires the full new package amount. Level income (if ON) uses that full amount; PV credit is the BV difference. No referral on upgrade.</p>
     </div>
     <?php
     $hasSearchFilters = $reqIdFilter !== '' || $nameFilter !== '' || $dateFrom !== '' || $dateTo !== '' || $typeFilter !== '';
@@ -309,7 +309,7 @@ require_once __DIR__ . '/../includes/header.php';
                     </td>
                     <td>
                         <strong><?= currency((float) $r['amount']) ?></strong>
-                        <?php if ($isUpg): ?><br><small>difference</small><?php endif; ?>
+                        <?php if ($isUpg): ?><br><small>full package</small><?php endif; ?>
                     </td>
                     <td><?= e($r['payment_method'] ?? '—') ?></td>
                     <td>

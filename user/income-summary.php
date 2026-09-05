@@ -149,7 +149,7 @@ $upgradeLabel = $upgradePending ? 'View Upgrade' : 'Upgrade Plan';
                                 <a href="<?= e($activateHref) ?>" class="up-btn up-btn-primary"><?= e($activateLabel) ?></a>
                             <?php elseif ($showUpgradeCta): ?>
                                 <strong>No income records yet</strong>
-                                <p>Grow your team to earn — or upgrade your plan (pay only the difference) to unlock a higher package.</p>
+                                <p>Grow your team to earn — or upgrade your plan (full new package amount) to unlock a higher package.</p>
                                 <a href="activate.php" class="up-btn up-btn-primary"><?= e($upgradeLabel) ?></a>
                             <?php else: ?>
                                 <strong>No income records yet</strong>

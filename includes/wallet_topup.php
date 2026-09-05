@@ -339,7 +339,7 @@ function wallet_topup_pay_and_activate(PDO $pdo, array $payer, array $target, in
             if ((float) $pkg['amount'] <= (float) $fromPkg['amount'] + 0.009) {
                 return ['ok' => false, 'error' => 'Select a higher package to upgrade.', 'package' => null, 'mode' => null];
             }
-            $payAmount = activation_diff_amount($fromPkg, $pkg);
+            $payAmount = round((float) $pkg['amount'], 2);
             $mode = 'upgrade';
         } else {
             return ['ok' => false, 'error' => 'This member is already activated.', 'package' => null, 'mode' => null];

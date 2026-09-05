@@ -168,8 +168,8 @@ try {
         <span class="up-activate-kicker"><?= $upgradePending ? 'Pending approval' : 'Grow further' ?></span>
         <h2><?= $upgradePending ? 'Upgrade under review' : 'Upgrade your plan' ?></h2>
         <p><?= $upgradePending
-            ? 'Your difference payment is with admin. Your package will update after verification.'
-            : 'Move to a higher package and pay only the difference amount — not the full package price.' ?></p>
+            ? 'Your full package payment is with admin. Your package will update after verification.'
+            : 'Move to a higher package — pay the full new package amount.' ?></p>
         <div class="up-activate-actions">
             <a href="activate.php" class="up-btn up-btn-primary"><?= $upgradePending ? 'View Request' : 'Upgrade Now' ?></a>
             <a href="profile.php" class="up-btn up-btn-outline up-activate-ghost">View Profile</a>
@@ -180,7 +180,7 @@ try {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
         </span>
         <strong><?= $upgradePending ? 'Pending' : 'Upgrade' ?></strong>
-        <small><?= $upgradePending ? 'Awaiting admin' : 'Difference only' ?></small>
+        <small><?= $upgradePending ? 'Awaiting admin' : 'Full package' ?></small>
     </div>
 </section>
 <?php endif; ?>
@@ -524,7 +524,7 @@ try {
             <a href="activate.php" class="up-q-tile c7">
                 <span class="up-quick-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg></span>
                 <strong>Upgrade</strong>
-                <small><?= $upgradePending ? 'View request' : 'Difference only' ?></small>
+                <small><?= $upgradePending ? 'View request' : 'Full package' ?></small>
             </a>
             <?php else: ?>
             <a href="my-direct.php" class="up-q-tile c7">

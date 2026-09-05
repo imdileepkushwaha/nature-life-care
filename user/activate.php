@@ -83,12 +83,8 @@ if (!$selectedPkg && $packages) {
     $selected = (int) $selectedPkg['id'];
 }
 
-$selectedPay = $selectedPkg
-    ? ($isUpgrade ? activation_diff_amount($currentPkg, $selectedPkg) : (float) $selectedPkg['amount'])
-    : 0.0;
-$selectedBvDelta = $selectedPkg
-    ? ($isUpgrade ? activation_diff_bv($currentPkg, $selectedPkg) : (float) $selectedPkg['bv'])
-    : 0.0;
+$selectedPay = $selectedPkg ? (float) $selectedPkg['amount'] : 0.0;
+$selectedBvDelta = $selectedPkg ? (float) $selectedPkg['bv'] : 0.0;
 
 $featuredId = $packages ? (int) ($packages[0]['id'] ?? 0) : 0;
 $stepPay = !$pending && $packages;
@@ -145,14 +141,14 @@ $payHelp = $payLabels ? implode(' or ', $payLabels) : 'an enabled payment method
         <span class="actx-kicker">Awaiting approval</span>
         <h2><?= $pendingIsUpgrade ? 'Upgrade request pending' : 'Activation request pending' ?></h2>
         <p><?= $pendingIsUpgrade
-            ? 'Your difference payment is with the admin team. Your plan will update once it is verified.'
+            ? 'Your full package payment is with the admin team. Your plan will update once it is verified.'
             : 'Your payment proof is with the admin team. You will get Active status once it is verified.' ?></p>
         <div class="actx-pending-meta">
             <?php if ($pendingIsUpgrade && !empty($pending['from_package_name'])): ?>
             <div><small>From</small><strong><?= e($pending['from_package_name']) ?></strong></div>
             <?php endif; ?>
             <div><small><?= $pendingIsUpgrade ? 'Upgrade to' : 'Package' ?></small><strong><?= e($pending['package_name'] ?? '—') ?></strong></div>
-            <div><small><?= $pendingIsUpgrade ? 'Difference payable' : 'Amount' ?></small><strong><?= currency((float) $pending['amount']) ?></strong></div>
+            <div><small>Amount</small><strong><?= currency((float) $pending['amount']) ?></strong></div>
             <div><small>Method</small><strong><?= e($pending['payment_method'] ?? '—') ?></strong></div>
             <div><small>UTR / Ref</small><strong><?= e($pending['utr_reference'] ?? '—') ?></strong></div>
             <div><small>Submitted</small><strong><?= !empty($pending['created_at']) ? e(date('d M Y H:i', strtotime((string) $pending['created_at']))) : '—' ?></strong></div>
@@ -239,7 +235,7 @@ $payHelp = $payLabels ? implode(' or ', $payLabels) : 'an enabled payment method
                 <span class="actx-section-kicker">Step 1 · Package</span>
                 <h3><?= $isUpgrade ? 'Upgrade packages' : 'Available packages' ?></h3>
                 <p><?= $isUpgrade
-                    ? 'Only higher plans are listed. T-Pin must match the selected package.'
+                    ? 'Only higher plans are listed. Pay the full new package amount — T-Pin must match that package.'
                     : 'Select a package, then enter your T-Pin below.' ?></p>
             </div>
         </div>
@@ -258,7 +254,7 @@ $payHelp = $payLabels ? implode(' or ', $payLabels) : 'an enabled payment method
             <div class="actx-current-plan-copy">
                 <span class="actx-current-kicker">Your active plan</span>
                 <strong><?= e($currentPkg['name']) ?></strong>
-                <small>Upgrade pays the difference — T-Pin must match the new package.</small>
+                <small>Upgrade uses the full new package amount — T-Pin must match that package.</small>
             </div>
             <a href="kit-invoice.php" class="actx-current-plan-cta">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -289,10 +285,10 @@ $payHelp = $payLabels ? implode(' or ', $payLabels) : 'an enabled payment method
             $isFeatured = $featuredId === $pid;
             $tones = ['tone-a', 'tone-b', 'tone-c', 'tone-d'];
             $tone = $tones[$i % count($tones)];
-            $payAmt = $isUpgrade ? activation_diff_amount($currentPkg, $pkg) : (float) $pkg['amount'];
-            $bvShow = $isUpgrade ? activation_diff_bv($currentPkg, $pkg) : (float) $pkg['bv'];
+            $payAmt = (float) $pkg['amount'];
+            $bvShow = (float) $pkg['bv'];
             $pricePlain = html_entity_decode(strip_tags(currency($payAmt)), ENT_QUOTES, 'UTF-8');
-            $fullPlain = html_entity_decode(strip_tags(currency((float) $pkg['amount'])), ENT_QUOTES, 'UTF-8');
+            $fullPlain = $pricePlain;
             $prodMeta = $pkgProductCounts[$pid] ?? ['product_count' => 0, 'total_qty' => 0];
             $prodCount = (int) $prodMeta['product_count'];
             $prodQty = (int) $prodMeta['total_qty'];
@@ -321,10 +317,10 @@ $payHelp = $payLabels ? implode(' or ', $payLabels) : 'an enabled payment method
                 <span class="actx-name"><?= e($pkg['name']) ?></span>
                 <span class="actx-price"><?= currency($payAmt) ?></span>
                 <?php if ($isUpgrade): ?>
-                    <span class="actx-desc" style="margin-top:-0.35rem">Full price <?= currency((float) $pkg['amount']) ?> · T-Pin must match this package</span>
+                    <span class="actx-desc" style="margin-top:-0.35rem">Full package amount · T-Pin must match this package</span>
                 <?php endif; ?>
                 <span class="actx-stats">
-                    <span><small><?= $isUpgrade ? '+PV' : 'PV' ?></small><strong><?= number_format($bvShow, 0) ?></strong></span>
+                    <span><small>PV</small><strong><?= number_format($bvShow, 0) ?></strong></span>
                     <span title="<?= e($prodCount > 0 ? $prodLabel : 'No products assigned') ?>">
                         <small>Products</small>
                         <strong><?= $prodCount > 0 ? (int) $prodCount : '—' ?></strong>
@@ -385,7 +381,7 @@ $payHelp = $payLabels ? implode(' or ', $payLabels) : 'an enabled payment method
             <div class="actx-bar-meta">
                 <span id="actxSumPrice"><?= $selectedPkg ? currency($selectedPay) : '—' ?></span>
                 <span>·</span>
-                <span><?= $isUpgrade ? '+PV' : 'PV' ?> <em id="actxSumBv"><?= $selectedPkg ? number_format($selectedBvDelta, 0) : '0' ?></em></span>
+                <span><?= $isUpgrade ? 'PV' : 'PV' ?> <em id="actxSumBv"><?= $selectedPkg ? number_format($selectedBvDelta, 0) : '0' ?></em></span>
                 <span>·</span>
                 <span id="actxSumProducts"><?php
                     if ($selectedProductCount > 0) {

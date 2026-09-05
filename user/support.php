@@ -79,7 +79,7 @@ $showUpgradeTile = $canUpgrade || $upgradePending;
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
                 </span>
                 <strong>Upgrade</strong>
-                <small><?= $upgradePending ? 'View pending upgrade request' : 'Pay only the package difference' ?></small>
+                <small><?= $upgradePending ? 'View pending upgrade request' : 'Pay full new package amount' ?></small>
             </a>
             <?php endif; ?>
         </div>
@@ -96,7 +96,7 @@ $showUpgradeTile = $canUpgrade || $upgradePending;
             <ul>
                 <li>Include your Member ID <strong><?= e($user['member_id'] ?? '') ?></strong> in every message.</li>
                 <li>For activation, share the UTR and the full package amount you paid.</li>
-                <li>For upgrade, pay only the difference (new package − current) and share that UTR with the target plan name.</li>
+                <li>For upgrade, pay the full new package amount and share that UTR with the target plan name.</li>
                 <li>For withdrawals, check <a href="withdrawal-report.php">Withdrawal Report</a> status first.</li>
             </ul>
         </div>
