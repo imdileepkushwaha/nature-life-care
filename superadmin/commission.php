@@ -121,19 +121,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $splitTotal += max(0.0, (float) $val);
         }
         if ($splitTotal > 100.0001) {
-            flash('error', 'DSI level split cannot exceed 100% of the pool (currently ' . round($splitTotal, 2) . '%).');
+            flash('error', 'DSI level % cannot exceed 100% of binary amount (currently ' . round($splitTotal, 2) . '%).');
             header('Location: commission.php?sub=dsi');
             exit;
         }
         $saveSetting($pdo, 'feature_dsi_income', $wantDsi ? '1' : '0');
-        foreach (['dsi_pool_percent', 'dsi_level_1_percent', 'dsi_level_2_percent', 'dsi_level_3_percent', 'dsi_level_4_percent', 'dsi_level_5_percent'] as $key) {
+        $saveSetting($pdo, 'dsi_pool_percent', '0');
+        $saveSetting($pdo, 'dsi_on_binary', '1');
+        $saveSetting($pdo, 'dsi_rates_of_package', '0');
+        foreach (['dsi_level_1_percent', 'dsi_level_2_percent', 'dsi_level_3_percent', 'dsi_level_4_percent', 'dsi_level_5_percent'] as $key) {
             $val = isset($_POST[$key]) ? trim((string) $_POST[$key]) : '0';
             if ($val === '' || !is_numeric($val)) {
                 $val = '0';
             }
             $saveSetting($pdo, $key, $val);
         }
-        $auditKeys = ['feature_dsi_income', 'dsi_pool_percent', 'dsi_level_1_percent', 'dsi_level_2_percent', 'dsi_level_3_percent', 'dsi_level_4_percent', 'dsi_level_5_percent'];
+        $auditKeys = ['feature_dsi_income', 'dsi_level_1_percent', 'dsi_level_2_percent', 'dsi_level_3_percent', 'dsi_level_4_percent', 'dsi_level_5_percent'];
     } else {
         $saveSetting($pdo, 'feature_ranks_enabled', isset($_POST['feature_ranks_enabled']) ? '1' : '0');
         $saveSetting($pdo, 'feature_rewards_enabled', isset($_POST['feature_rewards_enabled']) ? '1' : '0');
@@ -354,12 +357,12 @@ $dsiSplit = (float) ($settings['dsi_level_1_percent'] ?? 50)
     <div class="sa-panel-head">
         <div>
             <h2>Direct Sponsor Incentive</h2>
-            <p>On kit activation and paid product orders, a pool is queued up 5 sponsor levels and settled on <strong>binary closing</strong>. Requires binary income. Recipients must be active with a package.</p>
+            <p>When a member earns <strong>binary net</strong> on closing, L1–L5 % of that amount is paid up the <strong>sponsor line</strong> (<code>sponsor_id</code>). Default 50 / 20 / 15 / 10 / 5. Only <strong>active</strong> uplines with a package are paid; skipped levels do not roll up.</p>
         </div>
     </div>
     <div class="sa-panel-body">
         <?php if (!plan_uses_binary() || ($settings['feature_binary_income'] ?? '1') !== '1'): ?>
-        <div class="alert alert-warning" style="margin-bottom:1rem">DSI cannot settle without binary income / closing. Enable binary plan income first, or DSI will stay off.</div>
+        <div class="alert alert-warning" style="margin-bottom:1rem">DSI needs binary income / closing. Enable binary plan income first.</div>
         <?php endif; ?>
         <label class="sa-toggle-row">
             <input type="checkbox" name="feature_dsi_income" value="1" <?= ($settings['feature_dsi_income'] ?? '1') === '1' ? 'checked' : '' ?><?= $lockAttr ?><?= (!plan_uses_binary() || ($settings['feature_binary_income'] ?? '1') !== '1') ? ' disabled' : '' ?>>
@@ -370,31 +373,27 @@ $dsiSplit = (float) ($settings['dsi_level_1_percent'] ?? 50)
         <?php endif; ?>
         <div class="sa-form-grid">
             <div class="form-group">
-                <label>Distributable pool % of activity amount</label>
-                <input type="number" step="0.01" min="0" name="dsi_pool_percent" value="<?= e($settings['dsi_pool_percent'] ?? '10') ?>"<?= $lockAttr ?>>
-            </div>
-            <div class="form-group">
-                <label>Level 1 — First Direct % of pool</label>
+                <label>Level 1 — Sponsor % of binary</label>
                 <input type="number" step="0.01" min="0" name="dsi_level_1_percent" value="<?= e($settings['dsi_level_1_percent'] ?? '50') ?>"<?= $lockAttr ?>>
             </div>
             <div class="form-group">
-                <label>Level 2 — Indirect % of pool</label>
+                <label>Level 2 % of binary</label>
                 <input type="number" step="0.01" min="0" name="dsi_level_2_percent" value="<?= e($settings['dsi_level_2_percent'] ?? '20') ?>"<?= $lockAttr ?>>
             </div>
             <div class="form-group">
-                <label>Level 3 % of pool</label>
+                <label>Level 3 % of binary</label>
                 <input type="number" step="0.01" min="0" name="dsi_level_3_percent" value="<?= e($settings['dsi_level_3_percent'] ?? '15') ?>"<?= $lockAttr ?>>
             </div>
             <div class="form-group">
-                <label>Level 4 % of pool</label>
+                <label>Level 4 % of binary</label>
                 <input type="number" step="0.01" min="0" name="dsi_level_4_percent" value="<?= e($settings['dsi_level_4_percent'] ?? '10') ?>"<?= $lockAttr ?>>
             </div>
             <div class="form-group">
-                <label>Level 5 % of pool</label>
+                <label>Level 5 % of binary</label>
                 <input type="number" step="0.01" min="0" name="dsi_level_5_percent" value="<?= e($settings['dsi_level_5_percent'] ?? '5') ?>"<?= $lockAttr ?>>
             </div>
         </div>
-        <p class="sa-field-hint">Level split currently totals <?= e(rtrim(rtrim(number_format($dsiSplit, 2, '.', ''), '0'), '.')) ?>% of the pool<?= $dsiSplit > 100 ? ' — must be ≤ 100%' : '' ?>. Under 100% is retained by the company.</p>
+        <p class="sa-field-hint">Levels total <?= e(rtrim(rtrim(number_format($dsiSplit, 2, '.', ''), '0'), '.')) ?>% of binary net<?= $dsiSplit > 100 ? ' — must be ≤ 100%' : '' ?>. Remaining stays with company.</p>
         <?php if (!$frozen): ?>
         <div class="sa-form-actions">
             <button type="submit" class="btn btn-primary">Save DSI rates</button>

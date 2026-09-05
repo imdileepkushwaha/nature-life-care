@@ -64,7 +64,7 @@ $paidSum = income_sum($pdo, $uid, 'dsi', 'paid');
 <div class="up-page-head">
     <div>
         <h1>DSI Report</h1>
-        <p>Direct Sponsor Incentive credited after binary closing.</p>
+        <p>Direct Sponsor Incentive — % of downline binary net, paid on closing.</p>
     </div>
     <a href="income-dsi.php" class="up-btn up-btn-outline">DSI Income</a>
 </div>
@@ -92,7 +92,7 @@ $paidSum = income_sum($pdo, $uid, 'dsi', 'paid');
             <div>
                 <span class="inc-kicker">Reports</span>
                 <h2>DSI Report</h2>
-                <p>Filter by date range. Pending DSI is hidden until closing.</p>
+                <p>Filter by date range. Paid on binary closing.</p>
             </div>
         </div>
         <form method="get" class="inc-filters" style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:end">

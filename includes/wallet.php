@@ -84,6 +84,10 @@ function wallet_ensure_schema(PDO $pdo): void
     if ($done) {
         return;
     }
+    // MySQL DDL implicitly commits — never run mid-transaction.
+    if ($pdo->inTransaction()) {
+        return;
+    }
 
     foreach ([
         'topup_wallet_balance' => 'DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER wallet_balance',

@@ -43,12 +43,14 @@ function feature_defaults(): array
         'feature_ranks_enabled' => '1',
         'feature_rewards_enabled' => '1',
 
-        'dsi_pool_percent' => '10',
+        // Level % of binary net income. Defaults = 50/20/15/10/5 of binary.
         'dsi_level_1_percent' => '50',
         'dsi_level_2_percent' => '20',
         'dsi_level_3_percent' => '15',
         'dsi_level_4_percent' => '10',
         'dsi_level_5_percent' => '5',
+        'dsi_on_binary' => '1',
+        'dsi_rates_of_package' => '0',
         'commission_rates_frozen' => '0',
         'commission_rates_frozen_at' => '',
         'commission_rates_frozen_note' => '',
@@ -1040,12 +1042,12 @@ function feature_audit_snapshot(PDO $pdo, ?array $keys = null): array
             'binary_income_enabled',
             'level_income_enabled',
             'level_income_levels',
-            'dsi_pool_percent',
             'dsi_level_1_percent',
             'dsi_level_2_percent',
             'dsi_level_3_percent',
             'dsi_level_4_percent',
             'dsi_level_5_percent',
+            'dsi_on_binary',
             'commission_rates_frozen',
         ]);
         $keys = array_values(array_unique($keys));

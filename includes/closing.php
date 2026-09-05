@@ -12,8 +12,8 @@
  * 5) Return / cancel / refund reverses unmatched eligible PV (net settlement). Already-paid pairs are not clawed back.
  * 6) Matching bonus → % of that member's binary gross to their direct sponsor.
  * 7) Admin charge % (optional) is deducted from binary before wallet credit.
- * 8) DSI — distributable pool from kit/product activity, queued as pending on activation/upgrade,
- *    then paid to L1–L5 sponsor chain only when binary closing commits.
+ * 8) DSI → % of that member's binary net (wallet credit) up the SPONSOR line L1–L5
+ *    (default 50/20/15/10/5). Paid immediately on closing to active packaged uplines only.
  * 9) After closing, lifetime pairs update rank promotions and unlock pair rewards.
  */
 
@@ -24,6 +24,10 @@ function closing_ensure_tables(PDO $pdo): void
 {
     static $done = false;
     if ($done) {
+        return;
+    }
+    // MySQL DDL implicitly commits — never run mid-transaction.
+    if ($pdo->inTransaction()) {
         return;
     }
 
@@ -462,9 +466,6 @@ function closing_on_activation(PDO $pdo, array $user, array $pkg): void
     if ($amount > 0 && plan_uses_level()) {
         closing_pay_level_income($pdo, $uid, $code, $amount);
     }
-    if ($amount > 0) {
-        plan_dsi_pay($pdo, $uid, $code, $amount, 'dsi:act:' . $uid . ':' . (int) ($packageId ?? 0));
-    }
 }
 
 /**
@@ -489,10 +490,6 @@ function closing_on_upgrade(PDO $pdo, array $user, array $oldPkg, array $newPkg,
     if ($deltaAmount > 0 && plan_uses_level()) {
         $key = $eventKey !== null && $eventKey !== '' ? $eventKey : ('upgrade:' . $uid . ':' . ($packageId ?? 0));
         closing_pay_level_income($pdo, $uid, $code, $deltaAmount, $key);
-    }
-    if ($deltaAmount > 0) {
-        $dsiKey = $eventKey !== null && $eventKey !== '' ? ('dsi:' . $eventKey) : ('dsi:upg:' . $uid . ':' . ($packageId ?? 0));
-        plan_dsi_pay($pdo, $uid, $code, $deltaAmount, $dsiKey);
     }
 }
 
@@ -567,6 +564,75 @@ function closing_rebuild_bv(PDO $pdo): array
         }
         return ['ok' => false, 'message' => 'PV rebuild failed.', 'members' => 0];
     }
+}
+
+/**
+ * After package PV is edited: update locked activation lots / credits to the new package BV,
+ * then rebuild open left/right PV. Does not change commissions already paid.
+ *
+ * @return array{ok:bool,message:string,updated:int}
+ */
+function closing_sync_package_bv(PDO $pdo, int $packageId, ?float $newBv = null): array
+{
+    if (!plan_uses_binary() || $packageId <= 0) {
+        return ['ok' => false, 'message' => 'PV sync skipped.', 'updated' => 0];
+    }
+    closing_ensure_tables($pdo);
+
+    if ($newBv === null) {
+        $st = $pdo->prepare('SELECT bv FROM packages WHERE id = ? LIMIT 1');
+        $st->execute([$packageId]);
+        $newBv = (float) ($st->fetchColumn() ?: 0);
+    }
+    $newBv = round(max(0.0, $newBv), 2);
+    if ($newBv <= 0) {
+        return ['ok' => false, 'message' => 'Package PV is zero — nothing to sync.', 'updated' => 0];
+    }
+
+    $members = $pdo->prepare("
+        SELECT id FROM members
+        WHERE package_id = ?
+        ORDER BY id ASC
+    ");
+    $members->execute([$packageId]);
+    $ids = array_map('intval', $members->fetchAll(PDO::FETCH_COLUMN));
+    if (!$ids) {
+        return ['ok' => true, 'message' => 'No activated members on this package.', 'updated' => 0];
+    }
+
+    $updated = 0;
+    $updLot = $pdo->prepare("
+        UPDATE bv_lots
+        SET amount = ?
+        WHERE from_member_id = ? AND source_type = 'activation' AND status = 'eligible'
+    ");
+    $updCredit = $pdo->prepare('UPDATE bv_credits SET bv = ?, package_id = COALESCE(package_id, ?) WHERE member_id = ?');
+    $insCredit = $pdo->prepare('INSERT INTO bv_credits (member_id, package_id, bv) VALUES (?, ?, ?)');
+
+    foreach ($ids as $mid) {
+        $updLot->execute([$newBv, $mid]);
+        if ($updLot->rowCount() > 0) {
+            $updated++;
+        }
+        try {
+            $updCredit->execute([$newBv, $packageId, $mid]);
+            if ($updCredit->rowCount() < 1) {
+                $insCredit->execute([$mid, $packageId, $newBv]);
+            }
+        } catch (Throwable $e) {
+            // ignore credit upsert issues; lots drive rebuild
+        }
+    }
+
+    $rb = closing_rebuild_bv($pdo);
+    $msg = $updated > 0
+        ? "Updated PV on {$updated} activation lot(s) to " . number_format($newBv, 2, '.', '') . '.'
+        : 'No activation lots needed updating (or lots missing — rebuild used current package where possible).';
+    if (!empty($rb['message'])) {
+        $msg .= ' ' . $rb['message'];
+    }
+
+    return ['ok' => !empty($rb['ok']), 'message' => $msg, 'updated' => $updated];
 }
 
 /**
@@ -687,7 +753,12 @@ function closing_compute_match(float $leftBv, float $rightBv, float $pairBv, int
  */
 function closing_run_binary(PDO $pdo, ?int $adminId = null, bool $commit = true, string $notes = ''): array
 {
+    // DDL (CREATE/ALTER) must run before BEGIN — MySQL auto-commits and would kill the closing TX.
     closing_ensure_tables($pdo);
+    wallet_ensure_schema($pdo);
+    require_once __DIR__ . '/income_tables.php';
+    income_tables_ensure($pdo);
+    plan_incentives_ensure($pdo);
 
     $empty = static function (string $msg, bool $ok = false) use ($commit): array {
         return [
@@ -732,6 +803,9 @@ function closing_run_binary(PDO $pdo, ?int $adminId = null, bool $commit = true,
     $adminChargeTotal = 0.0;
     $processed = 0;
     $paid = 0;
+    $dsiPaid = 0;
+    $dsiAmt = 0.0;
+    $dsiHeld = 0;
 
     try {
         if ($commit) {
@@ -846,19 +920,20 @@ function closing_run_binary(PDO $pdo, ?int $adminId = null, bool $commit = true,
                         number_format($match['matched_bv'], 2, '.', '')
                     )
                 );
+                // DSI = % of this member's binary net up sponsor L1–L5
+                $dsiPay = plan_dsi_pay($pdo, $mid, (string) $m['member_id'], $net, 'dsi:bin:c' . $cid);
+                $dsiPaid += (int) ($dsiPay['paid'] ?? 0);
+                $dsiAmt += (float) ($dsiPay['amount'] ?? 0);
             }
 
             if ($matchingAmt > 0 && $matchingTo) {
                 $descM = 'Matching bonus on binary of ' . $m['member_id'];
-                require_once __DIR__ . '/income_tables.php';
                 $cid = income_split_insert($pdo, 'matching', (int) $matchingTo, $mid, $matchingAmt, $descM, 'paid');
                 wallet_credit($pdo, $matchingTo, 'income', $matchingAmt, 'income_matching', $cid ?: null, $descM);
             }
         }
 
         $closingId = null;
-        $dsiPaid = 0;
-        $dsiAmt = 0.0;
         if ($commit) {
             $insRun = $pdo->prepare("
                 INSERT INTO closing_runs (
@@ -912,10 +987,15 @@ function closing_run_binary(PDO $pdo, ?int $adminId = null, bool $commit = true,
 
             plan_closing_apply_pairs($pdo, $items);
 
+            // Legacy kit-queued pending DSI (if any) — settle when recipient qualifies
             $dsiSettle = plan_dsi_settle_pending($pdo);
-            $dsiPaid = (int) ($dsiSettle['settled'] ?? 0);
-            $dsiAmt = (float) ($dsiSettle['amount'] ?? 0);
+            $dsiPaid += (int) ($dsiSettle['settled'] ?? 0);
+            $dsiAmt += (float) ($dsiSettle['amount'] ?? 0);
+            $dsiHeld = (int) ($dsiSettle['held'] ?? 0);
 
+            if (!$pdo->inTransaction()) {
+                throw new RuntimeException('Closing transaction was closed early (schema DDL). Retry once.');
+            }
             $pdo->commit();
             if ($adminId) {
                 $extra = $dsiPaid > 0 ? "; DSI settled {$dsiPaid} (₹" . number_format($dsiAmt, 2, '.', '') . ')' : '';
@@ -932,7 +1012,10 @@ function closing_run_binary(PDO $pdo, ?int $adminId = null, bool $commit = true,
                 : 'Preview: no pairs available to match.');
 
         if ($commit && !empty($dsiPaid) && $dsiPaid > 0) {
-            $msg .= ' DSI settled for ' . $dsiPaid . ' entr' . ($dsiPaid === 1 ? 'y' : 'ies') . '.';
+            $msg .= ' DSI paid for ' . $dsiPaid . ' entr' . ($dsiPaid === 1 ? 'y' : 'ies') . ' (₹' . number_format($dsiAmt, 2, '.', '') . ').';
+        }
+        if ($commit && !empty($dsiHeld) && $dsiHeld > 0) {
+            $msg .= ' Legacy DSI held: ' . $dsiHeld . '.';
         }
         return [
             'ok' => true,
@@ -952,6 +1035,10 @@ function closing_run_binary(PDO $pdo, ?int $adminId = null, bool $commit = true,
     } catch (Throwable $e) {
         if ($commit && $pdo->inTransaction()) {
             $pdo->rollBack();
+        }
+        $detail = trim($e->getMessage());
+        if (function_exists('app_is_local') && app_is_local() && $detail !== '') {
+            return $empty('Closing failed due to a database error: ' . $detail);
         }
         return $empty('Closing failed due to a database error.');
     }

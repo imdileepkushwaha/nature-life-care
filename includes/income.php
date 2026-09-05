@@ -53,7 +53,7 @@ function income_types_catalog(): array
             'short' => 'DSI',
             'file' => 'income-dsi.php',
             'kicker' => 'Direct sponsor',
-            'desc' => 'Share of the distributable incentive from product and kit activity in your sponsor line. Credited to your wallet only after binary closing.',
+            'desc' => 'Share of the distributable incentive from kit/product activity in your sponsor line. Paid on binary closing only if at least one of your directs has earned binary income.',
             'tone' => 'green',
         ],
         'rank' => [

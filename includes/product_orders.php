@@ -749,15 +749,6 @@ function product_orders_checkout(
             }
         }
 
-        $memberCode = (string) ($member['member_id'] ?? '');
-        if ($total > 0 && $memberCode !== '') {
-            try {
-                plan_dsi_pay($pdo, $memberId, $memberCode, $total, 'dsi:ord:' . $orderId);
-            } catch (Throwable $e) {
-                // Order already paid; DSI can be rebuilt later
-            }
-        }
-
         return [
             'ok' => true,
             'error' => null,

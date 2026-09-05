@@ -9,6 +9,10 @@ function income_tables_ensure(PDO $pdo): void
     if ($done) {
         return;
     }
+    // MySQL DDL implicitly commits — never run mid-transaction.
+    if ($pdo->inTransaction()) {
+        return;
+    }
 
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS income_dsi (

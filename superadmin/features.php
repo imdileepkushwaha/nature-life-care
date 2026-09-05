@@ -300,7 +300,7 @@ $switch = static function (string $name, string $label, string $hint, bool $on, 
             <?= $switch('feature_level_income', 'Level income', 'Sponsor-level % on activations (hybrid / level / matrix / unilevel — ignored in pure binary mode)', feature_enabled('feature_level_income')) ?>
             <?= $switch('feature_referral_income', 'Referral income', 'Direct sponsor bonus on activation', feature_enabled('feature_referral_income')) ?>
             <?= $switch('feature_matching_income', 'Matching bonus', 'Sponsor bonus % on downline binary gross (pair income still shows under Matching Income when binary is on)', feature_enabled('feature_matching_income')) ?>
-            <?= $switch('feature_dsi_income', 'DSI — Direct Sponsor', 'L1–L5 pool on kit/product activity — settled only on binary closing (requires binary income)', feature_enabled('feature_dsi_income')) ?>
+            <?= $switch('feature_dsi_income', 'DSI — Direct Sponsor', 'L1–L5 % of binary net on closing (sponsor line) — only active packaged uplines', feature_enabled('feature_dsi_income')) ?>
             <?= $switch('feature_ranks_enabled', 'Rank & promotion', 'Auto-promote Executive → Director from lifetime pairs', feature_enabled('feature_ranks_enabled')) ?>
             <?= $switch('feature_rewards_enabled', 'Business rewards', 'Pair-milestone gifts; Client Admin fulfills / credits cash', feature_enabled('feature_rewards_enabled')) ?>
         </div>

@@ -107,6 +107,10 @@ $licenseOk = !empty($s['license_ok']);
         <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z"/></svg></span>
         <div>Branding<small>Name, currency, IDs</small></div>
     </a>
+    <a class="sa-quick-link" href="closing-reset.php">
+        <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 0115.5-6.4"/><polyline points="3 5 3 12 10 12"/><path d="M21 12a9 9 0 01-15.5 6.4"/><polyline points="21 19 21 12 14 12"/></svg></span>
+        <div>Closing Reset<small>Revert closing / DSI / sync PV</small></div>
+    </a>
     <a class="sa-quick-link" href="../admin/login.php" target="_blank" rel="noopener">
         <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
         <div>Open Admin<small>Client panel</small></div>

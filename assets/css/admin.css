@@ -5787,6 +5787,12 @@ input, select, textarea{
         linear-gradient(118deg, #ea0606 0%, #ff8f70 55%, #fbcf33 100%);
 }
 
+.rpt-panel-head.is-green {
+    background:
+        radial-gradient(ellipse 80% 140% at 100% 0%, rgba(255, 255, 255, 0.18), transparent 55%),
+        linear-gradient(118deg, #0a7a4d 0%, #17c964 55%, #7ee8a8 120%);
+}
+
 .rpt-panel-main {
     display: flex;
     align-items: center;
@@ -5810,7 +5816,14 @@ input, select, textarea{
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.16);
     border: 1px solid rgba(255, 255, 255, 0.24);
-    color: #000!important;
+    color: #fff;
+    text-decoration: none;
+}
+
+a.rpt-head-meta:hover {
+    background: rgba(255, 255, 255, 0.26);
+    color: #fff;
+    opacity: 1;
 }
 
 .rpt-panel-body { padding: 1.05rem 1.1rem 1.15rem; }

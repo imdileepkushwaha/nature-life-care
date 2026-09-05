@@ -98,10 +98,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!$errors) {
         if ($id > 0) {
+            $oldBv = null;
+            if ($showBinaryMetrics) {
+                $ob = $pdo->prepare('SELECT bv FROM packages WHERE id = ? LIMIT 1');
+                $ob->execute([$id]);
+                $oldBv = $ob->fetchColumn();
+                $oldBv = $oldBv !== false ? round((float) $oldBv, 2) : null;
+            }
             $pdo->prepare('UPDATE packages SET name=?, amount=?, bv=?, capping=?, description=?, status=? WHERE id=?')
                 ->execute([$name, $amount, $bv, $capping, $description, $status, $id]);
             log_activity('package_edit', "Updated package #$id");
-            flash('success', 'Package updated.');
+
+            $syncMsg = '';
+            if (
+                $showBinaryMetrics
+                && $oldBv !== null
+                && abs($oldBv - round($bv, 2)) > 0.00001
+                && function_exists('plan_uses_binary')
+                && plan_uses_binary()
+            ) {
+                require_once __DIR__ . '/../includes/closing.php';
+                $sync = closing_sync_package_bv($pdo, $id, round($bv, 2));
+                if (!empty($sync['message'])) {
+                    $syncMsg = ' ' . $sync['message'];
+                }
+            }
+            flash('success', 'Package updated.' . $syncMsg);
         } else {
             $pdo->prepare('INSERT INTO packages (name, amount, bv, capping, daily_roi, validity_days, description, status) VALUES (?,?,?,?,0,30,?,?)')
                 ->execute([$name, $amount, $bv, $capping, $description, $status]);

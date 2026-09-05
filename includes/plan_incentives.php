@@ -60,6 +60,10 @@ function plan_incentives_ensure(PDO $pdo): void
     if ($done) {
         return;
     }
+    // MySQL DDL implicitly commits — never run mid-transaction.
+    if ($pdo->inTransaction()) {
+        return;
+    }
 
     try {
         $col = $pdo->query("SHOW COLUMNS FROM commissions LIKE 'type'")->fetch(PDO::FETCH_ASSOC);
@@ -227,6 +231,29 @@ function plan_incentives_ensure(PDO $pdo): void
         // ignore
     }
 
+    // One-time: DSI is % of binary net (not kit pool). Restore classic L1–L5 split if still on kit-effective %.
+    try {
+        require_once __DIR__ . '/features.php';
+        if (setting('dsi_on_binary', '0') !== '1') {
+            $defaults = [1 => '50', 2 => '20', 3 => '15', 4 => '10', 5 => '5'];
+            $sum = 0.0;
+            for ($i = 1; $i <= 5; $i++) {
+                $sum += max(0.0, (float) setting('dsi_level_' . $i . '_percent', $defaults[$i]));
+            }
+            // Kit-era rates were ~10% total (5+2+1.5+1+0.5); binary split totals ~100%.
+            if ($sum > 0 && $sum <= 20) {
+                for ($i = 1; $i <= 5; $i++) {
+                    feature_save($pdo, 'dsi_level_' . $i . '_percent', $defaults[$i]);
+                }
+            }
+            feature_save($pdo, 'dsi_pool_percent', '0');
+            feature_save($pdo, 'dsi_rates_of_package', '0');
+            feature_save($pdo, 'dsi_on_binary', '1');
+        }
+    } catch (Throwable $e) {
+        // ignore
+    }
+
     $done = true;
 }
 
@@ -318,39 +345,37 @@ function plan_member_rank_progress(PDO $pdo, array $member): array
 }
 
 /**
- * Queue Direct Sponsor Incentive up 5 sponsor levels from a distributable pool.
- * Creates pending commissions only — wallet credit happens on binary closing via plan_dsi_settle_pending().
- * Pool = dsi_pool_percent of $baseAmount. Each level takes its % of that pool.
- * Default split: L1 50% · L2 20% · L3 15% · L4 10% · L5 5%.
+ * Pay Direct Sponsor Incentive up 5 sponsor levels from a member's binary net income.
+ * Call inside binary closing after that member is credited. Pays wallet immediately.
+ * Base = binary net (what went to Income Wallet). Default split: L1 50% · L2 20% · L3 15% · L4 10% · L5 5%.
+ * Only active members with a package receive; inactive levels are skipped (no roll-up).
+ * Chain = sponsor_id (not placement).
+ *
+ * @return array{paid:int,amount:float}
  */
-function plan_dsi_pay(PDO $pdo, int $fromMemberId, string $memberCode, float $baseAmount, string $eventKey): float
+function plan_dsi_pay(PDO $pdo, int $fromMemberId, string $memberCode, float $baseAmount, string $eventKey): array
 {
+    $empty = ['paid' => 0, 'amount' => 0.0];
     if (plan_dsi_suppress()) {
-        return 0.0;
+        return $empty;
     }
     if (!feature_enabled('feature_dsi_income')) {
-        return 0.0;
+        return $empty;
     }
-    // Settlement runs only inside binary closing — do not queue on non-binary plans.
     if (!plan_uses_binary() || !feature_enabled('feature_binary_income')) {
-        return 0.0;
+        return $empty;
     }
     $fromMemberId = (int) $fromMemberId;
     $baseAmount = round($baseAmount, 2);
     $eventKey = trim($eventKey);
     if ($fromMemberId <= 0 || $baseAmount <= 0 || $eventKey === '') {
-        return 0.0;
+        return $empty;
     }
 
     plan_incentives_ensure($pdo);
 
-    $poolPct = max(0.0, (float) setting('dsi_pool_percent', '10'));
-    $pool = round($baseAmount * $poolPct / 100, 2);
-    if ($pool <= 0) {
-        return 0.0;
-    }
-
     require_once __DIR__ . '/income_tables.php';
+    require_once __DIR__ . '/wallet.php';
     income_tables_ensure($pdo);
 
     $tag = '[' . $eventKey . ']';
@@ -358,10 +383,10 @@ function plan_dsi_pay(PDO $pdo, int $fromMemberId, string $memberCode, float $ba
         $exists = $pdo->prepare("SELECT id FROM income_dsi WHERE from_member_id = ? AND description LIKE ? LIMIT 1");
         $exists->execute([$fromMemberId, '%' . $tag . '%']);
         if ($exists->fetch()) {
-            return 0.0;
+            return $empty;
         }
     } catch (Throwable $e) {
-        return 0.0;
+        return $empty;
     }
 
     $stmt = $pdo->prepare('SELECT sponsor_id FROM members WHERE id = ? LIMIT 1');
@@ -370,6 +395,7 @@ function plan_dsi_pay(PDO $pdo, int $fromMemberId, string $memberCode, float $ba
 
     $load = $pdo->prepare("SELECT id, sponsor_id, status, package_id FROM members WHERE id = ? LIMIT 1");
 
+    $paid = 0;
     $total = 0.0;
     for ($level = 1; $level <= 5 && $sponsorId > 0; $level++) {
         $load->execute([$sponsorId]);
@@ -385,33 +411,61 @@ function plan_dsi_pay(PDO $pdo, int $fromMemberId, string $memberCode, float $ba
             4 => '10',
             default => '5',
         }));
-        $comm = round($pool * $pct / 100, 2);
+        $comm = round($baseAmount * $pct / 100, 2);
 
         if (
             $comm > 0
             && ($up['status'] ?? '') === 'active'
             && !empty($up['package_id'])
         ) {
-            $desc = "DSI L{$level} from {$memberCode} {$tag}";
-            // Held until binary closing — no wallet credit yet.
-            income_split_insert($pdo, 'dsi', (int) $up['id'], $fromMemberId, $comm, $desc, 'pending');
-            $total += $comm;
+            $desc = "DSI L{$level} on binary of {$memberCode} {$tag}";
+            $iid = income_split_insert($pdo, 'dsi', (int) $up['id'], $fromMemberId, $comm, $desc, 'paid');
+            if ($iid > 0) {
+                wallet_credit($pdo, (int) $up['id'], 'income', $comm, 'income_dsi', $iid, $desc);
+                $paid++;
+                $total += $comm;
+            }
         }
 
         $sponsorId = (int) ($up['sponsor_id'] ?? 0);
     }
 
-    return $total;
+    return ['paid' => $paid, 'amount' => round($total, 2)];
 }
 
 /**
- * Credit pending DSI commissions to Income Wallet (call inside an open closing transaction).
- * @return array{ok:bool,settled:int,amount:float}
+ * True when $memberId has at least one direct who has earned paid binary income.
+ * Required to receive DSI on closing settlement.
+ */
+function plan_dsi_has_binary_direct(PDO $pdo, int $memberId): bool
+{
+    if ($memberId <= 0) {
+        return false;
+    }
+    try {
+        $st = $pdo->prepare("
+            SELECT 1
+            FROM commissions c
+            INNER JOIN members d ON d.id = c.member_id AND d.sponsor_id = ?
+            WHERE c.type = 'binary' AND c.status = 'paid' AND c.amount > 0
+            LIMIT 1
+        ");
+        $st->execute([$memberId]);
+        return (bool) $st->fetchColumn();
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+/**
+ * Credit pending DSI to Income Wallet (call inside an open closing transaction).
+ * Only recipients whose directs have earned binary income are paid; others stay pending.
+ * @return array{ok:bool,settled:int,amount:float,held:int}
  */
 function plan_dsi_settle_pending(PDO $pdo): array
 {
     if (!feature_enabled('feature_dsi_income')) {
-        return ['ok' => true, 'settled' => 0, 'amount' => 0.0];
+        return ['ok' => true, 'settled' => 0, 'amount' => 0.0, 'held' => 0];
     }
 
     plan_incentives_ensure($pdo);
@@ -431,12 +485,14 @@ function plan_dsi_settle_pending(PDO $pdo): array
             FOR UPDATE
         ")->fetchAll();
     } catch (Throwable $e) {
-        return ['ok' => false, 'settled' => 0, 'amount' => 0.0];
+        return ['ok' => false, 'settled' => 0, 'amount' => 0.0, 'held' => 0];
     }
 
     $upd = $pdo->prepare("UPDATE income_dsi SET status = 'paid' WHERE id = ? AND status = 'pending'");
     $settled = 0;
+    $held = 0;
     $amount = 0.0;
+    $qualifyCache = [];
 
     foreach ($rows as $row) {
         $cid = (int) ($row['id'] ?? 0);
@@ -445,6 +501,16 @@ function plan_dsi_settle_pending(PDO $pdo): array
         if ($cid <= 0 || $mid <= 0 || $amt <= 0) {
             continue;
         }
+
+        if (!array_key_exists($mid, $qualifyCache)) {
+            $qualifyCache[$mid] = plan_dsi_has_binary_direct($pdo, $mid);
+        }
+        if (!$qualifyCache[$mid]) {
+            // Keep pending until a direct earns binary income.
+            $held++;
+            continue;
+        }
+
         $upd->execute([$cid]);
         if ($upd->rowCount() < 1) {
             continue;
@@ -455,7 +521,12 @@ function plan_dsi_settle_pending(PDO $pdo): array
         $amount += $amt;
     }
 
-    return ['ok' => true, 'settled' => $settled, 'amount' => round($amount, 2)];
+    return [
+        'ok' => true,
+        'settled' => $settled,
+        'amount' => round($amount, 2),
+        'held' => $held,
+    ];
 }
 
 /**
