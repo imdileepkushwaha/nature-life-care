@@ -63,7 +63,7 @@ $kycOpen = in_array($currentPage, $kycPages, true);
 $kycIncomplete = $featKyc ? kyc_incomplete_count($pdo, (int) $user['id']) : 0;
 $kycBadge = $kycIncomplete > 0 ? $kycIncomplete : count($kycPages);
 $kycBadgeAlert = $kycIncomplete > 0;
-$teamPages = ['my-direct', 'my-downline'];
+$teamPages = ['my-direct', 'my-downline', 'level-team'];
 if ($featBinary) {
     $teamPages[] = 'my-treeview';
 }
@@ -327,6 +327,7 @@ $chevron = '<svg class="up-nav-chevron" viewBox="0 0 24 24" fill="none" stroke="
                         <div class="up-nav-sub-inner">
                             <a href="my-direct.php" class="up-nav-sublink<?= $currentPage === 'my-direct' ? ' is-active' : '' ?>">My Direct</a>
                             <a href="my-downline.php" class="up-nav-sublink<?= $currentPage === 'my-downline' ? ' is-active' : '' ?>">My Downline</a>
+                            <a href="level-team.php" class="up-nav-sublink<?= $currentPage === 'level-team' ? ' is-active' : '' ?>">Level Team</a>
                             <?php if ($featBinary): ?>
                             <a href="my-treeview.php" class="up-nav-sublink<?= $currentPage === 'my-treeview' ? ' is-active' : '' ?>">My Treeview</a>
                             <?php endif; ?>
@@ -526,6 +527,7 @@ $chevron = '<svg class="up-nav-chevron" viewBox="0 0 24 24" fill="none" stroke="
                     <a href="kit-invoice.php" data-search="kit invoice mrp tax customer value package products">Kit Invoice</a>
                     <a href="my-direct.php" data-search="direct team">My Direct</a>
                     <a href="my-downline.php" data-search="downline team">My Downline</a>
+                    <a href="level-team.php" data-search="level team generations sponsor">Level Team</a>
                     <?php if ($featBinary): ?>
                     <a href="my-treeview.php" data-search="team tree binary">My Treeview</a>
                     <?php endif; ?>

@@ -25,6 +25,7 @@ $rightSum = array_sum(array_map(fn ($m) => (int) $m['right_count'], $rows));
         <h1>My Direct</h1>
         <p>Members you personally sponsored (referral tree).</p>
     </div>
+    <a href="level-team.php" class="up-btn up-btn-outline">Level Team</a>
     <a href="my-downline.php" class="up-btn up-btn-outline">View Downline</a>
 </div>
 

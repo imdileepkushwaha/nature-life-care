@@ -13,7 +13,7 @@ $deepest = $grouped ? max(array_keys($grouped)) : 0;
 <div class="up-page-head">
     <div>
         <h1>Level Tree</h1>
-        <p>Your sponsor-team generations (level income network).</p>
+        <p>Your sponsor-team generations (card view). For filters &amp; list, open <a href="level-team.php">Level Team</a>.</p>
     </div>
     <form method="get" class="team-search">
         <label class="team-max-label">Show up to

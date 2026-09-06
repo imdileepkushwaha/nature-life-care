@@ -92,7 +92,8 @@ function team_collect_sponsor_downline(PDO $pdo, int $rootId, int $maxLevel = 50
     $stmtKids = $pdo->prepare("
         SELECT m.id, m.member_id, m.full_name, m.username, m.phone, m.email, m.status, m.position,
                m.left_count, m.right_count, m.join_date, m.wallet_balance, m.photo, m.package_id,
-               p.name AS package_name,
+               m.sponsor_id,
+               p.name AS package_name, COALESCE(p.amount, 0) AS package_amount,
                s.member_id AS sponsor_mid, s.full_name AS sponsor_name
         FROM members m
         LEFT JOIN packages p ON p.id = m.package_id
@@ -244,6 +245,111 @@ function team_group_by_level(array $downline): array
     }
     ksort($grouped);
     return $grouped;
+}
+
+/**
+ * Map sponsor_id → child member rows (for nested org / level tree UI).
+ * @param list<array<string,mixed>> $downline
+ * @return array<int, list<array<string,mixed>>>
+ */
+function team_sponsor_children_map(array $downline): array
+{
+    $map = [];
+    foreach ($downline as $row) {
+        $sid = (int) ($row['sponsor_id'] ?? 0);
+        if ($sid <= 0) {
+            continue;
+        }
+        $map[$sid][] = $row;
+    }
+    return $map;
+}
+
+/**
+ * Keep matching rows plus ancestors so a nested sponsor tree still connects.
+ * @param list<array<string,mixed>> $downline
+ * @param callable(array):bool $match
+ * @return list<array<string,mixed>>
+ */
+function team_filter_with_ancestors(array $downline, callable $match): array
+{
+    if (!$downline) {
+        return [];
+    }
+    $byId = [];
+    foreach ($downline as $row) {
+        $byId[(int) $row['id']] = $row;
+    }
+    $keep = [];
+    foreach ($downline as $row) {
+        if (!$match($row)) {
+            continue;
+        }
+        $cur = $row;
+        $guard = 0;
+        while ($cur && $guard < 80) {
+            $id = (int) ($cur['id'] ?? 0);
+            if ($id <= 0 || isset($keep[$id])) {
+                break;
+            }
+            $keep[$id] = $cur;
+            $sid = (int) ($cur['sponsor_id'] ?? 0);
+            $cur = ($sid > 0 && isset($byId[$sid])) ? $byId[$sid] : null;
+            $guard++;
+        }
+    }
+    return array_values($keep);
+}
+
+/**
+ * Render nested sponsor org-chart (level-tree style cards + connectors).
+ * Child branches start collapsed — expand on card click.
+ * @param array<int, list<array<string,mixed>>> $childrenMap
+ */
+function team_render_level_org(array $childrenMap, int $parentId, int $depth = 1, int $maxDepth = 10): void
+{
+    $kids = $childrenMap[$parentId] ?? [];
+    if (!$kids || $depth > $maxDepth) {
+        return;
+    }
+    echo '<ul class="lt-org-branch">';
+    foreach ($kids as $m) {
+        $mid = (int) ($m['id'] ?? 0);
+        $active = function_exists('member_is_active')
+            ? member_is_active($m)
+            : (($m['status'] ?? '') === 'active' && !empty($m['package_id']));
+        $amt = round((float) ($m['package_amount'] ?? 0), 2);
+        $name = trim((string) ($m['full_name'] ?? ''));
+        if ($name === '') {
+            $name = (string) ($m['member_id'] ?? 'Member');
+        }
+        $code = (string) ($m['member_id'] ?? '');
+        $childCount = ($mid > 0 && $depth < $maxDepth) ? count($childrenMap[$mid] ?? []) : 0;
+        $hasKids = $childCount > 0;
+        $liClass = $hasKids ? ' is-collapsed has-branch' : '';
+        echo '<li class="' . trim($liClass) . '">';
+        echo '<div class="lt-org-card' . ($active ? ' is-active' : ' is-inactive') . ($hasKids ? ' has-kids is-toggle' : '') . '"'
+            . ($hasKids ? ' role="button" tabindex="0" aria-expanded="false" data-lt-toggle' : '')
+            . '>';
+        echo '<span class="lt-org-ico" aria-hidden="true">';
+        echo '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a4.5 4.5 0 100-9 4.5 4.5 0 000 9zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5z"/></svg>';
+        echo '</span>';
+        echo '<strong class="lt-org-name" title="' . e($name) . '">' . e($name) . '</strong>';
+        echo '<span class="lt-org-status">' . ($active ? 'Active' : 'Inactive') . '</span>';
+        echo '<span class="lt-org-amt">' . currency($amt) . '</span>';
+        if ($code !== '') {
+            echo '<span class="lt-org-code">' . e($code) . '</span>';
+        }
+        if ($hasKids) {
+            echo '<span class="lt-org-expand">' . (int) $childCount . ' ↓</span>';
+        }
+        echo '</div>';
+        if ($hasKids) {
+            team_render_level_org($childrenMap, $mid, $depth + 1, $maxDepth);
+        }
+        echo '</li>';
+    }
+    echo '</ul>';
 }
 
 /** Binary tree renderer for user panel. Vacant slots can open Add Member when $allowAdd. */
