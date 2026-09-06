@@ -92,20 +92,32 @@ $paidSum = income_sum($pdo, $uid, 'dsi', 'paid');
             <div>
                 <span class="inc-kicker">Reports</span>
                 <h2>DSI Report</h2>
-                <p>Filter by date range. Paid on binary closing.</p>
+                <p>Paid on binary closing — filter by date below.</p>
             </div>
         </div>
-        <form method="get" class="inc-filters" style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:end">
-            <label>From <input type="date" name="from" value="<?= e($from) ?>"></label>
-            <label>To <input type="date" name="to" value="<?= e($to) ?>"></label>
-            <select name="status" aria-label="Status">
-                <option value="">Paid only</option>
+    </div>
+    <form method="get" class="inc-filter-bar">
+        <div class="inc-filter-field">
+            <label for="dsiFrom">From</label>
+            <input type="date" id="dsiFrom" name="from" value="<?= e($from) ?>" required>
+        </div>
+        <div class="inc-filter-field">
+            <label for="dsiTo">To</label>
+            <input type="date" id="dsiTo" name="to" value="<?= e($to) ?>" required>
+        </div>
+        <div class="inc-filter-field">
+            <label for="dsiStatus">Status</label>
+            <select id="dsiStatus" name="status">
+                <option value="" <?= $statusFilter === '' ? 'selected' : '' ?>>Paid only</option>
                 <option value="paid" <?= $statusFilter === 'paid' ? 'selected' : '' ?>>Paid</option>
                 <option value="cancelled" <?= $statusFilter === 'cancelled' ? 'selected' : '' ?>>Cancelled</option>
             </select>
-            <button type="submit" class="up-btn up-btn-primary">Filter</button>
-        </form>
-    </div>
+        </div>
+        <div class="inc-filter-actions">
+            <button type="submit" class="up-btn up-btn-primary">Search</button>
+            <a href="report-dsi.php" class="up-btn up-btn-outline">Reset</a>
+        </div>
+    </form>
     <div class="inc-table-wrap">
         <table class="inc-table">
             <thead>

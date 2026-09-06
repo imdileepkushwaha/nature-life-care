@@ -115,21 +115,33 @@ $paidSum = income_sum($pdo, $uid, 'matching', 'paid');
             <div>
                 <span class="inc-kicker">Reports</span>
                 <h2>Matching Report</h2>
-                <p>Same income as Matching Income — filter by date range.</p>
+                <p>Same income as Matching Income — filter by date below.</p>
             </div>
         </div>
-        <form method="get" class="inc-filters" style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:end">
-            <label>From <input type="date" name="from" value="<?= e($from) ?>"></label>
-            <label>To <input type="date" name="to" value="<?= e($to) ?>"></label>
-            <select name="status" aria-label="Status">
-                <option value="">All (excl. cancelled)</option>
+    </div>
+    <form method="get" class="inc-filter-bar">
+        <div class="inc-filter-field">
+            <label for="matchFrom">From</label>
+            <input type="date" id="matchFrom" name="from" value="<?= e($from) ?>" required>
+        </div>
+        <div class="inc-filter-field">
+            <label for="matchTo">To</label>
+            <input type="date" id="matchTo" name="to" value="<?= e($to) ?>" required>
+        </div>
+        <div class="inc-filter-field">
+            <label for="matchStatus">Status</label>
+            <select id="matchStatus" name="status">
+                <option value="" <?= $statusFilter === '' ? 'selected' : '' ?>>All (excl. cancelled)</option>
                 <option value="paid" <?= $statusFilter === 'paid' ? 'selected' : '' ?>>Paid</option>
                 <option value="pending" <?= $statusFilter === 'pending' ? 'selected' : '' ?>>Pending</option>
                 <option value="cancelled" <?= $statusFilter === 'cancelled' ? 'selected' : '' ?>>Cancelled</option>
             </select>
-            <button type="submit" class="up-btn up-btn-primary">Filter</button>
-        </form>
-    </div>
+        </div>
+        <div class="inc-filter-actions">
+            <button type="submit" class="up-btn up-btn-primary">Search</button>
+            <a href="report-matching.php" class="up-btn up-btn-outline">Reset</a>
+        </div>
+    </form>
     <div class="inc-table-wrap">
         <table class="inc-table">
             <thead>

@@ -9761,6 +9761,85 @@ body.ut-modal-open { overflow: hidden; }
 
 .inc-filters select option { color: #344767; }
 
+/* Filter bar below income banner (dates + search) */
+.inc-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.75rem 1rem;
+    padding: 0.95rem 1.1rem;
+    background: #f8fafc;
+    border-bottom: 1px solid #eef0f4;
+}
+.inc-filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.28rem;
+    min-width: 0;
+}
+.inc-filter-field label {
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #8392ab;
+}
+.inc-filter-field input[type="date"],
+.inc-filter-field select {
+    box-sizing: border-box;
+    min-width: 158px;
+    height: 42px;
+    padding: 0.45rem 0.7rem;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #344767;
+    background: #fff;
+    color-scheme: light;
+}
+.inc-filter-field input[type="date"]:focus,
+.inc-filter-field select:focus {
+    outline: none;
+    border-color: #2152ff;
+    box-shadow: 0 0 0 3px rgba(33, 82, 255, 0.14);
+}
+.inc-card:has(.inc-banner.is-green) .inc-filter-field input[type="date"]:focus,
+.inc-card:has(.inc-banner.is-green) .inc-filter-field select:focus {
+    border-color: #17ad37;
+    box-shadow: 0 0 0 3px rgba(23, 173, 55, 0.15);
+}
+.inc-card:has(.inc-banner.is-orange) .inc-filter-field input[type="date"]:focus,
+.inc-card:has(.inc-banner.is-orange) .inc-filter-field select:focus {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18);
+}
+.inc-filter-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    margin-left: auto;
+}
+@media (max-width: 720px) {
+    .inc-filter-field {
+        flex: 1 1 calc(50% - 0.5rem);
+    }
+    .inc-filter-field input[type="date"],
+    .inc-filter-field select {
+        width: 100%;
+        min-width: 0;
+    }
+    .inc-filter-actions {
+        margin-left: 0;
+        width: 100%;
+    }
+    .inc-filter-actions .up-btn {
+        flex: 1;
+    }
+}
+
 .inc-table-wrap { overflow-x: auto; }
 
 .inc-table {
