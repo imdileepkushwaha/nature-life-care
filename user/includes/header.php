@@ -137,7 +137,7 @@ if ($featRewards) {
 }
 $careerOpen = in_array($currentPage, $careerPages, true);
 $careerBadge = count($careerPages);
-$reportPages = ['transaction-report'];
+$reportPages = ['transaction-report', 'report-level-income'];
 if (feature_enabled('feature_dsi_income')) {
     $reportPages[] = 'report-dsi';
 }
@@ -491,6 +491,7 @@ $chevron = '<svg class="up-nav-chevron" viewBox="0 0 24 24" fill="none" stroke="
                     <div class="up-nav-sub" id="upNavSubReports">
                         <div class="up-nav-sub-inner">
                             <a href="transaction-report.php" class="up-nav-sublink<?= $currentPage === 'transaction-report' ? ' is-active' : '' ?>">Transaction Report</a>
+                            <a href="report-level-income.php" class="up-nav-sublink<?= $currentPage === 'report-level-income' ? ' is-active' : '' ?>">Level Wise Income</a>
                             <?php if (feature_enabled('feature_dsi_income')): ?>
                             <a href="report-dsi.php" class="up-nav-sublink<?= $currentPage === 'report-dsi' ? ' is-active' : '' ?>">DSI Report</a>
                             <?php endif; ?>
@@ -598,6 +599,7 @@ $chevron = '<svg class="up-nav-chevron" viewBox="0 0 24 24" fill="none" stroke="
                     <a href="withdrawal-report.php" data-search="withdraw report">Withdrawal Report</a>
                     <?php endif; ?>
                     <a href="transaction-report.php" data-search="transaction report">Transaction Report</a>
+                    <a href="report-level-income.php" data-search="level wise income report binary">Level Wise Income</a>
                     <a href="report-dsi.php" data-search="dsi report direct sponsor">DSI Report</a>
                     <?php if ($featIncomeMatching): ?>
                     <a href="report-matching.php" data-search="matching report bonus pair">Matching Report</a>

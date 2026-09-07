@@ -9805,6 +9805,8 @@ body.ut-modal-open { overflow: hidden; }
     color: #8392ab;
 }
 .inc-filter-field input[type="date"],
+.inc-filter-field input[type="text"],
+.inc-filter-field input[type="search"],
 .inc-filter-field select {
     box-sizing: border-box;
     min-width: 158px;
@@ -9819,21 +9821,38 @@ body.ut-modal-open { overflow: hidden; }
     background: #fff;
     color-scheme: light;
 }
+.inc-filter-field input[type="text"],
+.inc-filter-field input[type="search"] {
+    min-width: 180px;
+}
 .inc-filter-field input[type="date"]:focus,
+.inc-filter-field input[type="text"]:focus,
+.inc-filter-field input[type="search"]:focus,
 .inc-filter-field select:focus {
     outline: none;
     border-color: #2152ff;
     box-shadow: 0 0 0 3px rgba(33, 82, 255, 0.14);
 }
 .inc-card:has(.inc-banner.is-green) .inc-filter-field input[type="date"]:focus,
+.inc-card:has(.inc-banner.is-green) .inc-filter-field input[type="text"]:focus,
+.inc-card:has(.inc-banner.is-green) .inc-filter-field input[type="search"]:focus,
 .inc-card:has(.inc-banner.is-green) .inc-filter-field select:focus {
     border-color: #17ad37;
     box-shadow: 0 0 0 3px rgba(23, 173, 55, 0.15);
 }
 .inc-card:has(.inc-banner.is-orange) .inc-filter-field input[type="date"]:focus,
+.inc-card:has(.inc-banner.is-orange) .inc-filter-field input[type="text"]:focus,
+.inc-card:has(.inc-banner.is-orange) .inc-filter-field input[type="search"]:focus,
 .inc-card:has(.inc-banner.is-orange) .inc-filter-field select:focus {
     border-color: #f59e0b;
     box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18);
+}
+.inc-card:has(.inc-banner.is-purple) .inc-filter-field input[type="date"]:focus,
+.inc-card:has(.inc-banner.is-purple) .inc-filter-field input[type="text"]:focus,
+.inc-card:has(.inc-banner.is-purple) .inc-filter-field input[type="search"]:focus,
+.inc-card:has(.inc-banner.is-purple) .inc-filter-field select:focus {
+    border-color: #7928ca;
+    box-shadow: 0 0 0 3px rgba(121, 40, 202, 0.16);
 }
 .inc-filter-actions {
     display: flex;
@@ -9847,6 +9866,8 @@ body.ut-modal-open { overflow: hidden; }
         flex: 1 1 calc(50% - 0.5rem);
     }
     .inc-filter-field input[type="date"],
+    .inc-filter-field input[type="text"],
+    .inc-filter-field input[type="search"],
     .inc-filter-field select {
         width: 100%;
         min-width: 0;
