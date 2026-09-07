@@ -19,6 +19,20 @@ $rightBv = (float) ($user['right_bv'] ?? 0);
 $pairBv = closing_pair_bv();
 $flush = max(0, (int) setting('binary_flush_pairs', '0'));
 $openMatch = $showBinaryUi ? closing_compute_match($leftBv, $rightBv, $pairBv, $flush) : ['pairs' => 0];
+if (
+    $showBinaryUi
+    && (($openMatch['matched_bv'] ?? 0) > 0)
+    && !closing_has_binary_side_directs($pdo, $uid)
+) {
+    $openMatch = [
+        'pairs' => 0.0,
+        'matched_bv' => 0.0,
+        'left_before' => $leftBv,
+        'right_before' => $rightBv,
+        'left_after' => $leftBv,
+        'right_after' => $rightBv,
+    ];
+}
 $openPairs = (float) ($openMatch['pairs'] ?? 0);
 
 $sponsor = null;

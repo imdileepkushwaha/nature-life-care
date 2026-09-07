@@ -11,10 +11,13 @@ $isLocal = app_is_local();
 $dbConfig = app_db_config_for_current();
 
 define('DB_HOST', $dbConfig['host']);
+define('DB_PORT', (string) ($dbConfig['port'] ?? '3306'));
 define('DB_NAME', $dbConfig['name']);
 define('DB_USER', $dbConfig['user']);
 define('DB_PASS', $dbConfig['pass']);
 define('DB_CHARSET', 'utf8mb4');
+define('DB_SLOT', app_db_active_slot()); // local|live
+define('DB_MODE', app_db_connection_mode()); // auto|online|offline
 
 $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
 define('APP_NAME', 'Binary MLM Admin');
@@ -28,7 +31,7 @@ if (!headers_sent()) {
 }
 
 try {
-    $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=' . DB_CHARSET;
+    $dsn = 'mysql:host=' . DB_HOST . ';port=' . DB_PORT . ';dbname=' . DB_NAME . ';charset=' . DB_CHARSET;
     $pdo = new PDO($dsn, DB_USER, DB_PASS, [
         PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,

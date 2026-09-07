@@ -264,7 +264,7 @@ require_once __DIR__ . '/../includes/header.php';
                     <div><span>Matching</span><strong><?= currency((float) $preview['matching_total']) ?></strong></div>
                 </div>
                 <?php if (empty($preview['items'])): ?>
-                    <div class="rpt-empty"><strong>No pairs</strong><p>Activate members on both legs to create open PV.</p></div>
+                    <div class="rpt-empty"><strong>No pairs</strong><p>Need open PV on both legs, plus one personal direct somewhere in the left leg and one in the right leg.</p></div>
                 <?php else: ?>
                     <div class="rpt-table-wrap">
                         <table class="rpt-table">

@@ -735,12 +735,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Auto-submit filter forms: dropdown/date on change, text inputs debounced
+    // Filter forms: dropdown/date auto-submit on change. Text search only on Search click / Enter.
     document.querySelectorAll('form.filters, form.members-filter-form, form.tpin-filters').forEach((form) => {
         const method = (form.getAttribute('method') || 'get').toLowerCase();
         if (method === 'post') return;
 
-        let timer = null;
         const submitNow = () => {
             if (typeof form.requestSubmit === 'function') {
                 form.requestSubmit();
@@ -751,21 +750,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         form.querySelectorAll('select, input[type="date"], input[type="month"], input[type="week"]').forEach((el) => {
             el.addEventListener('change', () => {
-                clearTimeout(timer);
                 submitNow();
             });
         });
 
+        // Do not auto-submit while typing — characters were clearing on reload.
+        // Enter still submits (same as clicking Search).
         form.querySelectorAll('input[type="text"], input[type="search"], input[type="number"], input:not([type])').forEach((el) => {
             if (el.name === 'admin_note' || el.classList.contains('act-note-input')) return;
-            el.addEventListener('input', () => {
-                clearTimeout(timer);
-                timer = setTimeout(submitNow, 450);
-            });
             el.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    clearTimeout(timer);
                     submitNow();
                 }
             });

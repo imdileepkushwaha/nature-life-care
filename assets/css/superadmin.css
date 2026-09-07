@@ -1575,8 +1575,19 @@
     font-weight: 600;
     color: #94a3b8;
 }
-.sa-settings .settings-card-foot .btn-primary {
+.sa-settings .settings-card-foot .btn-primary,
+.sa-settings .settings-card-foot .sa-btn-violet {
     display: inline-flex;
     align-items: center;
     gap: .45rem;
+}
+
+.sa-settings .sa-db-card,
+.sa-settings .sa-bk-card {
+    overflow: visible;
+}
+
+.sa-settings .sa-db-body .form-group,
+.sa-settings .sa-bk-body .form-group {
+    margin-bottom: 0;
 }

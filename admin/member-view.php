@@ -95,6 +95,16 @@ if ($showBinary) {
     $pairBv = closing_pair_bv();
     $flush = max(0, (int) setting('binary_flush_pairs', '0'));
     $openMatch = closing_compute_match((float) $member['left_bv'], (float) $member['right_bv'], $pairBv, $flush);
+    if (($openMatch['matched_bv'] ?? 0) > 0 && !closing_has_binary_side_directs($pdo, $id)) {
+        $openMatch = [
+            'pairs' => 0.0,
+            'matched_bv' => 0.0,
+            'left_before' => (float) $member['left_bv'],
+            'right_before' => (float) $member['right_bv'],
+            'left_after' => (float) $member['left_bv'],
+            'right_after' => (float) $member['right_bv'],
+        ];
+    }
 
     $leftChild = $pdo->prepare('SELECT * FROM members WHERE placement_id = ? AND position = ?');
     $leftChild->execute([$id, 'left']);

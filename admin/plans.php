@@ -100,7 +100,6 @@ require_once __DIR__ . '/../includes/header.php';
                         <div class="action-icons">
                             <?= action_edit('?edit=' . (int)$r['id']) ?>
                             <?= action_toggle('?toggle=' . (int)$r['id'], $r['status']) ?>
-                            <a href="package-plans.php?plan_id=<?= (int)$r['id'] ?>" class="btn-icon" title="Packages" aria-label="Packages"><?= icon_svg('package') ?></a>
                             <?= action_delete('?delete=' . (int)$r['id'], 'Delete this plan?') ?>
                         </div>
                     </td>

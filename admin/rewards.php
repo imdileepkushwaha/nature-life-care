@@ -121,14 +121,16 @@ require_once __DIR__ . '/../includes/header.php';
                     <td><?= status_badge((string) $r['status']) ?></td>
                     <td>
                         <?php if (($r['status'] ?? '') === 'eligible'): ?>
-                        <form method="post" class="filters" style="margin:0;gap:0.4rem">
+                        <form method="post" class="action-icons reward-actions">
                             <input type="hidden" name="id" value="<?= (int) $r['id'] ?>">
-                            <input type="text" name="admin_note" placeholder="Note" style="min-width:8rem">
-                            <button type="submit" name="action" value="fulfill" class="btn btn-outline btn-sm" data-confirm="Mark this gift as fulfilled (no wallet credit)?">Fulfill gift</button>
-                            <?php if ((float) $r['cash_value'] > 0): ?>
-                            <button type="submit" name="action" value="fulfill_cash" class="btn btn-primary btn-sm" data-confirm="Credit <?= e(strip_tags(currency((float) $r['cash_value']))) ?> to Income Wallet and mark fulfilled?">Credit cash</button>
-                            <?php endif; ?>
-                            <button type="submit" name="action" value="cancel" class="btn btn-outline btn-sm" data-confirm="Cancel this reward?">Cancel</button>
+                            <input type="text" name="admin_note" placeholder="Admin note" class="act-note-input" maxlength="255" autocomplete="off">
+                            <div class="reward-action-btns">
+                                <button type="submit" name="action" value="fulfill" class="btn btn-outline btn-sm" data-confirm="Mark this gift as fulfilled (no wallet credit)?">Fulfill gift</button>
+                                <?php if ((float) $r['cash_value'] > 0): ?>
+                                <button type="submit" name="action" value="fulfill_cash" class="btn btn-primary btn-sm" data-confirm="Credit <?= e(strip_tags(currency((float) $r['cash_value']))) ?> to Income Wallet and mark fulfilled?">Credit cash</button>
+                                <?php endif; ?>
+                                <button type="submit" name="action" value="cancel" class="btn btn-outline btn-sm" data-confirm="Cancel this reward?">Cancel</button>
+                            </div>
                         </form>
                         <?php elseif (!empty($r['admin_note'])): ?>
                         <small class="muted"><?= e((string) $r['admin_note']) ?></small>

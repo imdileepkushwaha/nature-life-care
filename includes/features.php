@@ -587,7 +587,6 @@ function feature_admin_page_map(): array
         'rewards' => 'rewards',
         'packages' => 'packages',
         'package-assign-products' => 'packages',
-        'package-plans' => 'packages',
         'plans' => 'packages',
         'activations' => 'activations',
         'tpin' => 'tpin',

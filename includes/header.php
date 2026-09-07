@@ -26,7 +26,7 @@ $featRewards = feature_module_allowed('rewards');
 
 $utilityPages = [
     'countries', 'states', 'cities', 'banks', 'bank-accounts',
-    'news', 'plans', 'package-plans', 'direct-member-login',
+    'news', 'plans', 'direct-member-login',
 ];
 $utilityOpen = in_array($currentPage, $utilityPages, true);
 
@@ -212,7 +212,6 @@ $chevronDown = '<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke=
                         <a href="news.php" class="<?= $currentPage === 'news' ? 'active' : '' ?>"><span class="dot"></span>News Add</a>
                         <?php if ($featPackages): ?>
                         <a href="plans.php" class="<?= $currentPage === 'plans' ? 'active' : '' ?>"><span class="dot"></span>Add Plan</a>
-                        <a href="package-plans.php" class="<?= $currentPage === 'package-plans' ? 'active' : '' ?>"><span class="dot"></span>Package Plan Master</a>
                         <?php endif; ?>
                         <a href="direct-member-login.php" class="<?= $currentPage === 'direct-member-login' ? 'active' : '' ?>"><span class="dot"></span>Direct Member Login</a>
                     </div>

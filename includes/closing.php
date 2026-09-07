@@ -8,6 +8,9 @@
  * 3) Binary closing → 1:2 / 2:1 matches the weaker leg's full eligible PV only when legs differ.
  *    Example: 1,600 + 3,200 → match 1,600 (carry 1,600 on strong). Equal legs (3,200 + 3,200) → no pay.
  *    Income = matched PV × binary %.
+ *    Gate: member must have ≥1 personal direct (sponsor_id = self) somewhere in the LEFT
+ *    placement leg AND ≥1 somewhere in the RIGHT leg (not only immediate children). Deeper
+ *    volume from anyone still counts once that gate is met. Without both, no pay and BV stays.
  * 4) Matching payout uses company-approved eligible PV only (paid kit / paid product, not reversed).
  * 5) Return / cancel / refund reverses unmatched eligible PV (net settlement). Already-paid pairs are not clawed back.
  * 6) Matching bonus → % of that member's binary gross to their direct sponsor.
@@ -157,6 +160,82 @@ function closing_match_ratio(): string
         return '1:1';
     }
     return '1:2';
+}
+
+/**
+ * Which leg of $rootId does $memberId sit under? Walks placement upline.
+ * @return 'left'|'right'|null
+ */
+function closing_member_leg_under_root(PDO $pdo, int $rootId, int $memberId): ?string
+{
+    if ($rootId <= 0 || $memberId <= 0 || $rootId === $memberId) {
+        return null;
+    }
+
+    static $posCache = [];
+    $stmt = null;
+    $cur = $memberId;
+    $guard = 0;
+
+    while ($cur > 0 && $guard < 200) {
+        if (!isset($posCache[$cur])) {
+            if ($stmt === null) {
+                $stmt = $pdo->prepare('SELECT placement_id, position FROM members WHERE id = ? LIMIT 1');
+            }
+            $stmt->execute([$cur]);
+            $posCache[$cur] = $stmt->fetch() ?: null;
+        }
+        $row = $posCache[$cur];
+        if (!$row || empty($row['placement_id'])) {
+            return null;
+        }
+        $parent = (int) $row['placement_id'];
+        $pos = strtolower(trim((string) ($row['position'] ?? '')));
+        if ($parent === $rootId) {
+            return ($pos === 'left' || $pos === 'right') ? $pos : null;
+        }
+        $cur = $parent;
+        $guard++;
+    }
+
+    return null;
+}
+
+/**
+ * Binary pay gate: ≥1 personal direct anywhere in left leg AND ≥1 anywhere in right leg.
+ * Direct = sponsor_id = member. Leg = placement tree under this member (any depth).
+ */
+function closing_has_binary_side_directs(PDO $pdo, int $memberId): bool
+{
+    static $cache = [];
+    if ($memberId <= 0) {
+        return false;
+    }
+    if (array_key_exists($memberId, $cache)) {
+        return $cache[$memberId];
+    }
+
+    $stmt = $pdo->prepare('SELECT id FROM members WHERE sponsor_id = ?');
+    $stmt->execute([$memberId]);
+    $directs = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+    $hasLeft = false;
+    $hasRight = false;
+    foreach ($directs as $did) {
+        $leg = closing_member_leg_under_root($pdo, $memberId, (int) $did);
+        if ($leg === 'left') {
+            $hasLeft = true;
+        } elseif ($leg === 'right') {
+            $hasRight = true;
+        }
+        if ($hasLeft && $hasRight) {
+            break;
+        }
+    }
+
+    $ok = $hasLeft && $hasRight;
+    $cache[$memberId] = $ok;
+    return $ok;
 }
 
 function closing_bv_suppress(?bool $set = null): bool
@@ -840,6 +919,11 @@ function closing_run_binary(PDO $pdo, ?int $adminId = null, bool $commit = true,
                 continue;
             }
 
+            // Need ≥1 personal direct in left leg + ≥1 in right leg (any depth) before binary pay.
+            if (!closing_has_binary_side_directs($pdo, $mid)) {
+                continue;
+            }
+
             $gross = round($match['matched_bv'] * $binaryPct / 100, 2);
             $charge = $adminChargePct > 0 ? round($gross * $adminChargePct / 100, 2) : 0.0;
             $net = round(max(0.0, $gross - $charge), 2);
@@ -1055,7 +1139,7 @@ function closing_open_pair_summary(PDO $pdo): array
     $binaryPct = (float) setting('binary_commission_percent', '15');
 
     $rows = $pdo->query("
-        SELECT left_bv, right_bv FROM members
+        SELECT id, left_bv, right_bv FROM members
         WHERE status = 'active' AND package_id IS NOT NULL
     ")->fetchAll();
 
@@ -1063,6 +1147,10 @@ function closing_open_pair_summary(PDO $pdo): array
     $matched = 0.0;
     $eligible = 0;
     foreach ($rows as $r) {
+        $mid = (int) ($r['id'] ?? 0);
+        if ($mid <= 0 || !closing_has_binary_side_directs($pdo, $mid)) {
+            continue;
+        }
         $m = closing_compute_match((float) $r['left_bv'], (float) $r['right_bv'], $pairBv, $flush);
         if ($m['matched_bv'] > 0) {
             $eligible++;

@@ -1,15 +1,21 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/messaging.php';
+require_once __DIR__ . '/../includes/db_tools.php';
 require_superadmin();
 
 $pageTitle = 'Settings';
 messaging_ensure_defaults($pdo);
 
 $tab = $_GET['tab'] ?? 'smtp';
-$allowedTabs = ['smtp', 'whatsapp', 'sms', 'security', 'activity'];
+$allowedTabs = ['smtp', 'whatsapp', 'sms', 'security', 'activity', 'database', 'backup'];
 if (!in_array($tab, $allowedTabs, true)) {
     $tab = 'smtp';
+}
+
+// Download backup (GET) before any HTML
+if ($tab === 'backup' && isset($_GET['download'])) {
+    db_tools_download_backup((string) $_GET['download']);
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -19,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $postAction = (string) ($_POST['action'] ?? 'save');
 
-    if ($postAction === 'test') {
+    if ($postAction === 'test' && in_array($postTab, ['smtp', 'whatsapp', 'sms'], true)) {
         $testType = (string) ($_POST['test_type'] ?? $postTab);
         if ($testType === 'smtp') {
             $result = messaging_test_smtp();
@@ -75,6 +81,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         header('Location: settings.php?tab=security');
         exit;
+    } elseif ($postTab === 'database') {
+        if ($postAction === 'run_setup') {
+            $result = db_tools_run_setup($pdo);
+            log_superadmin_activity('settings_db_setup', ($result['ok'] ? 'OK: ' : 'FAIL: ') . ($result['message'] ?? ''));
+            flash($result['ok'] ? 'success' : 'error', $result['message'] ?? 'Setup failed.');
+        } elseif ($postAction === 'test_online' || $postAction === 'test_offline') {
+            $all = app_db_credentials();
+            $prefix = $postAction === 'test_online' ? 'online' : 'offline';
+            $current = $prefix === 'online' ? $all['live'] : $all['local'];
+            $parsed = db_tools_parse_slot_post($_POST, $prefix, $current);
+            if (!$parsed['ok']) {
+                flash('error', $parsed['message'] ?? 'Invalid credentials.');
+            } else {
+                $cfg = $parsed['cfg'];
+                $result = db_tools_test_connection($cfg['host'], $cfg['name'], $cfg['user'], $cfg['pass'], $cfg['port']);
+                log_superadmin_activity('settings_db_test_' . $prefix, ($result['ok'] ? 'OK: ' : 'FAIL: ') . ($result['message'] ?? ''));
+                flash($result['ok'] ? 'success' : 'error', ucfirst($prefix) . ': ' . ($result['message'] ?? 'Test failed.'));
+            }
+        } else {
+            $result = db_tools_save_dual_credentials($_POST);
+            log_superadmin_activity('settings_database', ($result['ok'] ? 'OK: ' : 'FAIL: ') . ($result['message'] ?? ''));
+            flash($result['ok'] ? 'success' : 'error', $result['message'] ?? 'Save failed.');
+        }
+        header('Location: settings.php?tab=database');
+        exit;
+    } elseif ($postTab === 'backup') {
+        if ($postAction === 'download_backup') {
+            log_superadmin_activity('settings_backup_download', 'SQL backup download started');
+            db_tools_download_now($pdo);
+        } elseif ($postAction === 'restore_upload') {
+            if (empty($_POST['confirm_restore'])) {
+                flash('error', 'Confirm that you understand this overwrites the current database.');
+            } else {
+                $result = db_tools_restore_upload($pdo, $_FILES['backup_file'] ?? []);
+                log_superadmin_activity('settings_backup_restore', ($result['ok'] ? 'OK: ' : 'FAIL: ') . ($result['message'] ?? ''));
+                flash($result['ok'] ? 'success' : 'error', $result['message'] ?? 'Restore failed.');
+            }
+        }
+        header('Location: settings.php?tab=backup');
+        exit;
     }
 
     header('Location: settings.php?tab=' . urlencode($postTab));
@@ -101,6 +147,13 @@ if ($tab === 'activity') {
     }
 }
 
+$dbInfo = null;
+$dbCreds = null;
+if ($tab === 'database' || $tab === 'backup') {
+    $dbInfo = db_tools_info($pdo);
+    $dbCreds = app_db_credentials();
+}
+
 require __DIR__ . '/includes/header.php';
 ?>
 
@@ -108,7 +161,7 @@ require __DIR__ . '/includes/header.php';
     <div>
         <span class="sa-hero-kicker">Platform</span>
         <h1>Settings</h1>
-        <p>Email SMTP, WhatsApp &amp; SMS APIs, security, and Super Admin activity.</p>
+        <p>Email SMTP, WhatsApp &amp; SMS APIs, database, backups, security, and Super Admin activity.</p>
     </div>
 </section>
 
@@ -133,6 +186,21 @@ require __DIR__ . '/includes/header.php';
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
                 </span>
                 SMS API
+            </a>
+        </div>
+        <div class="settings-nav-group">
+            <span class="settings-nav-label">Data</span>
+            <a href="settings.php?tab=database" class="settings-nav-item <?= $tab === 'database' ? 'active' : '' ?>">
+                <span class="sni-ico blue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                </span>
+                Database
+            </a>
+            <a href="settings.php?tab=backup" class="settings-nav-item <?= $tab === 'backup' ? 'active' : '' ?>">
+                <span class="sni-ico purple">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </span>
+                Backup
             </a>
         </div>
         <div class="settings-nav-group">
@@ -480,7 +548,286 @@ require __DIR__ . '/includes/header.php';
             </div>
         </form>
 
-        <?php else: ?>
+        <?php elseif ($tab === 'database'):
+            $dbInfo = $dbInfo ?? db_tools_info($pdo);
+            $dbCreds = $dbCreds ?? app_db_credentials();
+            $online = $dbCreds['live'];
+            $offline = $dbCreds['local'];
+            $mode = (string) ($dbCreds['mode'] ?? 'auto');
+            $company = setting('company_name', 'Bharat Seva');
+        ?>
+        <form method="post" class="settings-card sa-db-card" autocomplete="off" id="saDbForm">
+            <input type="hidden" name="tab" value="database">
+            <div class="settings-card-head">
+                <div class="settings-title-block">
+                    <span class="settings-title-ico orange">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                    </span>
+                    <div>
+                        <h2>Online &amp; Offline DB</h2>
+                        <p>Cloud and local XAMPP connection used by this <?= e($company) ?> install.</p>
+                    </div>
+                </div>
+                <span class="status-pill <?= !empty($dbInfo['ok']) ? 'online' : 'offline' ?>"><?= !empty($dbInfo['ok']) ? 'ACCESS OK' : 'ERROR' ?></span>
+            </div>
+
+            <div class="sa-db-body">
+            <div class="sa-db-banner">
+                Connected to <strong><?= e((string) ($dbInfo['slot_label'] ?? 'Database')) ?> Database</strong>.
+                Mode: <?= e(ucfirst((string) ($dbInfo['mode'] ?? 'auto'))) ?> -
+                <?= e((string) ($dbInfo['host'] ?? '')) ?> / <?= e((string) ($dbInfo['name'] ?? '')) ?>
+            </div>
+
+            <div class="sa-db-setup-row">
+                <div>
+                    <h3>Database setup</h3>
+                    <p>Verify tables and columns.</p>
+                </div>
+                <button type="submit" name="action" value="run_setup" class="btn sa-btn-violet" data-confirm="Run database setup / verify tables on the active connection?">Run database setup</button>
+            </div>
+
+            <div class="sa-db-mode-block">
+                <h3>Connection mode</h3>
+                <div class="sa-db-mode-grid">
+                    <label class="sa-db-mode <?= $mode === 'auto' ? 'is-on' : '' ?>">
+                        <input type="radio" name="db_mode" value="auto" <?= $mode === 'auto' ? 'checked' : '' ?>>
+                        <strong>Auto</strong>
+                        <span>Online when available, then offline.</span>
+                    </label>
+                    <label class="sa-db-mode <?= $mode === 'online' ? 'is-on' : '' ?>">
+                        <input type="radio" name="db_mode" value="online" <?= $mode === 'online' ? 'checked' : '' ?>>
+                        <strong>Online only</strong>
+                        <span>Always use cloud server.</span>
+                    </label>
+                    <label class="sa-db-mode <?= $mode === 'offline' ? 'is-on' : '' ?>">
+                        <input type="radio" name="db_mode" value="offline" <?= $mode === 'offline' ? 'checked' : '' ?>>
+                        <strong>Offline only</strong>
+                        <span>Always use local XAMPP.</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="sa-db-dual">
+                <div class="sa-db-panel">
+                    <div class="sa-db-panel-head">
+                        <h3>Online Database</h3>
+                        <p>Hosting / VPS / cloud MySQL</p>
+                    </div>
+                    <div class="sa-db-fields">
+                        <div class="form-group sa-db-host">
+                            <label>Host</label>
+                            <input type="text" name="online_host" value="<?= e((string) ($online['host'] ?? '')) ?>" required>
+                        </div>
+                        <div class="form-group sa-db-port">
+                            <label>Port</label>
+                            <input type="text" name="online_port" value="<?= e((string) ($online['port'] ?? '3306')) ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Database</label>
+                            <input type="text" name="online_name" value="<?= e((string) ($online['name'] ?? '')) ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Username</label>
+                            <input type="text" name="online_user" value="<?= e((string) ($online['user'] ?? '')) ?>" required autocomplete="off">
+                        </div>
+                        <div class="form-group sa-db-pass">
+                            <label>Password</label>
+                            <div class="password-field">
+                                <input type="password" name="online_pass" value="" placeholder="Leave blank to keep current" autocomplete="new-password">
+                                <button type="button" class="password-toggle" data-password-toggle aria-label="Show password" title="Show password">
+                                    <svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                    <svg class="eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                                </button>
+                            </div>
+                            <span class="sa-field-hint">Saved: <?= e(db_tools_mask_pass((string) ($online['pass'] ?? ''))) ?></span>
+                        </div>
+                    </div>
+                    <button type="submit" name="action" value="test_online" class="btn btn-outline sa-db-test" formnovalidate>Test online connection</button>
+                </div>
+
+                <div class="sa-db-panel">
+                    <div class="sa-db-panel-head">
+                        <h3>Offline Database</h3>
+                        <p>Local XAMPP / WAMP on this computer</p>
+                    </div>
+                    <div class="sa-db-fields">
+                        <div class="form-group sa-db-host">
+                            <label>Host</label>
+                            <input type="text" name="offline_host" value="<?= e((string) ($offline['host'] ?? '')) ?>" required>
+                        </div>
+                        <div class="form-group sa-db-port">
+                            <label>Port</label>
+                            <input type="text" name="offline_port" value="<?= e((string) ($offline['port'] ?? '3306')) ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Database</label>
+                            <input type="text" name="offline_name" value="<?= e((string) ($offline['name'] ?? '')) ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Username</label>
+                            <input type="text" name="offline_user" value="<?= e((string) ($offline['user'] ?? '')) ?>" required autocomplete="off">
+                        </div>
+                        <div class="form-group sa-db-pass">
+                            <label>Password</label>
+                            <div class="password-field">
+                                <input type="password" name="offline_pass" value="" placeholder="Usually empty on XAMPP" autocomplete="new-password">
+                                <button type="button" class="password-toggle" data-password-toggle aria-label="Show password" title="Show password">
+                                    <svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                    <svg class="eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                                </button>
+                            </div>
+                            <span class="sa-field-hint">Saved: <?= e(db_tools_mask_pass((string) ($offline['pass'] ?? ''))) ?></span>
+                        </div>
+                    </div>
+                    <button type="submit" name="action" value="test_offline" class="btn btn-outline sa-db-test" formnovalidate>Test offline connection</button>
+                </div>
+            </div>
+
+            <div class="sa-db-banner soft">
+                <span class="si-ico">i</span>
+                <p>Saved in <code>config/db-credentials.php</code>. On a local PC Auto prefers offline; on the live server it prefers online.</p>
+            </div>
+            </div>
+
+            <div class="settings-card-foot">
+                <button type="submit" name="action" value="save" class="btn sa-btn-violet">Save database settings</button>
+            </div>
+        </form>
+        <script>
+        document.querySelectorAll('.sa-db-mode').forEach(function (lab) {
+            lab.addEventListener('click', function () {
+                document.querySelectorAll('.sa-db-mode').forEach(function (x) { x.classList.remove('is-on'); });
+                lab.classList.add('is-on');
+            });
+        });
+        </script>
+
+        <?php elseif ($tab === 'backup'):
+            $dbInfo = $dbInfo ?? db_tools_info($pdo);
+            $lastDl = db_tools_format_meta_time(db_tools_meta('db_backup_last_download'));
+            $lastRs = db_tools_format_meta_time(db_tools_meta('db_backup_last_restore'));
+            $sampleName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', (string) ($dbInfo['name'] ?? 'db')) . '-backup-' . date('Ymd-His') . '.sql';
+        ?>
+        <div class="settings-card sa-bk-card">
+            <div class="settings-card-head">
+                <div class="settings-title-block">
+                    <span class="settings-title-ico green">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </span>
+                    <div>
+                        <h2>Backup &amp; Restore</h2>
+                        <p>SQL dump for this install. Restore only on a maintenance window.</p>
+                    </div>
+                </div>
+                <span class="status-pill online">ACCESS OK</span>
+            </div>
+
+            <div class="sa-bk-body">
+            <div class="sa-bk-stats">
+                <article>
+                    <span>Active database</span>
+                    <strong><?= e((string) ($dbInfo['name'] ?? DB_NAME)) ?></strong>
+                </article>
+                <article>
+                    <span>Tables included</span>
+                    <strong><?= (int) ($dbInfo['tables'] ?? 0) ?></strong>
+                </article>
+                <article>
+                    <span>Last download</span>
+                    <strong><?= e($lastDl) ?></strong>
+                </article>
+                <article>
+                    <span>Last restore</span>
+                    <strong><?= e($lastRs) ?></strong>
+                </article>
+            </div>
+
+            <div class="sa-bk-grid">
+                <div class="sa-bk-panel is-safe">
+                    <span class="sa-bk-badge ok">SAFE</span>
+                    <h3>Download backup</h3>
+                    <p>Exports every table in the active database as a .sql file. Store it off this server.</p>
+                    <ul>
+                        <li>Structure and data for all tables</li>
+                        <li>Filename like <code><?= e($sampleName) ?></code></li>
+                        <li>Does not change anything on this install</li>
+                    </ul>
+                    <form method="post">
+                        <input type="hidden" name="tab" value="backup">
+                        <button type="submit" name="action" value="download_backup" class="btn sa-btn-violet">Download SQL backup</button>
+                    </form>
+                </div>
+
+                <div class="sa-bk-panel is-danger">
+                    <span class="sa-bk-badge bad">DESTRUCTIVE</span>
+                    <h3>Restore backup</h3>
+                    <p>Replaces current data with the uploaded dump. Members, wallets and settings will match the file.</p>
+                    <form method="post" enctype="multipart/form-data" id="saRestoreForm">
+                        <input type="hidden" name="tab" value="backup">
+                        <label class="sa-bk-drop" id="saBkDrop">
+                            <input type="file" name="backup_file" id="saBkFile" accept=".sql,application/sql,text/plain" hidden>
+                            <span class="sa-bk-drop-ico" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            </span>
+                            <strong>Drop a .sql backup here</strong>
+                            <em>or click to browse · max 32 MB · dumps from this page only</em>
+                            <span class="btn btn-outline btn-sm sa-bk-browse" id="saBkBrowse">Browse file</span>
+                            <small id="saBkFileName" class="sa-bk-fname"></small>
+                        </label>
+                        <label class="sa-check-label sa-bk-confirm">
+                            <input type="checkbox" name="confirm_restore" value="1" id="saBkConfirm">
+                            I understand this overwrites the current database.
+                        </label>
+                        <button type="submit" name="action" value="restore_upload" class="btn sa-bk-restore-btn" id="saBkRestoreBtn" disabled data-confirm="RESTORE will overwrite the live database. Continue?">Restore now</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="sa-db-banner soft">
+                <span class="si-ico">i</span>
+                <p>Only restore files created from this page. Super Admin access stays after a restore - you may need to sign in again. Active connection is <code><?= e((string) ($dbInfo['name'] ?? DB_NAME)) ?></code>.</p>
+            </div>
+            </div>
+        </div>
+        <script>
+        (function () {
+            var file = document.getElementById('saBkFile');
+            var nameEl = document.getElementById('saBkFileName');
+            var confirm = document.getElementById('saBkConfirm');
+            var btn = document.getElementById('saBkRestoreBtn');
+            var drop = document.getElementById('saBkDrop');
+            var browse = document.getElementById('saBkBrowse');
+            function sync() {
+                var hasFile = file && file.files && file.files.length > 0;
+                if (nameEl) nameEl.textContent = hasFile ? file.files[0].name : '';
+                if (btn) btn.disabled = !(hasFile && confirm && confirm.checked);
+            }
+            if (browse && file) browse.addEventListener('click', function (e) { e.preventDefault(); file.click(); });
+            if (file) file.addEventListener('change', sync);
+            if (confirm) confirm.addEventListener('change', sync);
+            if (drop) {
+                ['dragenter','dragover'].forEach(function (ev) {
+                    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('is-drag'); });
+                });
+                ['dragleave','drop'].forEach(function (ev) {
+                    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('is-drag'); });
+                });
+                drop.addEventListener('drop', function (e) {
+                    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+                    if (!f || !file) return;
+                    try {
+                        var dt = new DataTransfer();
+                        dt.items.add(f);
+                        file.files = dt.files;
+                    } catch (err) {}
+                    sync();
+                });
+            }
+            sync();
+        })();
+        </script>
+
+        <?php elseif ($tab === 'activity'): ?>
         <div class="settings-card">
             <div class="settings-card-head">
                 <div class="settings-title-block">
