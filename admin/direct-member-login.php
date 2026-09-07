@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
+require_admin();
 $pageTitle = 'Direct Member Login';
 
 $error = '';
@@ -14,19 +15,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$member) {
         $error = 'Active member not found.';
     } else {
-        // Keep admin session; open member session separately
-        $_SESSION['member_id'] = $member['id'];
-        $_SESSION['member_code'] = $member['member_id'];
-        $_SESSION['member_name'] = $member['full_name'];
-        $_SESSION['member_login_by_admin'] = true;
-        $_SESSION['member_login_admin_id'] = $_SESSION['admin_id'] ?? null;
-        session_touch('member');
+        // Keep admin session; open the real user-panel session for this member
+        session_clear_scope('member');
+        $_SESSION['user_id'] = (int) $member['id'];
+        $_SESSION['user_name'] = $member['full_name'];
+        $_SESSION['user_code'] = $member['member_id'];
+        $_SESSION['user_login_by_admin'] = true;
+        $_SESSION['user_login_admin_id'] = $_SESSION['admin_id'] ?? null;
+        session_touch('user');
         if (!empty($_SESSION['admin_id'])) {
             session_touch('admin');
         }
 
         log_activity('direct_member_login', 'Admin logged in as ' . $member['member_id']);
-        header('Location: ../member/index.php');
+        header('Location: ../user/index.php');
         exit;
     }
 }
@@ -50,7 +52,7 @@ require_once __DIR__ . '/../includes/header.php';
     <div class="panel-header"><h2>Direct Member Login</h2></div>
     <div class="panel-body">
         <p style="color:var(--ink-muted);margin-bottom:1rem;font-size:0.9rem">
-            Select a member to open their dashboard as admin (impersonation). Your admin session stays active.
+            Select a member to open their user panel as admin (impersonation). Your admin session stays active.
         </p>
         <?php if ($error): ?><div class="alert alert-error"><?= e($error) ?></div><?php endif; ?>
 

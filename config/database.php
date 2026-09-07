@@ -61,7 +61,10 @@ function session_touch(string $scope): void
 function session_clear_scope(string $scope): void
 {
     $map = [
-        'user' => ['user_id', 'user_name', 'user_code', 'user_last_activity'],
+        'user' => [
+            'user_id', 'user_name', 'user_code', 'user_last_activity',
+            'user_login_by_admin', 'user_login_admin_id',
+        ],
         'admin' => ['admin_id', 'admin_name', 'admin_username', 'admin_last_activity'],
         'superadmin' => [
             'superadmin_id', 'superadmin_name', 'superadmin_username', 'superadmin_last_activity',

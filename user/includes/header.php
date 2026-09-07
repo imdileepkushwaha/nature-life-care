@@ -8,9 +8,15 @@ feature_guard_user_page();
 
 $user = current_user($pdo);
 if (!$user || member_is_login_blocked($user)) {
-    unset($_SESSION['user_id'], $_SESSION['user_name'], $_SESSION['user_code']);
-    header('Location: login.php');
+    $wasAdminPreview = !empty($_SESSION['user_login_by_admin']) && !empty($_SESSION['admin_id']);
+    user_logout_session();
+    header('Location: ' . ($wasAdminPreview ? '../admin/direct-member-login.php' : 'login.php'));
     exit;
+}
+
+$userLoginByAdmin = !empty($_SESSION['user_login_by_admin']) && !empty($_SESSION['admin_id']);
+if ($userLoginByAdmin) {
+    session_touch('admin');
 }
 
 $company = setting('company_name', 'Binary MLM');
@@ -692,4 +698,13 @@ $chevron = '<svg class="up-nav-chevron" viewBox="0 0 24 24" fill="none" stroke="
         </header>
 
         <main class="up-content">
+            <?php if ($userLoginByAdmin): ?>
+            <div class="up-alert up-alert-info up-admin-preview">
+                <div>
+                    <strong>Admin preview</strong>
+                    <span>You are viewing the user panel as <?= e((string) ($user['member_id'] ?? '')) ?>.</span>
+                </div>
+                <a href="../admin/direct-member-login.php" class="up-btn up-btn-outline up-btn-sm">Back to Admin</a>
+            </div>
+            <?php endif; ?>
             <?php user_flash_render(); ?>
