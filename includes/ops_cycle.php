@@ -2,9 +2,9 @@
 /**
  * Operations & Payment cycle:
  * - Daily ledger recording (wallet_ledger)
- * - Saturday weekly binary closing
- * - Weekly reconciliation snapshot
- * - Monday–Tuesday verified bank payout window
+ * - Binary closing: daily at 00:00 IST (pending pairs flush once per day)
+ * - Weekly reconciliation snapshot (reporting only)
+ * - Verified bank payout window (default: every Saturday)
  *
  * Timezone: Asia/Kolkata. Week = Sunday 00:00 → Saturday 23:59.
  */
@@ -112,9 +112,9 @@ function ops_ensure_tables(PDO $pdo): void
 
     $defaults = [
         'ops_weekly_closing_enabled' => '1',
-        'ops_weekly_closing_day' => '6',
+        'ops_closing_time' => '00:00',
         'ops_payout_window_enabled' => '1',
-        'ops_payout_window_days' => '1,2',
+        'ops_payout_window_days' => '6',
     ];
     foreach ($defaults as $key => $val) {
         try {
@@ -126,6 +126,24 @@ function ops_ensure_tables(PDO $pdo): void
         } catch (Throwable $e) {
             // ignore
         }
+    }
+
+    // Force daily-only closing (no weekly closing day).
+    try {
+        $chk = $pdo->prepare("SELECT setting_value FROM settings WHERE setting_key = 'ops_schedule_v3' LIMIT 1");
+        $chk->execute();
+        $row = $chk->fetch();
+        if (!$row) {
+            ops_save_setting($pdo, 'ops_closing_time', '00:00');
+            ops_save_setting($pdo, 'ops_weekly_closing_enabled', '1');
+            ops_save_setting($pdo, 'ops_payout_window_enabled', '1');
+            ops_save_setting($pdo, 'ops_payout_window_days', '6');
+            ops_save_setting($pdo, 'ops_closing_mode', 'daily');
+            ops_save_setting($pdo, 'ops_schedule_v2', '1');
+            ops_save_setting($pdo, 'ops_schedule_v3', '1');
+        }
+    } catch (Throwable $e) {
+        // ignore
     }
 
     try {
@@ -157,17 +175,46 @@ function ops_payout_window_enabled(): bool
     return setting('ops_payout_window_enabled', '1') === '1';
 }
 
-/** PHP date('w'): 0=Sun … 6=Sat. Default Saturday. */
-function ops_closing_weekday(): int
+/** Closing is always daily. Kept for older call sites. */
+function ops_closing_mode(): string
 {
-    $d = (int) setting('ops_weekly_closing_day', '6');
-    return ($d >= 0 && $d <= 6) ? $d : 6;
+    return 'daily';
 }
 
-/** ISO-8601 date('N'): 1=Mon … 7=Sun. Default Mon,Tue. */
+function ops_is_daily_closing(): bool
+{
+    return true;
+}
+
+/** HH:MM in Asia/Kolkata. Default midnight. */
+function ops_closing_time(): string
+{
+    $raw = trim((string) setting('ops_closing_time', '00:00'));
+    if (!preg_match('/^([01]?\d|2[0-3]):([0-5]\d)$/', $raw, $m)) {
+        return '00:00';
+    }
+    return sprintf('%02d:%02d', (int) $m[1], (int) $m[2]);
+}
+
+function ops_closing_time_parts(): array
+{
+    [$h, $i] = array_map('intval', explode(':', ops_closing_time()));
+    return [$h, $i];
+}
+
+function ops_closing_schedule_label(): string
+{
+    $t = ops_closing_time();
+    if ($t === '00:00') {
+        return 'Daily at 12:00 AM IST';
+    }
+    return 'Daily at ' . date('g:i A', strtotime('2000-01-01 ' . $t)) . ' IST';
+}
+
+/** ISO-8601 date('N'): 1=Mon … 7=Sun. Default Saturday. */
 function ops_payout_weekdays(): array
 {
-    $raw = strtolower(str_replace(' ', '', (string) setting('ops_payout_window_days', '1,2')));
+    $raw = strtolower(str_replace(' ', '', (string) setting('ops_payout_window_days', '6')));
     $out = [];
     foreach (explode(',', $raw) as $p) {
         $n = (int) $p;
@@ -175,7 +222,7 @@ function ops_payout_weekdays(): array
             $out[] = $n;
         }
     }
-    return $out !== [] ? array_values(array_unique($out)) : [1, 2];
+    return $out !== [] ? array_values(array_unique($out)) : [6];
 }
 
 function ops_weekday_name(int $w, bool $iso = false): string
@@ -188,10 +235,10 @@ function ops_weekday_name(int $w, bool $iso = false): string
     return $map[$w] ?? '—';
 }
 
+/** Every calendar day is a closing day. */
 function ops_is_closing_day(?DateTimeImmutable $when = null): bool
 {
-    $when = $when ?? ops_now();
-    return (int) $when->format('w') === ops_closing_weekday();
+    return true;
 }
 
 function ops_is_payout_day(?DateTimeImmutable $when = null): bool
@@ -202,15 +249,13 @@ function ops_is_payout_day(?DateTimeImmutable $when = null): bool
 
 function ops_next_closing_day(?DateTimeImmutable $when = null): DateTimeImmutable
 {
-    $when = ($when ?? ops_now())->setTime(18, 0, 0);
-    $target = ops_closing_weekday();
-    for ($i = 0; $i < 8; $i++) {
-        $d = $when->modify('+' . $i . ' days');
-        if ((int) $d->format('w') === $target) {
-            return $d->setTime(18, 0, 0);
-        }
+    $when = $when ?? ops_now();
+    [$h, $i] = ops_closing_time_parts();
+    $todayAt = $when->setTime($h, $i, 0);
+    if ($when < $todayAt) {
+        return $todayAt;
     }
-    return $when;
+    return $when->modify('+1 day')->setTime($h, $i, 0);
 }
 
 function ops_next_payout_day(?DateTimeImmutable $when = null): DateTimeImmutable
@@ -235,6 +280,39 @@ function ops_payout_days_label(): string
 /**
  * @return array{ok:bool,already:bool,run:?array,message:string}
  */
+function ops_day_closing_status(PDO $pdo, ?string $ymd = null): array
+{
+    ops_ensure_tables($pdo);
+    closing_ensure_tables($pdo);
+    $ymd = $ymd ?: ops_now()->format('Y-m-d');
+    try {
+        $st = $pdo->prepare("
+            SELECT * FROM closing_runs
+            WHERE DATE(created_at) = ?
+            ORDER BY id DESC
+            LIMIT 1
+        ");
+        $st->execute([$ymd]);
+        $run = $st->fetch() ?: null;
+        if ($run) {
+            return [
+                'ok' => true,
+                'already' => true,
+                'run' => $run,
+                'message' => 'Daily closing recorded on ' . date('d M Y H:i', strtotime((string) $run['created_at'])) . '.',
+            ];
+        }
+    } catch (Throwable $e) {
+        // ignore
+    }
+    return ['ok' => true, 'already' => false, 'run' => null, 'message' => 'No daily closing for ' . date('d M Y', strtotime($ymd)) . ' yet.'];
+}
+
+/**
+ * Week view helper for reconciliation (any closing in the week).
+ *
+ * @return array{ok:bool,already:bool,run:?array,message:string}
+ */
 function ops_week_closing_status(PDO $pdo, string $weekEnd): array
 {
     ops_ensure_tables($pdo);
@@ -253,13 +331,23 @@ function ops_week_closing_status(PDO $pdo, string $weekEnd): array
                 'ok' => true,
                 'already' => true,
                 'run' => $run,
-                'message' => 'Weekly closing recorded on ' . date('d M Y H:i', strtotime((string) $run['created_at'])) . '.',
+                'message' => 'Closing recorded on ' . date('d M Y H:i', strtotime((string) $run['created_at'])) . '.',
             ];
         }
     } catch (Throwable $e) {
         // ignore
     }
-    return ['ok' => true, 'already' => false, 'run' => null, 'message' => 'No weekly closing for this week yet.'];
+    return ['ok' => true, 'already' => false, 'run' => null, 'message' => 'No closing for this week yet.'];
+}
+
+/**
+ * Active schedule status for gates / banners (always daily).
+ *
+ * @return array{ok:bool,already:bool,run:?array,message:string}
+ */
+function ops_active_closing_status(PDO $pdo): array
+{
+    return ops_day_closing_status($pdo);
 }
 
 /**
@@ -268,28 +356,16 @@ function ops_week_closing_status(PDO $pdo, string $weekEnd): array
 function ops_closing_gate(PDO $pdo, bool $override = false): array
 {
     ops_ensure_tables($pdo);
-    $week = ops_week_for();
 
     if ($override) {
         return ['ok' => true, 'message' => 'Override confirmed.', 'override' => true];
     }
 
     if (!ops_weekly_closing_enabled()) {
-        return ['ok' => true, 'message' => 'Weekly Saturday lock is off.', 'override' => false];
+        return ['ok' => true, 'message' => 'Closing schedule lock is off.', 'override' => false];
     }
 
-    if (!ops_is_closing_day()) {
-        $next = ops_next_closing_day();
-        return [
-            'ok' => false,
-            'message' => 'Weekly closing runs on ' . ops_weekday_name(ops_closing_weekday())
-                . '. Next window: ' . $next->format('l, d M Y')
-                . '. Type CLOSE OVERRIDE to run off-schedule.',
-            'override' => false,
-        ];
-    }
-
-    $st = ops_week_closing_status($pdo, $week['end_date']);
+    $st = ops_active_closing_status($pdo);
     if ($st['already']) {
         return [
             'ok' => false,
@@ -298,25 +374,43 @@ function ops_closing_gate(PDO $pdo, bool $override = false): array
         ];
     }
 
-    return ['ok' => true, 'message' => 'Saturday weekly closing is open.', 'override' => false];
+    $next = ops_next_closing_day();
+    return [
+        'ok' => true,
+        'message' => 'Daily closing is open. Auto-run at ' . $next->format('g:i A') . ' IST (pending pairs close daily-wise).',
+        'override' => false,
+    ];
 }
 
 /**
- * @return array{ok:bool,message:string}
+ * @return array{ok:bool,message:string,payout_day:string,next:?string}
  */
 function ops_payout_gate(): array
 {
+    $label = ops_payout_days_label();
     if (!ops_payout_window_enabled()) {
-        return ['ok' => true, 'message' => 'Payout window lock is off.'];
+        return [
+            'ok' => true,
+            'message' => 'Payout day lock is off — requests allowed any day.',
+            'payout_day' => $label,
+            'next' => null,
+        ];
     }
     if (ops_is_payout_day()) {
-        return ['ok' => true, 'message' => 'Bank payout window is open (' . ops_payout_days_label() . ').'];
+        return [
+            'ok' => true,
+            'message' => 'Payout Day is open today: ' . $label . ' (set by admin). You can request withdrawal now.',
+            'payout_day' => $label,
+            'next' => null,
+        ];
     }
     $next = ops_next_payout_day();
     return [
         'ok' => false,
-        'message' => 'Verified bank credit is ' . ops_payout_days_label()
-            . ' only. Next window: ' . $next->format('l, d M Y') . '.',
+        'message' => 'Payout Day: ' . $label . ' (set by admin). Withdrawal / bank payout is allowed only on that day. Next payout day: '
+            . $next->format('l, d M Y') . '.',
+        'payout_day' => $label,
+        'next' => $next->format('l, d M Y'),
     ];
 }
 
@@ -360,7 +454,7 @@ function ops_week_snapshot(PDO $pdo, array $week): array
             'date' => $ymd,
             'label' => $cursor->format('D d M'),
             'is_today' => $ymd === ops_now()->format('Y-m-d'),
-            'is_closing_day' => (int) $cursor->format('w') === ops_closing_weekday(),
+            'is_closing_day' => true,
             'is_payout_day' => in_array((int) $cursor->format('N'), ops_payout_weekdays(), true),
             'credits' => 0.0,
             'debits' => 0.0,
@@ -531,7 +625,7 @@ function ops_week_snapshot(PDO $pdo, array $week): array
         ],
         [
             'key' => 'closing',
-            'label' => 'Saturday weekly closing',
+            'label' => 'Daily midnight closing',
             'ok' => $closingStatus['already'],
             'detail' => $closingStatus['message'],
         ],
@@ -679,7 +773,8 @@ function ops_cron_log(PDO $pdo, string $job, bool $ok, string $message, array $p
 }
 
 /**
- * Saturday auto-close + week snapshot. Safe to run daily (no-ops off-schedule).
+ * Auto daily close + week snapshot.
+ * Closes pending pairs once per calendar day at ops_closing_time (default 00:00 IST).
  *
  * @return array{ok:bool,skipped:bool,message:string,closing:?array,recon:?array}
  */
@@ -693,28 +788,25 @@ function ops_run_weekly_jobs(PDO $pdo, bool $forceClose = false): array
 
     $gate = ops_closing_gate($pdo, $forceClose);
     $shouldClose = $forceClose
-        || (ops_weekly_closing_enabled() && $gate['ok'] && ops_is_closing_day());
+        || (ops_weekly_closing_enabled() && $gate['ok']);
 
     if ($shouldClose && plan_uses_binary() && setting('binary_income_enabled', '1') === '1') {
-        $notes = $forceClose && !ops_is_closing_day()
-            ? 'Weekly closing (cron override)'
-            : 'Weekly closing (Saturday cron)';
+        $notes = $forceClose
+            ? 'Daily closing (cron override) — pending pairs closed'
+            : 'Daily closing (midnight cron) — pending pairs closed';
         $closing = closing_run_binary($pdo, null, true, $notes);
         $skipped = false;
         $messages[] = $closing['message'] ?? 'Closing ran.';
-        ops_cron_log($pdo, 'weekly_closing', !empty($closing['ok']), (string) ($closing['message'] ?? ''), [
+        ops_cron_log($pdo, 'daily_closing', !empty($closing['ok']), (string) ($closing['message'] ?? ''), [
             'closing_id' => $closing['closing_id'] ?? null,
             'week_end' => $week['end_date'],
         ]);
-    } elseif (!ops_is_closing_day() && !$forceClose) {
-        $messages[] = 'Not closing day — snapshot only.';
-        ops_cron_log($pdo, 'weekly_closing', true, 'Skipped (not closing day)', ['week_end' => $week['end_date']]);
     } elseif (!$gate['ok']) {
         $messages[] = $gate['message'];
-        ops_cron_log($pdo, 'weekly_closing', true, 'Skipped: ' . $gate['message'], ['week_end' => $week['end_date']]);
+        ops_cron_log($pdo, 'daily_closing', true, 'Skipped: ' . $gate['message'], ['week_end' => $week['end_date']]);
     } else {
         $messages[] = 'Closing not required.';
-        ops_cron_log($pdo, 'weekly_closing', true, 'Skipped (closing not required)', ['week_end' => $week['end_date']]);
+        ops_cron_log($pdo, 'daily_closing', true, 'Skipped (closing not required)', ['week_end' => $week['end_date']]);
     }
 
     $recon = ops_save_reconciliation($pdo, $week, null, false, 'Cron snapshot');

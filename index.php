@@ -468,7 +468,7 @@ if (!$landingRewards) {
                             <span class="lp-cta-perk-n">03</span>
                             <div>
                                 <strong>Weekly payout</strong>
-                                <span>Saturday closing, Monday–Tuesday verified bank credit.</span>
+                                <span>Daily midnight closing, Saturday verified bank credit.</span>
                             </div>
                         </li>
                     </ul>

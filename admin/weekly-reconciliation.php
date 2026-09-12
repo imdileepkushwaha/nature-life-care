@@ -54,7 +54,7 @@ require_once __DIR__ . '/../includes/header.php';
             <div>
                 <p class="rpt-kicker">Operations &amp; Payment</p>
                 <h1>Weekly Reconciliation</h1>
-                <p class="rpt-sub">Daily ledger vs week totals · Saturday closing · TDS / admin charges · Mon–Tue bank payout.</p>
+                <p class="rpt-sub">Daily ledger vs week totals · <?= e(ops_closing_schedule_label()) ?> · TDS / admin charges · <?= e(ops_payout_days_label()) ?> bank payout.</p>
             </div>
         </div>
         <div class="rpt-hero-actions">
@@ -67,7 +67,7 @@ require_once __DIR__ . '/../includes/header.php';
     <div class="ops-cycle-banner is-ok">
         <div>
             <strong><?= e($week['label']) ?></strong>
-            <p>Sunday–Saturday IST · Closing <?= e(ops_weekday_name(ops_closing_weekday())) ?> · Bank <?= e(ops_payout_days_label()) ?></p>
+            <p>Sunday–Saturday IST · Closing <?= e(ops_closing_schedule_label()) ?> · Bank <?= e(ops_payout_days_label()) ?></p>
         </div>
         <span class="ops-cycle-pill"><?= ($snap['recon']['status'] ?? '') === 'reconciled' ? 'Reconciled' : 'Open week' ?></span>
     </div>
@@ -173,7 +173,7 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
             <div class="rpt-panel-body cls-actions">
                 <p class="cls-help">
-                    Snapshot stores daily totals, Saturday closing, TDS and admin charges.
+                    Snapshot stores daily totals, daily midnight closing, TDS and admin charges.
                     Sign off after you have checked the ledger against closing and payout CSV.
                 </p>
                 <div class="cls-btn-row">

@@ -1,19 +1,21 @@
 <?php
 /**
- * Weekly operations cron — Saturday closing + week snapshot.
+ * Operations cron — daily midnight closing + week snapshot.
  *
- * Safe to run every day (skips closing when it is not Saturday).
+ * Daily mode (default): closes all pending open pairs once per calendar day (IST).
+ * Schedule for 12:00 AM (00:00) Asia/Kolkata every night.
+ * Weekly mode: only closes on the configured weekday.
  *
  * HTTP (cPanel / live):
  *   https://YOUR-DOMAIN/cron/weekly-closing.php?key=SECRET
  *
- * CLI (Windows Task Scheduler, Saturday 18:00 IST):
+ * CLI (Windows Task Scheduler, every day 00:00 IST):
  *   C:\xampp\php\php.exe "C:\Data\Work\Deepak\Bharay Seva\cron\weekly-closing.php"
  *
  * Live CLI (non-localhost DB credentials):
  *   php cron/weekly-closing.php --live
  *
- * Force closing off-schedule (admin catch-up only):
+ * Force closing off-schedule / extra run:
  *   php cron/weekly-closing.php --force
  */
 if (PHP_SAPI === 'cli') {
@@ -71,4 +73,6 @@ echo $line . "\n";
 if (!empty($result['week']['label'])) {
     echo 'Week: ' . $result['week']['label'] . "\n";
 }
+echo 'Schedule: ' . ops_closing_schedule_label() . ' · Payout: ' . ops_payout_days_label() . "\n";
+echo 'Next closing: ' . ops_next_closing_day()->format('Y-m-d H:i:s T') . "\n";
 exit($result['ok'] ? 0 : 1);

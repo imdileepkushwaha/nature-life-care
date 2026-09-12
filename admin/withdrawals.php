@@ -208,7 +208,7 @@ require_once __DIR__ . '/../includes/header.php';
 <div class="ops-cycle-banner <?= $opsPayoutGate['ok'] ? 'is-ok' : 'is-wait' ?>">
     <div>
         <strong>Bank payout window · <?= e(ops_payout_days_label()) ?></strong>
-        <p><?= e($opsPayoutGate['message']) ?> Approve any day after Saturday closing; mark paid only in this window.</p>
+        <p><?= e($opsPayoutGate['message']) ?> Members can request only on this Payout Day. Mark paid only in this window.</p>
     </div>
     <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
         <a class="btn btn-outline btn-sm" href="weekly-reconciliation.php">Weekly recon</a>

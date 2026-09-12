@@ -80,7 +80,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ],
         'operations' => [
             'ops_weekly_closing_enabled',
+            'ops_closing_time',
             'ops_payout_window_enabled',
+            'ops_payout_window_days',
         ],
         'contact' => [
             'contact_person',
@@ -136,6 +138,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 if ($key === 'ops_weekly_closing_enabled' || $key === 'ops_payout_window_enabled') {
                     $val = ($val === '1') ? '1' : '0';
+                }
+                if ($key === 'ops_closing_time') {
+                    if (!preg_match('/^([01]?\d|2[0-3]):([0-5]\d)$/', $val, $tm)) {
+                        $val = '00:00';
+                    } else {
+                        $val = sprintf('%02d:%02d', (int) $tm[1], (int) $tm[2]);
+                    }
+                }
+                if ($key === 'ops_payout_window_days') {
+                    $parts = [];
+                    foreach (explode(',', str_replace(' ', '', $val)) as $p) {
+                        $n = (int) $p;
+                        if ($n >= 1 && $n <= 7) {
+                            $parts[] = (string) $n;
+                        }
+                    }
+                    $val = $parts !== [] ? implode(',', array_values(array_unique($parts))) : '6';
                 }
                 $saveSetting($pdo, $key, $val);
             }
@@ -466,7 +485,13 @@ require_once __DIR__ . '/../includes/header.php';
             ops_ensure_tables($pdo);
             $weekCloseOn = ($settings['ops_weekly_closing_enabled'] ?? '1') === '1';
             $payoutOn = ($settings['ops_payout_window_enabled'] ?? '1') === '1';
+            $closeTime = (string) ($settings['ops_closing_time'] ?? '00:00');
+            if (!preg_match('/^([01]?\d|2[0-3]):([0-5]\d)$/', $closeTime)) {
+                $closeTime = '00:00';
+            }
+            $payoutDays = (string) ($settings['ops_payout_window_days'] ?? '6');
             $cronUrl = ops_cron_url();
+            $nextClose = ops_next_closing_day();
         ?>
         <form method="post" class="settings-card">
             <input type="hidden" name="tab" value="operations">
@@ -477,7 +502,7 @@ require_once __DIR__ . '/../includes/header.php';
                     </span>
                     <div>
                         <h2>Operations &amp; payment cycle</h2>
-                        <p>Saturday weekly closing, weekly reconciliation, Monday–Tuesday bank credit.</p>
+                        <p>Daily midnight closing only · pending pairs flush daily · bank payout every Saturday.</p>
                     </div>
                 </div>
             </div>
@@ -486,30 +511,51 @@ require_once __DIR__ . '/../includes/header.php';
                     <span class="wr-rule-ico orange">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
                     </span>
-                    <label for="ops_weekly_closing_enabled">Saturday weekly closing</label>
+                    <label for="ops_weekly_closing_enabled">Daily closing lock</label>
                     <select id="ops_weekly_closing_enabled" name="ops_weekly_closing_enabled">
-                        <option value="1" <?= $weekCloseOn ? 'selected' : '' ?>>On — close on Saturday only</option>
-                        <option value="0" <?= !$weekCloseOn ? 'selected' : '' ?>>Off — close any day</option>
+                        <option value="1" <?= $weekCloseOn ? 'selected' : '' ?>>On — one closing per day</option>
+                        <option value="0" <?= !$weekCloseOn ? 'selected' : '' ?>>Off — close any time</option>
                     </select>
-                    <small class="field-hint">Preview always works. Use CLOSE OVERRIDE for an extra / off-schedule run.</small>
+                    <small class="field-hint">Preview always works. Use CLOSE OVERRIDE for an extra run the same day.</small>
+                </div>
+                <div class="wr-rule-card">
+                    <span class="wr-rule-ico teal">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                    </span>
+                    <label for="ops_closing_time">Daily closing time (IST)</label>
+                    <input type="time" id="ops_closing_time" name="ops_closing_time" value="<?= e($closeTime) ?>">
+                    <small class="field-hint">Default 12:00 AM (midnight). Next auto: <?= e($nextClose->format('D, d M Y g:i A')) ?>.</small>
                 </div>
                 <div class="wr-rule-card">
                     <span class="wr-rule-ico teal">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
                     </span>
-                    <label for="ops_payout_window_enabled">Monday–Tuesday bank payout</label>
+                    <label for="ops_payout_window_enabled">Bank payout window</label>
                     <select id="ops_payout_window_enabled" name="ops_payout_window_enabled">
-                        <option value="1" <?= $payoutOn ? 'selected' : '' ?>>On — mark paid Mon–Tue only</option>
+                        <option value="1" <?= $payoutOn ? 'selected' : '' ?>>On — mark paid on payout day(s) only</option>
                         <option value="0" <?= !$payoutOn ? 'selected' : '' ?>>Off — mark paid any day</option>
                     </select>
-                    <small class="field-hint">Members can request anytime. Admin approves any day. Bank “paid” is locked to the window.</small>
+                    <small class="field-hint">Members can request and receive bank payout only on this day. Other days show: Payout Day (set by admin).</small>
+                </div>
+                <div class="wr-rule-card">
+                    <span class="wr-rule-ico teal">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                    </span>
+                    <label for="ops_payout_window_days">Payout day(s)</label>
+                    <select id="ops_payout_window_days" name="ops_payout_window_days">
+                        <option value="6" <?= $payoutDays === '6' ? 'selected' : '' ?>>Every Saturday</option>
+                        <option value="1,2" <?= $payoutDays === '1,2' ? 'selected' : '' ?>>Monday–Tuesday</option>
+                        <option value="1" <?= $payoutDays === '1' ? 'selected' : '' ?>>Monday only</option>
+                        <option value="5" <?= $payoutDays === '5' ? 'selected' : '' ?>>Friday only</option>
+                    </select>
+                    <small class="field-hint">Default: every Saturday. This is the only day members can request payout.</small>
                 </div>
             </div>
             <div class="settings-section" style="padding:0 1.35rem 1.25rem">
                 <div class="settings-info">
                     <span class="si-ico">i</span>
                     <p>
-                        Schedule this URL daily (it no-ops except Saturday):<br>
+                        Schedule this URL <strong>every night at 12:00 AM IST</strong> (it closes pending pairs once per day):<br>
                         <code style="word-break:break-all"><?= e($cronUrl) ?></code>
                     </p>
                 </div>

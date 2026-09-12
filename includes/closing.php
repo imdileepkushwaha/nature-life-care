@@ -1169,3 +1169,129 @@ function closing_open_pair_summary(PDO $pdo): array
         'flush_pairs' => $flush,
     ];
 }
+
+/**
+ * Day-wise closing ledger (IST): past closed runs + today's open/pending estimate.
+ *
+ * @return array{days:list<array<string,mixed>>,from:string,to:string,open:array}
+ */
+function closing_day_wise_report(PDO $pdo, int $days = 14): array
+{
+    closing_ensure_tables($pdo);
+    $days = max(7, min(60, $days));
+
+    $tz = new DateTimeZone('Asia/Kolkata');
+    $today = new DateTimeImmutable('now', $tz);
+    $from = $today->modify('-' . ($days - 1) . ' days')->setTime(0, 0, 0);
+    $toYmd = $today->format('Y-m-d');
+    $fromYmd = $from->format('Y-m-d');
+
+    $byDate = [];
+    try {
+        $st = $pdo->prepare("
+            SELECT DATE(created_at) AS d,
+                   COUNT(*) AS runs,
+                   COALESCE(SUM(members_paid), 0) AS members_paid,
+                   COALESCE(SUM(pairs_total), 0) AS pairs_total,
+                   COALESCE(SUM(matched_bv_total), 0) AS matched_bv_total,
+                   COALESCE(SUM(binary_gross_total), 0) AS binary_gross_total,
+                   COALESCE(SUM(binary_net_total), 0) AS binary_net_total,
+                   COALESCE(SUM(matching_total), 0) AS matching_total,
+                   COALESCE(SUM(admin_charge_total), 0) AS admin_charge_total,
+                   MAX(id) AS last_run_id
+            FROM closing_runs
+            WHERE DATE(created_at) BETWEEN ? AND ?
+            GROUP BY DATE(created_at)
+            ORDER BY d ASC
+        ");
+        $st->execute([$fromYmd, $toYmd]);
+        foreach ($st->fetchAll() as $r) {
+            $byDate[(string) $r['d']] = $r;
+        }
+    } catch (Throwable $e) {
+        $byDate = [];
+    }
+
+    $open = closing_open_pair_summary($pdo);
+    $adminChargePct = max(0.0, (float) setting('daily_closing_admin_charge', '0'));
+    $matchingPct = feature_enabled('feature_matching_income')
+        ? (float) setting('matching_commission_percent', '0')
+        : 0.0;
+    $gross = (float) $open['est_binary_gross'];
+    $charge = $adminChargePct > 0 ? round($gross * $adminChargePct / 100, 2) : 0.0;
+    $net = round(max(0.0, $gross - $charge), 2);
+    $matchEst = $matchingPct > 0 ? round($gross * $matchingPct / 100, 2) : 0.0;
+
+    $out = [];
+    $cursor = $from;
+    while ($cursor->format('Y-m-d') <= $toYmd) {
+        $ymd = $cursor->format('Y-m-d');
+        $isToday = $ymd === $toYmd;
+        $row = $byDate[$ymd] ?? null;
+
+        if ($row) {
+            $out[] = [
+                'date' => $ymd,
+                'label' => $cursor->format('D, d M Y'),
+                'is_today' => $isToday,
+                'status' => 'closed',
+                'status_label' => ((int) $row['runs'] > 1 ? ((int) $row['runs'] . ' closings') : 'Closed'),
+                'runs' => (int) $row['runs'],
+                'last_run_id' => (int) $row['last_run_id'],
+                'members_paid' => (int) $row['members_paid'],
+                'pairs' => round((float) $row['pairs_total'], 2),
+                'matched_bv' => round((float) $row['matched_bv_total'], 2),
+                'binary_gross' => round((float) $row['binary_gross_total'], 2),
+                'admin_charge' => round((float) $row['admin_charge_total'], 2),
+                'binary_net' => round((float) $row['binary_net_total'], 2),
+                'matching' => round((float) $row['matching_total'], 2),
+            ];
+        } elseif ($isToday) {
+            $out[] = [
+                'date' => $ymd,
+                'label' => $cursor->format('D, d M Y'),
+                'is_today' => true,
+                'status' => ((float) $open['matched_bv'] > 0 ? 'pending' : 'empty'),
+                'status_label' => ((float) $open['matched_bv'] > 0 ? 'Pending (open)' : 'No open pairs'),
+                'runs' => 0,
+                'last_run_id' => 0,
+                'members_paid' => (int) $open['eligible_members'],
+                'pairs' => (float) $open['pairs'],
+                'matched_bv' => (float) $open['matched_bv'],
+                'binary_gross' => $gross,
+                'admin_charge' => $charge,
+                'binary_net' => $net,
+                'matching' => $matchEst,
+            ];
+        } else {
+            $out[] = [
+                'date' => $ymd,
+                'label' => $cursor->format('D, d M Y'),
+                'is_today' => false,
+                'status' => 'none',
+                'status_label' => 'No closing',
+                'runs' => 0,
+                'last_run_id' => 0,
+                'members_paid' => 0,
+                'pairs' => 0.0,
+                'matched_bv' => 0.0,
+                'binary_gross' => 0.0,
+                'admin_charge' => 0.0,
+                'binary_net' => 0.0,
+                'matching' => 0.0,
+            ];
+        }
+
+        $cursor = $cursor->modify('+1 day');
+    }
+
+    // Newest first for the table
+    $out = array_reverse($out);
+
+    return [
+        'days' => $out,
+        'from' => $fromYmd,
+        'to' => $toYmd,
+        'open' => $open,
+    ];
+}

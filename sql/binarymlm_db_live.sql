@@ -148,7 +148,7 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('binary_commission_percent', '15'),
 ('referral_commission_percent', '5'),
 ('matching_commission_percent', '0'),
-('binary_flush_pairs', '0'),
+('binary_flush_pairs', '10'),
 ('binary_pair_bv', '1000'),
 ('binary_match_ratio', '1:2'),
 ('binary_income_enabled', '1'),

@@ -293,8 +293,9 @@ $dsiSplit = (float) ($settings['dsi_level_1_percent'] ?? 50)
                 </select>
             </div>
             <div class="form-group">
-                <label>Flush pairs (0 = no)</label>
-                <input type="number" step="1" min="0" name="binary_flush_pairs" value="<?= e($settings['binary_flush_pairs'] ?? '0') ?>"<?= $lockAttr ?>>
+                <label>Daily pair cap (flush)</label>
+                <input type="number" step="1" min="0" name="binary_flush_pairs" value="<?= e($settings['binary_flush_pairs'] ?? '10') ?>"<?= $lockAttr ?>>
+                <span class="sa-field-hint">Max pairs paid per member per closing (e.g. 10). Extra stays on L/R and carries to next day. 0 = no cap.</span>
             </div>
             <div class="form-group">
                 <label>Daily closing admin charge %</label>

@@ -13,7 +13,7 @@ $adminId = (int) ($_SESSION['admin_id'] ?? 0);
 $preview = null;
 $opsWeek = ops_week_for();
 $opsGate = ops_closing_gate($pdo, false);
-$opsClosingStatus = ops_week_closing_status($pdo, $opsWeek['end_date']);
+$opsClosingStatus = ops_active_closing_status($pdo);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string) ($_POST['action'] ?? '');
@@ -35,9 +35,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $notes = 'Binary + matching closing';
                 if ($override) {
-                    $notes = 'Weekly closing (override)';
-                } elseif (ops_weekly_closing_enabled() && ops_is_closing_day()) {
-                    $notes = 'Weekly closing (Saturday)';
+                    $notes = 'Closing (override)';
+                } elseif (ops_weekly_closing_enabled()) {
+                    $notes = 'Daily closing';
                 }
                 $result = closing_run_binary($pdo, $adminId, true, $notes);
                 if ($result['ok']) {
@@ -64,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $summary = closing_open_pair_summary($pdo);
+$dayWise = closing_day_wise_report($pdo, 14);
 $binaryEnabled = setting('binary_income_enabled', '1') === '1';
 $matchingPct = (float) setting('matching_commission_percent', '0');
 $adminCharge = (float) setting('daily_closing_admin_charge', '0');
@@ -113,9 +114,9 @@ require_once __DIR__ . '/../includes/header.php';
         <div class="rpt-hero-main">
             <span class="rpt-hero-ico"><?= $icoClose ?></span>
             <div>
-                <p class="rpt-kicker">Weekly settlement</p>
+                <p class="rpt-kicker">Daily settlement</p>
                 <h1>Binary Closing</h1>
-                <p class="rpt-sub">Saturday closing · match open PV pairs · pay binary + matching. Bank payout is Monday–Tuesday.</p>
+                <p class="rpt-sub"><?= e(ops_closing_schedule_label()) ?> · match open PV pairs · pay binary + matching. Bank payout: <?= e(ops_payout_days_label()) ?>.</p>
             </div>
         </div>
         <div class="rpt-hero-actions">
@@ -126,15 +127,23 @@ require_once __DIR__ . '/../includes/header.php';
 
     <div class="ops-cycle-banner <?= $opsGate['ok'] ? 'is-ok' : 'is-wait' ?>">
         <div>
-            <strong>This week <?= e($opsWeek['label']) ?></strong>
+            <strong>Daily cycle</strong>
             <p>
-                Closing day: <?= e(ops_weekday_name(ops_closing_weekday())) ?>
-                <?= ops_is_closing_day() ? ' · today' : ' · next ' . ops_next_closing_day()->format('d M Y') ?>
+                Closing: <?= e(ops_closing_schedule_label()) ?>
+                · next <?= e(ops_next_closing_day()->format('d M Y g:i A')) ?>
                 · Bank credit: <?= e(ops_payout_days_label()) ?>
                 <?= ops_is_payout_day() ? ' · window open' : ' · next ' . ops_next_payout_day()->format('d M Y') ?>
             </p>
         </div>
-        <span class="ops-cycle-pill"><?= $opsClosingStatus['already'] ? 'Closed this week' : ($opsGate['ok'] ? 'Ready to close' : 'Waits for Saturday') ?></span>
+        <span class="ops-cycle-pill"><?php
+            if ($opsClosingStatus['already']) {
+                echo 'Closed today';
+            } elseif ($opsGate['ok']) {
+                echo 'Ready to close';
+            } else {
+                echo 'Waits for midnight';
+            }
+        ?></span>
     </div>
 
     <?php if (!$binaryEnabled): ?>
@@ -189,8 +198,12 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
             <div class="rpt-panel-body cls-actions">
                 <p class="cls-help">
-                    Official closing is <strong>every Saturday</strong> (IST). Preview works any day.
-                    Payout is on <strong>company-approved eligible PV</strong> only (paid kit / paid product). Return, cancel or refund nets unmatched PV off before settlement.
+                    Official closing is <strong><?= e(ops_closing_schedule_label()) ?></strong>.
+                    Pending open pairs are flushed <strong>daily-wise</strong> on each run. Preview works any day.
+                    <?php if ((int) $summary['flush_pairs'] > 0): ?>
+                        Daily cap: <strong><?= (int) $summary['flush_pairs'] ?> pairs</strong> per member — extra matched PV stays on L/R and carries to the next closing.
+                    <?php endif; ?>
+                    Payout / bank credit window: <strong><?= e(ops_payout_days_label()) ?></strong>.
                     Matching is <strong>1:2 / 2:1</strong>: either leg can be stronger; matching volume = the weaker eligible side.
                     Example: ₹10,000 left + ₹10,000 right = ₹10,000 matched. ₹10,000 + ₹20,000 = ₹10,000 matched, leftover stays on the stronger leg.
                     Pair unit = <strong><?= number_format((float) $summary['pair_bv'], 2) ?> PV</strong>.
@@ -301,6 +314,69 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
         </section>
     <?php endif; ?>
+
+    <section class="rpt-panel">
+        <div class="rpt-panel-head is-coral">
+            <div class="rpt-panel-main">
+                <span class="rpt-panel-ico"><?= $icoClose ?></span>
+                <div>
+                    <span class="rpt-kicker">Daily ledger</span>
+                    <h2>Day-wise closing</h2>
+                </div>
+            </div>
+            <span class="rpt-head-meta"><?= e(date('d M', strtotime($dayWise['from']))) ?> → <?= e(date('d M Y', strtotime($dayWise['to']))) ?></span>
+        </div>
+        <div class="rpt-panel-body">
+            <p class="cls-help" style="margin-top:0">
+                Closed days show settled runs. <strong>Today</strong> shows current open / pending pairs (same as preview estimate) until midnight closing runs.
+            </p>
+            <div class="rpt-table-wrap">
+                <table class="rpt-table cls-daywise">
+                    <thead>
+                        <tr>
+                            <th>Day</th>
+                            <th>Status</th>
+                            <th>Members</th>
+                            <th>Pairs</th>
+                            <th>Matched PV</th>
+                            <th>Binary net</th>
+                            <th>Matching</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php if (empty($dayWise['days'])): ?>
+                        <tr><td colspan="8"><div class="rpt-empty"><strong>No days</strong></div></td></tr>
+                    <?php else: foreach ($dayWise['days'] as $d): ?>
+                        <tr class="cls-day-<?= e($d['status']) ?><?= !empty($d['is_today']) ? ' is-today' : '' ?>">
+                            <td>
+                                <strong><?= e($d['label']) ?></strong>
+                                <?php if (!empty($d['is_today'])): ?><small class="cls-muted"> · today</small><?php endif; ?>
+                            </td>
+                            <td>
+                                <span class="cls-day-pill is-<?= e($d['status']) ?>"><?= e($d['status_label']) ?></span>
+                            </td>
+                            <td><?= (int) $d['members_paid'] ?></td>
+                            <td><?= number_format((float) $d['pairs'], 2) ?></td>
+                            <td><?= number_format((float) $d['matched_bv'], 2) ?></td>
+                            <td><strong class="rpt-amt"><?= currency((float) $d['binary_net']) ?></strong></td>
+                            <td><?= currency((float) $d['matching']) ?></td>
+                            <td>
+                                <?php if (!empty($d['last_run_id'])): ?>
+                                    <a href="binary-closing.php?run=<?= (int) $d['last_run_id'] ?>">View</a>
+                                <?php elseif ($d['status'] === 'pending'): ?>
+                                    <span class="cls-muted">Preview / CLOSE</span>
+                                <?php else: ?>
+                                    <span class="cls-muted">—</span>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
 
     <?php if ($viewRun): ?>
         <section class="rpt-panel">

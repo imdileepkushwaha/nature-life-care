@@ -208,7 +208,7 @@ $iconOut = '<svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d=
         <div class="bg-icon"><?= $iconCheck ?></div>
         <div class="value"><?= number_format((float) $closingSummary['pairs'], 1) ?></div>
         <div class="label">Open Binary Pairs</div>
-        <a class="more" href="binary-closing.php">Saturday close →</a>
+        <a class="more" href="binary-closing.php">Daily close →</a>
     </div>
     <div class="stat-card g-mint">
         <div class="bg-icon"><?= $iconMoney ?></div>

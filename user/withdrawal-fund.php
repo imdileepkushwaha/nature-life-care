@@ -33,6 +33,8 @@ $sampleBreak = wd_calc_breakdown($pdo, max($minAmt, 1000));
 $kycGate = wd_kyc_gate_check($pdo, $uid);
 $kycBlocked = !$kycGate['ok'];
 $opsPayoutGate = ops_payout_gate();
+$payoutBlocked = !$opsPayoutGate['ok'];
+$formBlocked = $kycBlocked || $payoutBlocked || $available < $minAmt;
 
 $allowedMethods = ['Bank Transfer', 'UPI', 'Other'];
 $form = [
@@ -49,6 +51,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Withdrawals are disabled for this client.';
     } elseif ($kycBlocked) {
         $errors[] = $kycGate['message'];
+    } elseif ($payoutBlocked) {
+        $errors[] = $opsPayoutGate['message'];
     } else {
         $amount = (float) ($_POST['amount'] ?? 0);
         $method = trim($_POST['payment_method'] ?? '');
@@ -58,6 +62,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user = current_user($pdo, true) ?? $user;
         $available = wd_available_balance($pdo, $user);
         $wallet = (float) $user['wallet_balance'];
+        // Re-check payout day at submit time
+        $opsPayoutGate = ops_payout_gate();
+        $payoutBlocked = !$opsPayoutGate['ok'];
+        if ($payoutBlocked) {
+            $errors[] = $opsPayoutGate['message'];
+        }
 
         if ($amount <= 0) {
             $errors[] = 'Enter a valid withdrawal amount.';
@@ -108,6 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'payment_method' => $method,
             'account_details' => $details,
         ];
+        $formBlocked = $kycBlocked || $payoutBlocked || $available < $minAmt;
     }
 }
 
@@ -116,7 +127,7 @@ require_once __DIR__ . '/includes/header.php';
 <div class="up-page-head">
     <div>
         <h1>Withdrawal Fund</h1>
-        <p>Request a payout from your Income Wallet. Verified bank credit is <?= e(ops_payout_days_label()) ?> after Saturday closing.</p>
+        <p>Request a payout from your Income Wallet. Payout Day: <strong><?= e(ops_payout_days_label()) ?></strong> (set by admin).</p>
     </div>
     <a href="withdrawal-report.php" class="up-btn up-btn-outline">View Report</a>
 </div>
@@ -180,17 +191,30 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
             <?php endif; ?>
 
+            <?php if ($payoutBlocked): ?>
+                <div class="up-alert up-alert-err">
+                    <strong>Payout Day: <?= e($opsPayoutGate['payout_day']) ?></strong>
+                    <p style="margin:0.35rem 0 0"><?= e($opsPayoutGate['message']) ?></p>
+                    <?php if (!empty($opsPayoutGate['next'])): ?>
+                        <p style="margin:0.35rem 0 0">Please come back on <strong><?= e($opsPayoutGate['next']) ?></strong>. Wallet balance will stay available until then.</p>
+                    <?php endif; ?>
+                </div>
+            <?php elseif ($opsPayoutGate['ok'] && ops_payout_window_enabled()): ?>
+                <div class="up-alert up-alert-info">
+                    <strong>Payout Day open:</strong> <?= e($opsPayoutGate['payout_day']) ?> (set by admin). You can submit a withdrawal request today.
+                </div>
+            <?php endif; ?>
+
             <?php if ($available < $minAmt): ?>
                 <div class="up-alert up-alert-info">Available balance is below the minimum withdrawal of <?= currency($minAmt) ?>.</div>
             <?php endif; ?>
 
             <div class="up-alert up-alert-info">
-                Saturday weekly closing, then bank credit on <?= e(ops_payout_days_label()) ?>.
-                <?= e($opsPayoutGate['message']) ?>
+                Daily midnight closing credits income to wallet. Bank payout / withdrawal request is only on <strong><?= e(ops_payout_days_label()) ?></strong> as set by admin.
                 TDS and admin charges appear on your request statement.
             </div>
 
-            <form method="post" class="wd-form" autocomplete="off" id="wdForm"<?= $kycBlocked ? ' onsubmit="return false;"' : '' ?>>
+            <form method="post" class="wd-form" autocomplete="off" id="wdForm"<?= $formBlocked ? ' onsubmit="return false;"' : '' ?>>
                 <div class="wd-form-strip">
                     <div class="wd-form-chip">
                         <span class="wd-form-chip-ico" aria-hidden="true">
@@ -208,6 +232,15 @@ require_once __DIR__ . '/includes/header.php';
                         <div>
                             <small>Minimum</small>
                             <strong><?= currency($minAmt) ?></strong>
+                        </div>
+                    </div>
+                    <div class="wd-form-chip <?= $payoutBlocked ? 'is-max' : 'is-min' ?>">
+                        <span class="wd-form-chip-ico" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                        </span>
+                        <div>
+                            <small>Payout Day</small>
+                            <strong><?= e(ops_payout_days_label()) ?></strong>
                         </div>
                     </div>
                     <?php if ($maxAmt > 0): ?>
@@ -233,8 +266,8 @@ require_once __DIR__ . '/includes/header.php';
                             <span class="wd-amount-prefix" aria-hidden="true"><?= currency_symbol_html() ?></span>
                             <input type="number" step="0.01" min="<?= e((string) $minAmt) ?>" max="<?= e((string) $withdrawMax) ?>"
                                    id="amount" name="amount" value="<?= e($form['amount']) ?>"
-                                   placeholder="0.00" required <?= $available < $minAmt ? 'disabled' : '' ?>>
-                            <button type="button" class="wd-amount-max" id="wdMaxBtn" <?= $available < $minAmt ? 'disabled' : '' ?>>MAX</button>
+                                   placeholder="0.00" required <?= $formBlocked ? 'disabled' : '' ?>>
+                            <button type="button" class="wd-amount-max" id="wdMaxBtn" <?= $formBlocked ? 'disabled' : '' ?>>MAX</button>
                         </div>
                     </div>
 
@@ -253,7 +286,7 @@ require_once __DIR__ . '/includes/header.php';
                                 <label class="wd-method<?= $checked ? ' is-on' : '' ?>">
                                     <input type="radio" name="payment_method" value="<?= e($opt) ?>"
                                            <?= $checked ? 'checked' : '' ?>
-                                           <?= $available < $minAmt ? 'disabled' : '' ?> required>
+                                           <?= $formBlocked ? 'disabled' : '' ?> required>
                                     <span class="wd-method-ico" aria-hidden="true"><?= $ico ?></span>
                                     <span class="wd-method-text"><?= e($opt) ?></span>
                                 </label>
@@ -271,7 +304,7 @@ require_once __DIR__ . '/includes/header.php';
                         <div class="wd-textarea-wrap">
                             <textarea id="account_details" name="account_details" rows="4"
                                       placeholder="Account holder, number, IFSC / UPI ID / wallet address…"
-                                      required <?= $available < $minAmt ? 'disabled' : '' ?>><?= e($form['account_details']) ?></textarea>
+                                      required <?= $formBlocked ? 'disabled' : '' ?>><?= e($form['account_details']) ?></textarea>
                         </div>
                     </div>
                 </div>
@@ -287,9 +320,9 @@ require_once __DIR__ . '/includes/header.php';
                     </div>
                     <div class="wd-form-actions">
                         <a href="withdrawal-report.php" class="up-btn up-btn-outline">Cancel</a>
-                        <button type="submit" class="up-btn up-btn-primary wd-submit" <?= ($available < $minAmt || $kycBlocked) ? 'disabled' : '' ?>>
+                        <button type="submit" class="up-btn up-btn-primary wd-submit" <?= $formBlocked ? 'disabled' : '' ?>>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-                            Submit Request
+                            <?= $payoutBlocked ? 'Closed till ' . e($opsPayoutGate['payout_day']) : 'Submit Request' ?>
                         </button>
                     </div>
                 </div>
@@ -312,15 +345,15 @@ require_once __DIR__ . '/includes/header.php';
                 <li>
                     <span class="wd-tl-num" aria-hidden="true">1</span>
                     <div>
-                        <strong>Submit request</strong>
-                        <p>Enter amount and payout details</p>
+                        <strong>Wait for Payout Day</strong>
+                        <p>Only on <?= e(ops_payout_days_label()) ?> (set by admin)</p>
                     </div>
                 </li>
                 <li>
                     <span class="wd-tl-num" aria-hidden="true">2</span>
                     <div>
-                        <strong>Pending review</strong>
-                        <p>Request waits for admin approval</p>
+                        <strong>Submit request</strong>
+                        <p>Enter amount and payout details</p>
                     </div>
                 </li>
                 <li>
@@ -333,8 +366,8 @@ require_once __DIR__ . '/includes/header.php';
                 <li>
                     <span class="wd-tl-num" aria-hidden="true">4</span>
                     <div>
-                        <strong>Bank credit <?= e(ops_payout_days_label()) ?></strong>
-                        <p>Verified net amount after Saturday closing</p>
+                        <strong>Bank credit</strong>
+                        <p>Verified net amount on <?= e(ops_payout_days_label()) ?></p>
                     </div>
                 </li>
             </ol>
