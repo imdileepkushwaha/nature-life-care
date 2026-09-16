@@ -69,7 +69,7 @@ $dateFrom = trim((string) ($_GET['date_from'] ?? ''));
 $dateTo = trim((string) ($_GET['date_to'] ?? ''));
 $page = max(1, (int) ($_GET['page'] ?? 1));
 $hpage = max(1, (int) ($_GET['hpage'] ?? 1));
-$perPage = 20;
+$perPage = admin_per_page();
 
 function wtr_build_where(string $statusFilter, string $q, string $dateFrom, string $dateTo, bool $historyOnly = false): array
 {
@@ -337,15 +337,7 @@ require_once __DIR__ . '/../includes/header.php';
             </table>
         </div>
 
-        <?php if ($totalPages > 1): ?>
-        <div class="pagination">
-            <?php for ($i = 1; $i <= $totalPages; $i++):
-                $qs = wtr_filter_qs(['page' => (string) $i]);
-                ?>
-                <a class="<?= $i === $page ? 'active' : '' ?>" href="?<?= e(http_build_query($qs)) ?>"><?= $i ?></a>
-            <?php endfor; ?>
-        </div>
-        <?php endif; ?>
+        <?php admin_pagination($page, $totalPages, wtr_filter_qs()); ?>
         <?php endif; ?>
     </div>
 </div>
@@ -386,19 +378,13 @@ require_once __DIR__ . '/../includes/header.php';
                 </tbody>
             </table>
         </div>
-        <?php if ($historyPages > 1): ?>
-        <div class="pagination">
-            <?php for ($i = 1; $i <= $historyPages; $i++):
-                $qs = wtr_filter_qs(['hpage' => (string) $i, 'page' => null]);
-                // keep page for pending list if set
-                if ($page > 1) {
-                    $qs['page'] = (string) $page;
-                }
-                ?>
-                <a class="<?= $i === $hpage ? 'active' : '' ?>" href="?<?= e(http_build_query($qs)) ?>"><?= $i ?></a>
-            <?php endfor; ?>
-        </div>
-        <?php endif; ?>
+        <?php
+        $histQs = wtr_filter_qs(['hpage' => null]);
+        if ($page > 1) {
+            $histQs['page'] = (string) $page;
+        }
+        admin_pagination($hpage, $historyPages, $histQs, 'hpage');
+        ?>
         <?php endif; ?>
     </div>
 </div>

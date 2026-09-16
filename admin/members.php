@@ -16,7 +16,7 @@ if (isset($_GET['action'], $_GET['id']) && in_array($_GET['action'], ['activate'
 $q = trim($_GET['q'] ?? '');
 $statusFilter = $_GET['status'] ?? '';
 $page = max(1, (int) ($_GET['page'] ?? 1));
-$perPage = 12;
+$perPage = admin_per_page();
 $offset = ($page - 1) * $perPage;
 
 $where = ['1=1'];
@@ -198,23 +198,7 @@ require_once __DIR__ . '/../includes/header.php';
         </table>
     </div>
 
-    <?php if ($totalPages > 1): ?>
-    <div class="pagination members-pagination">
-        <?php if ($page > 1): ?>
-            <a href="?page=<?= $page - 1 ?>&q=<?= urlencode($q) ?>&status=<?= urlencode($statusFilter) ?>">‹ Prev</a>
-        <?php endif; ?>
-        <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-            <?php if ($i === $page): ?>
-                <span class="current"><?= $i ?></span>
-            <?php else: ?>
-                <a href="?page=<?= $i ?>&q=<?= urlencode($q) ?>&status=<?= urlencode($statusFilter) ?>"><?= $i ?></a>
-            <?php endif; ?>
-        <?php endfor; ?>
-        <?php if ($page < $totalPages): ?>
-            <a href="?page=<?= $page + 1 ?>&q=<?= urlencode($q) ?>&status=<?= urlencode($statusFilter) ?>">Next ›</a>
-        <?php endif; ?>
-    </div>
-    <?php endif; ?>
+    <?php admin_pagination($page, $totalPages, ['q' => $q, 'status' => $statusFilter], 'page', 'members-pagination'); ?>
 </div>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

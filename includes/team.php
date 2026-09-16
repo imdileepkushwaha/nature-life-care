@@ -7,7 +7,7 @@ function team_get_member(PDO $pdo, int $id): ?array
 {
     $stmt = $pdo->prepare("
         SELECT m.id, m.member_id, m.full_name, m.username, m.email, m.phone, m.status,
-               m.left_count, m.right_count, m.wallet_balance, m.total_earnings, m.join_date,
+               m.left_count, m.right_count, m.left_bv, m.right_bv, m.wallet_balance, m.total_earnings, m.join_date,
                m.position, m.package_id, m.placement_id, m.sponsor_id, m.photo,
                p.name AS package_name,
                s.member_id AS sponsor_mid, s.full_name AS sponsor_name
@@ -464,6 +464,8 @@ function team_render_node(array $member, int $level, bool $isRoot, int $viewRoot
 
     $leftCount = isset($member['left_count']) ? (string) $member['left_count'] : '';
     $rightCount = isset($member['right_count']) ? (string) $member['right_count'] : '';
+    $leftPv = number_format((float) ($member['left_bv'] ?? 0), 0);
+    $rightPv = number_format((float) ($member['right_bv'] ?? 0), 0);
 
     $titleBits = array_values(array_filter([
         $fullName !== '' ? $fullName : '',
@@ -495,6 +497,8 @@ function team_render_node(array $member, int $level, bool $isRoot, int $viewRoot
         'phone' => $phone !== '' ? $phone : null,
         'team_left' => $leftCount !== '' ? $leftCount : null,
         'team_right' => $rightCount !== '' ? $rightCount : null,
+        'left_pv' => $leftPv,
+        'right_pv' => $rightPv,
         'wallet' => $wallet !== '' ? $wallet : null,
         'joined' => $joined !== '' ? $joined : null,
     ];

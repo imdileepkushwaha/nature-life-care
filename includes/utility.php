@@ -8,7 +8,7 @@ function utility_toggle_status(PDO $pdo, string $table, int $id): void
     $allowed = [
         'countries','states','cities','banks','bank_accounts','deductions','news','plans','package_plans',
         'product_categories','product_subcategories','product_sizes','product_colors','subcategory_settings',
-        'products','product_vendors','commodity_prices',
+        'products','product_vendors','commodity_prices','website_popups',
     ];
     if (!in_array($table, $allowed, true) || $id < 1) {
         flash('error', 'Invalid request.');
@@ -24,7 +24,7 @@ function utility_delete(PDO $pdo, string $table, int $id): bool
     $allowed = [
         'countries','states','cities','banks','bank_accounts','deductions','news','plans','package_plans',
         'product_categories','product_subcategories','product_sizes','product_colors','subcategory_settings',
-        'products','product_vendors','commodity_prices','stock_purchases',
+        'products','product_vendors','commodity_prices','stock_purchases','website_popups',
     ];
     if (!in_array($table, $allowed, true) || $id < 1) {
         flash('error', 'Invalid request.');
@@ -295,4 +295,77 @@ function bank_qr_url(?string $path): ?string
         return '../' . $path;
     }
     return $path;
+}
+
+/** Default rows per page for admin list tables. */
+function admin_per_page(): int
+{
+    return 15;
+}
+
+/**
+ * Render admin pagination: First Prev 1 2 3 4 5 … Next Last
+ *
+ * @param array<string, scalar|null> $query Extra query params to keep (filters). Page key is overwritten.
+ */
+function admin_pagination(int $page, int $totalPages, array $query = [], string $pageKey = 'page', string $extraClass = ''): void
+{
+    if ($totalPages <= 1) {
+        return;
+    }
+
+    $page = max(1, min($totalPages, $page));
+    $buildHref = static function (int $p) use ($query, $pageKey): string {
+        $qs = $query;
+        foreach ($qs as $k => $v) {
+            if ($v === null || $v === '') {
+                unset($qs[$k]);
+            }
+        }
+        $qs[$pageKey] = $p;
+        return '?' . http_build_query($qs);
+    };
+
+    $window = 5;
+    $half = (int) floor($window / 2);
+    $start = max(1, $page - $half);
+    $end = min($totalPages, $start + $window - 1);
+    $start = max(1, $end - $window + 1);
+
+    $class = 'pagination' . ($extraClass !== '' ? ' ' . $extraClass : '');
+    echo '<div class="' . e($class) . '">';
+
+    if ($page > 1) {
+        echo '<a href="' . e($buildHref(1)) . '">First</a>';
+        echo '<a href="' . e($buildHref($page - 1)) . '">Prev</a>';
+    } else {
+        echo '<span class="disabled">First</span>';
+        echo '<span class="disabled">Prev</span>';
+    }
+
+    if ($start > 1) {
+        echo '<span class="ellipsis">…</span>';
+    }
+
+    for ($i = $start; $i <= $end; $i++) {
+        if ($i === $page) {
+            echo '<span class="current">' . $i . '</span>';
+        } else {
+            echo '<a href="' . e($buildHref($i)) . '">' . $i . '</a>';
+        }
+    }
+
+    if ($end < $totalPages) {
+        echo '<span class="ellipsis">…</span>';
+    }
+
+    if ($page < $totalPages) {
+        echo '<a href="' . e($buildHref($page + 1)) . '">Next</a>';
+        echo '<a href="' . e($buildHref($totalPages)) . '">Last</a>';
+    } else {
+        echo '<span class="disabled">Next</span>';
+        echo '<span class="disabled">Last</span>';
+    }
+
+    echo '</div>';
 }

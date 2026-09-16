@@ -637,5 +637,6 @@ if (!$landingRewards) {
         }
     })();
     </script>
+    <?php require_once __DIR__ . '/includes/public_popup.php'; ?>
 </body>
 </html>

@@ -43,7 +43,7 @@ $q = trim((string) ($_GET['q'] ?? ''));
 $status = trim((string) ($_GET['status'] ?? ''));
 $delivery = trim((string) ($_GET['delivery'] ?? ''));
 $page = max(1, (int) ($_GET['page'] ?? 1));
-$perPage = 25;
+$perPage = admin_per_page();
 $offset = ($page - 1) * $perPage;
 
 $company = setting('company_name', 'Binary MLM');
@@ -571,17 +571,7 @@ endif;
             </tbody>
         </table>
     </div>
-    <?php if ($totalPages > 1): ?>
-    <div class="panel-body" style="display:flex;gap:0.5rem;flex-wrap:wrap">
-        <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-            <?php if ($i === $page): ?>
-                <strong><?= $i ?></strong>
-            <?php else: ?>
-                <a href="?page=<?= $i ?>&q=<?= urlencode($q) ?>&status=<?= urlencode($status) ?>&delivery=<?= urlencode($delivery) ?>"><?= $i ?></a>
-            <?php endif; ?>
-        <?php endfor; ?>
-    </div>
-    <?php endif; ?>
+    <?php admin_pagination($page, $totalPages, ['q' => $q, 'status' => $status, 'delivery' => $delivery]); ?>
 </div>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

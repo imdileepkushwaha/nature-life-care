@@ -363,6 +363,71 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Website popup image upload UI (same soft-upload pattern)
+    (function initSuUpload(boxId, inputId, previewId, thumbId, emptyId, nameId, dropId) {
+        const box = document.getElementById(boxId);
+        const input = document.getElementById(inputId);
+        if (!box || !input) return;
+        const preview = document.getElementById(previewId);
+        let thumb = document.getElementById(thumbId);
+        const nameEl = document.getElementById(nameId);
+        const drop = document.getElementById(dropId) || box.querySelector('.su-upload__pick');
+
+        const showFile = (file) => {
+            if (!file || !preview) return;
+            box.classList.add('is-filled');
+            if (nameEl) nameEl.textContent = file.name;
+            const placeholder = document.getElementById(emptyId) || preview.querySelector('.su-upload__ph');
+            if (placeholder) {
+                placeholder.style.display = 'none';
+                placeholder.setAttribute('hidden', '');
+                placeholder.remove();
+            }
+            thumb = document.getElementById(thumbId);
+            if (!thumb) {
+                thumb = document.createElement('img');
+                thumb.id = thumbId;
+                thumb.alt = 'Preview';
+                preview.appendChild(thumb);
+            }
+            thumb.src = URL.createObjectURL(file);
+            thumb.style.display = 'block';
+            thumb.hidden = false;
+        };
+
+        input.addEventListener('change', () => {
+            const file = input.files && input.files[0];
+            if (file) showFile(file);
+        });
+
+        if (drop) {
+            ['dragenter', 'dragover'].forEach((evt) => {
+                drop.addEventListener(evt, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    box.classList.add('is-dragover');
+                });
+            });
+            ['dragleave', 'drop'].forEach((evt) => {
+                drop.addEventListener(evt, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    box.classList.remove('is-dragover');
+                });
+            });
+            drop.addEventListener('drop', (e) => {
+                const files = e.dataTransfer && e.dataTransfer.files;
+                if (!files || !files.length) return;
+                const file = files[0];
+                if (!file.type.startsWith('image/')) return;
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                input.files = dt.files;
+                showFile(file);
+            });
+        }
+    })('popupImgUpload', 'popupImgInput', 'popupImgPreview', 'popupImgThumb', 'popupImgEmpty', 'popupImgName', 'popupImgDrop');
+
     // Color hex picker sync (Soft UI Soft style)
     const hexPicker = document.getElementById('hexColorPicker');
     const hexInput = document.getElementById('hexCodeInput');

@@ -30,6 +30,9 @@ $utilityPages = [
 ];
 $utilityOpen = in_array($currentPage, $utilityPages, true);
 
+$websitePages = ['website-popups'];
+$websiteOpen = in_array($currentPage, $websitePages, true);
+
 $memberPages = [
     'members', 'member-view', 'member-add', 'member-edit',
     'approve-kyc', 'nominee-settlements', 'tree-view', 'binary-tree', 'matrix-tree', 'level-tree', 'downline',
@@ -101,6 +104,7 @@ $icoMoney = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-w
 $icoCard = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>';
 $icoChart = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>';
 $icoGear = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>';
+$icoWeb = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>';
 
 $chevronDown = '<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>';
 ?>
@@ -217,6 +221,19 @@ $chevronDown = '<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke=
                     </div>
                 </div>
                 <?php endif; ?>
+
+                <div class="nav-group <?= $websiteOpen ? 'open' : '' ?>" data-nav-group>
+                    <button type="button" class="nav-link nav-group-toggle <?= $websiteOpen ? 'active' : '' ?>" data-nav-toggle>
+                        <span class="nav-link-left">
+                            <?= nav_ico($icoWeb) ?>
+                            <span class="nav-label">Website Management</span>
+                        </span>
+                        <?= $chevronDown ?>
+                    </button>
+                    <div class="nav-submenu">
+                        <a href="website-popups.php" class="<?= $currentPage === 'website-popups' ? 'active' : '' ?>"><span class="dot"></span>Add Popup</a>
+                    </div>
+                </div>
 
                 <?php if ($featProducts): ?>
                 <div class="nav-group <?= $productOpen ? 'open' : '' ?>" data-nav-group>

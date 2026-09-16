@@ -169,7 +169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $statusFilter = $_GET['status'] ?? '';
 $page = max(1, (int) ($_GET['page'] ?? 1));
-$perPage = 20;
+$perPage = admin_per_page();
 $offset = ($page - 1) * $perPage;
 
 $where = ['1=1'];
@@ -312,14 +312,7 @@ require_once __DIR__ . '/../includes/header.php';
             </tbody>
         </table>
     </div>
-    <?php if ($totalPages > 1): ?>
-    <div class="pagination">
-        <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-            <?php if ($i === $page): ?><span class="current"><?= $i ?></span>
-            <?php else: ?><a href="?page=<?= $i ?>&status=<?= urlencode($statusFilter) ?>"><?= $i ?></a><?php endif; ?>
-        <?php endfor; ?>
-    </div>
-    <?php endif; ?>
+    <?php admin_pagination($page, $totalPages, ['status' => $statusFilter]); ?>
 </div>
 
 <?php

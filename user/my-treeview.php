@@ -627,6 +627,8 @@ $featTpin = feature_module_allowed('tpin');
                 var R = data.team_right !== null && data.team_right !== undefined ? data.team_right : '0';
                 addRow('Team', 'L ' + L + ' · R ' + R);
             }
+            addRow('Left PV', data.left_pv != null && data.left_pv !== '' ? data.left_pv : '0');
+            addRow('Right PV', data.right_pv != null && data.right_pv !== '' ? data.right_pv : '0');
             addRow('Wallet', data.wallet);
             addRow('Joined', data.joined);
         };

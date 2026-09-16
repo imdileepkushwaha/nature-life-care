@@ -197,7 +197,7 @@ if (isset($_GET['cancel'])) {
     exit;
 }
 
-$perPage = 20;
+$perPage = admin_per_page();
 $offset = ($page - 1) * $perPage;
 
 $statusSql = '';
@@ -383,14 +383,7 @@ require_once __DIR__ . '/../includes/header.php';
             </tbody>
         </table>
     </div>
-    <?php if ($totalPages > 1): ?>
-    <div class="pagination">
-        <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-            <?php if ($i === $page): ?><span class="current"><?= $i ?></span>
-            <?php else: ?><a href="?page=<?= $i ?>&type=<?= urlencode($typeFilter) ?>&status=<?= urlencode($statusFilter) ?>"><?= $i ?></a><?php endif; ?>
-        <?php endfor; ?>
-    </div>
-    <?php endif; ?>
+    <?php admin_pagination($page, $totalPages, ['type' => $typeFilter, 'status' => $statusFilter]); ?>
 </div>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

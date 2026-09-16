@@ -8,7 +8,7 @@ wallet_ensure_schema($pdo);
 $errors = [];
 $q = trim($_GET['q'] ?? '');
 $page = max(1, (int) ($_GET['page'] ?? 1));
-$perPage = 15;
+$perPage = admin_per_page();
 $offset = ($page - 1) * $perPage;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -177,13 +177,7 @@ require_once __DIR__ . '/../includes/header.php';
             </tbody>
         </table>
     </div>
-    <?php if ($totalPages > 1): ?>
-    <div class="pagination members-pagination">
-        <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-            <a class="<?= $i === $page ? 'active' : '' ?>" href="?page=<?= $i ?>&q=<?= urlencode($q) ?>"><?= $i ?></a>
-        <?php endfor; ?>
-    </div>
-    <?php endif; ?>
+    <?php admin_pagination($page, $totalPages, ['q' => $q], 'page', 'members-pagination'); ?>
 </div>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

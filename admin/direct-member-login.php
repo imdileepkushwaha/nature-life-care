@@ -5,6 +5,8 @@ $pageTitle = 'Direct Member Login';
 
 $error = '';
 $q = trim($_GET['q'] ?? '');
+$page = max(1, (int) ($_GET['page'] ?? 1));
+$perPage = admin_per_page();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $memberId = (int) ($_POST['member_id'] ?? 0);
@@ -41,7 +43,22 @@ if ($q !== '') {
     $params = [$like, $like, $like, $like];
 }
 
-$stmt = $pdo->prepare("SELECT id, member_id, username, full_name, email, phone, wallet_balance FROM members WHERE $where ORDER BY id DESC LIMIT 50");
+$countStmt = $pdo->prepare("SELECT COUNT(*) FROM members WHERE $where");
+$countStmt->execute($params);
+$total = (int) $countStmt->fetchColumn();
+$totalPages = max(1, (int) ceil($total / $perPage));
+if ($page > $totalPages) {
+    $page = $totalPages;
+}
+$offset = ($page - 1) * $perPage;
+
+$stmt = $pdo->prepare("
+    SELECT id, member_id, username, full_name, email, phone, wallet_balance
+    FROM members
+    WHERE $where
+    ORDER BY id DESC
+    LIMIT $perPage OFFSET $offset
+");
 $stmt->execute($params);
 $members = $stmt->fetchAll();
 
@@ -98,5 +115,6 @@ require_once __DIR__ . '/../includes/header.php';
             </tbody>
         </table>
     </div>
+    <?php admin_pagination($page, $totalPages, ['q' => $q]); ?>
 </div>
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

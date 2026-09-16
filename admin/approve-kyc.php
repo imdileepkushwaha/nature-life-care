@@ -58,7 +58,7 @@ if (!in_array($statusFilter, ['pending', 'approved', 'rejected', 'not_submitted'
 }
 $typeFilter = $_GET['type'] ?? 'all';
 $page = max(1, (int) ($_GET['page'] ?? 1));
-$perPage = 12;
+$perPage = admin_per_page();
 $offset = ($page - 1) * $perPage;
 
 $types = kyc_doc_types();
@@ -357,13 +357,7 @@ $renderKycTable = static function (array $rows, array $types, string $backStatus
 
     <?php $renderKycTable($rows, $types, $statusFilter, $typeFilter); ?>
 
-    <?php if ($totalPages > 1): ?>
-    <div class="pagination members-pagination">
-        <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-            <a class="<?= $i === $page ? 'active' : '' ?>" href="?page=<?= $i ?>&status=<?= e($statusFilter) ?>&type=<?= e($typeFilter) ?>&q=<?= urlencode($q) ?>"><?= $i ?></a>
-        <?php endfor; ?>
-    </div>
-    <?php endif; ?>
+    <?php admin_pagination($page, $totalPages, ['status' => $statusFilter, 'type' => $typeFilter, 'q' => $q], 'page', 'members-pagination'); ?>
 </div>
 
 <style>
