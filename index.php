@@ -15,42 +15,10 @@ $email = setting('contact_email', setting('support_email', ''));
 $siteUrl = 'www.bharatsevamart.com';
 $rupee = currency_symbol_html();
 
-$products = [
-    [
-        'name' => 'Tulsi Guard Drops',
-        'category' => 'Immunity',
-        'price' => '499',
-        'note' => 'Daily herbal tulsi drops for immunity and daily wellness.',
-        'image' => 'assets/img/lp-product-1.png',
-        'alt' => 'Tulsi herbal immunity drops bottle',
-    ],
-    [
-        'name' => 'Haldi Gold Capsules',
-        'category' => 'Wellness',
-        'price' => '799',
-        'note' => 'Organic turmeric capsules for joint comfort and inner health.',
-        'image' => 'assets/img/lp-product-2.png',
-        'alt' => 'Turmeric gold Ayurvedic capsules',
-    ],
-    [
-        'name' => 'Amla Hair Oil',
-        'category' => 'Hair care',
-        'price' => '349',
-        'note' => 'Amla and herb oil to nourish scalp and strengthen hair.',
-        'image' => 'assets/img/lp-product-3.png',
-        'alt' => 'Herbal amla hair oil bottle',
-    ],
-    [
-        'name' => 'Forest Honey',
-        'category' => 'Nutrition',
-        'price' => '449',
-        'note' => 'Raw organic honey for energy, immunity and natural taste.',
-        'image' => 'assets/img/lp-product-4.png',
-        'alt' => 'Organic forest honey jar',
-    ],
-];
+$products = products_public_list($pdo);
 
 require_once __DIR__ . '/includes/plan_incentives.php';
+require_once __DIR__ . '/includes/website_sliders.php';
 $landingRanks = [];
 $landingRewards = [];
 try {
@@ -65,6 +33,30 @@ if (!$landingRanks) {
 }
 if (!$landingRewards) {
     $landingRewards = plan_reward_defaults();
+}
+
+$heroSlides = website_sliders_active($pdo);
+if (!$heroSlides) {
+    $heroSlides = [
+        [
+            'heading' => "Nurturing Health\nGrowing Prosperity",
+            'lead' => 'स्वास्थ्य भी · रोजगार भी · सम्मान भी',
+            'image_url' => 'assets/img/lp-hero-1.png',
+            'alt' => 'Organic Ayurvedic wellness products on a wooden table',
+        ],
+        [
+            'heading' => "Rooted in Nature\nRising with Purpose",
+            'lead' => 'Wellness · Organic · Natural products, सही जानकारी के साथ।',
+            'image_url' => 'assets/img/lp-hero-2.png',
+            'alt' => 'Wellness mart with organic kits and natural products',
+        ],
+        [
+            'heading' => "Harvesting Health\nBuilding Futures",
+            'lead' => $tagline,
+            'image_url' => 'assets/img/lp-hero-3.png',
+            'alt' => 'Fresh organic harvest from farm fields at golden hour',
+        ],
+    ];
 }
 ?>
 <!DOCTYPE html>
@@ -151,52 +143,34 @@ if (!$landingRewards) {
             </div>
 
             <div class="lp-slides" id="lpSlides">
-                <article class="lp-slide is-on">
+                <?php foreach ($heroSlides as $i => $slide): ?>
+                <article class="lp-slide<?= $i === 0 ? ' is-on' : '' ?>">
                     <div class="lp-shell lp-hero-shell">
                         <div class="lp-hero-copy">
                             <p class="lp-hero-brand"><?= e($company) ?></p>
-                            <h1>Nurturing Health<br>Growing Prosperity</h1>
-                            <p class="lp-hero-lead">स्वास्थ्य भी · रोजगार भी · सम्मान भी</p>
+                            <?php if (trim((string) ($slide['heading'] ?? '')) !== ''): ?>
+                            <h1><?= nl2br(e((string) $slide['heading']), false) ?></h1>
+                            <?php endif; ?>
+                            <?php if (trim((string) ($slide['lead'] ?? '')) !== ''): ?>
+                            <p class="lp-hero-lead"><?= e((string) $slide['lead']) ?></p>
+                            <?php endif; ?>
                             <a href="user/register.php" class="lp-btn lp-btn-primary lp-btn-lg">Join Us</a>
                         </div>
                         <figure class="lp-hero-visual">
-                            <img src="assets/img/lp-hero-1.png" alt="Organic Ayurvedic wellness products on a wooden table" width="960" height="720">
+                            <img src="<?= e((string) $slide['image_url']) ?>" alt="<?= e((string) ($slide['alt'] ?? 'Home slider')) ?>" width="960" height="720">
                         </figure>
                     </div>
                 </article>
-                <article class="lp-slide">
-                    <div class="lp-shell lp-hero-shell">
-                        <div class="lp-hero-copy">
-                            <p class="lp-hero-brand"><?= e($company) ?></p>
-                            <h1>Rooted in Nature<br>Rising with Purpose</h1>
-                            <p class="lp-hero-lead">Wellness · Organic · Natural products, सही जानकारी के साथ।</p>
-                            <a href="user/register.php" class="lp-btn lp-btn-primary lp-btn-lg">Join Us</a>
-                        </div>
-                        <figure class="lp-hero-visual">
-                            <img src="assets/img/lp-hero-2.png" alt="Wellness mart with organic kits and natural products" width="960" height="720">
-                        </figure>
-                    </div>
-                </article>
-                <article class="lp-slide">
-                    <div class="lp-shell lp-hero-shell">
-                        <div class="lp-hero-copy">
-                            <p class="lp-hero-brand"><?= e($company) ?></p>
-                            <h1>Harvesting Health<br>Building Futures</h1>
-                            <p class="lp-hero-lead"><?= e($tagline) ?></p>
-                            <a href="user/register.php" class="lp-btn lp-btn-primary lp-btn-lg">Join Us</a>
-                        </div>
-                        <figure class="lp-hero-visual">
-                            <img src="assets/img/lp-hero-3.png" alt="Fresh organic harvest from farm fields at golden hour" width="960" height="720">
-                        </figure>
-                    </div>
-                </article>
+                <?php endforeach; ?>
             </div>
 
+            <?php if (count($heroSlides) > 1): ?>
             <div class="lp-slide-nav" aria-label="Hero slides">
-                <button type="button" class="is-on" data-slide="0" aria-label="Slide 1"></button>
-                <button type="button" data-slide="1" aria-label="Slide 2"></button>
-                <button type="button" data-slide="2" aria-label="Slide 3"></button>
+                <?php foreach ($heroSlides as $i => $_slide): ?>
+                <button type="button"<?= $i === 0 ? ' class="is-on"' : '' ?> data-slide="<?= (int) $i ?>" aria-label="Slide <?= (int) ($i + 1) ?>"></button>
+                <?php endforeach; ?>
             </div>
+            <?php endif; ?>
         </section>
 
         <section class="lp-section lp-welcome" id="about">
@@ -299,18 +273,25 @@ if (!$landingRewards) {
                 <header class="lp-sec-head lp-sec-head-light">
                     <p class="lp-kicker">Our catalogue</p>
                     <h2>Wellness products for everyday health</h2>
-                    <p>Dummy showcase — Ayurvedic aur organic range. Final MRP, taxes aur invoice catalogue confirm hone par update होंगे।</p>
+                    <p>Ayurvedic and organic essentials, curated for everyday wellness.</p>
                 </header>
+                <?php if (!$products): ?>
+                <p class="lp-products-empty">Our catalogue is being updated. Please check back shortly.</p>
+                <?php else: ?>
                 <div class="lp-product-grid">
                     <?php foreach ($products as $product): ?>
                     <article class="lp-product">
-                        <figure class="lp-product-media">
+                        <figure class="lp-product-media<?= $product['image'] === '' ? ' is-empty' : '' ?>">
+                            <?php if ($product['image'] !== ''): ?>
                             <img src="<?= e($product['image']) ?>" alt="<?= e($product['alt']) ?>" width="600" height="600">
+                            <?php endif; ?>
                         </figure>
                         <div class="lp-product-body">
                             <p class="lp-product-cat"><?= e($product['category']) ?></p>
                             <h3><?= e($product['name']) ?></h3>
+                            <?php if ($product['note'] !== ''): ?>
                             <p><?= e($product['note']) ?></p>
+                            <?php endif; ?>
                             <div class="lp-product-row">
                                 <p class="lp-product-price"><span><?= $rupee ?></span><?= e($product['price']) ?></p>
                                 <a href="user/register.php">View</a>
@@ -319,6 +300,7 @@ if (!$landingRewards) {
                     </article>
                     <?php endforeach; ?>
                 </div>
+                <?php endif; ?>
             </div>
         </section>
 

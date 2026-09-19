@@ -1,6 +1,6 @@
 <?php
 /**
- * Renders active website popup image before </body> on public pages.
+ * Renders active website popup image before </body> on public and user-home pages.
  * Expects $pdo from config/database.php.
  */
 if (!isset($pdo) || !($pdo instanceof PDO)) {

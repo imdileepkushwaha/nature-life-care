@@ -30,7 +30,7 @@ $utilityPages = [
 ];
 $utilityOpen = in_array($currentPage, $utilityPages, true);
 
-$websitePages = ['website-popups'];
+$websitePages = ['website-popups', 'website-sliders'];
 $websiteOpen = in_array($currentPage, $websitePages, true);
 
 $memberPages = [
@@ -232,6 +232,7 @@ $chevronDown = '<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke=
                     </button>
                     <div class="nav-submenu">
                         <a href="website-popups.php" class="<?= $currentPage === 'website-popups' ? 'active' : '' ?>"><span class="dot"></span>Add Popup</a>
+                        <a href="website-sliders.php" class="<?= $currentPage === 'website-sliders' ? 'active' : '' ?>"><span class="dot"></span>Add Slider</a>
                     </div>
                 </div>
 

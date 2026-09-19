@@ -1,9 +1,9 @@
 <?php
 /**
- * Public website popups (landing / contact) — image only.
+ * Home hero sliders (lp-hero).
  */
 
-function website_popups_ensure_table(PDO $pdo): void
+function website_sliders_ensure_table(PDO $pdo): void
 {
     static $done = false;
     if ($done) {
@@ -13,42 +13,23 @@ function website_popups_ensure_table(PDO $pdo): void
         return;
     }
     $pdo->exec("
-        CREATE TABLE IF NOT EXISTS website_popups (
+        CREATE TABLE IF NOT EXISTS website_sliders (
             id INT AUTO_INCREMENT PRIMARY KEY,
-            title VARCHAR(200) NOT NULL DEFAULT '',
-            content TEXT NULL,
-            cta_label VARCHAR(100) NULL,
-            cta_url VARCHAR(500) NULL,
+            heading VARCHAR(200) NOT NULL DEFAULT '',
+            lead VARCHAR(400) NOT NULL DEFAULT '',
             image_path VARCHAR(500) NULL,
+            sort_order INT NOT NULL DEFAULT 0,
             status ENUM('active','inactive') NOT NULL DEFAULT 'active',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-            KEY idx_wp_status (status, id)
+            KEY idx_ws_status_sort (status, sort_order, id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
-    try {
-        $col = $pdo->query("SHOW COLUMNS FROM website_popups LIKE 'image_path'")->fetch();
-        if (!$col) {
-            $pdo->exec("ALTER TABLE website_popups ADD COLUMN image_path VARCHAR(500) NULL AFTER cta_url");
-        }
-    } catch (Throwable $e) {
-        // ignore
-    }
-    try {
-        $pdo->exec("ALTER TABLE website_popups MODIFY title VARCHAR(200) NOT NULL DEFAULT ''");
-    } catch (Throwable $e) {
-        // ignore
-    }
-    try {
-        $pdo->exec("ALTER TABLE website_popups MODIFY content TEXT NULL");
-    } catch (Throwable $e) {
-        // ignore
-    }
     $done = true;
 }
 
-/** Store popup image. Returns ['ok'=>bool,'error'=>?string,'path'=>?string] */
-function website_popup_store_image(array $file): array
+/** Store slider image. Returns ['ok'=>bool,'error'=>?string,'path'=>?string] */
+function website_slider_store_image(array $file): array
 {
     if (($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
         return ['ok' => true, 'error' => null, 'path' => null];
@@ -76,24 +57,24 @@ function website_popup_store_image(array $file): array
     }
 
     $base = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__);
-    $uploadDir = $base . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'popups';
+    $uploadDir = $base . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'sliders';
     if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
-        return ['ok' => false, 'error' => 'Could not create popup upload folder.', 'path' => null];
+        return ['ok' => false, 'error' => 'Could not create slider upload folder.', 'path' => null];
     }
 
-    $name = 'popup_' . date('YmdHis') . '_' . bin2hex(random_bytes(3)) . '.' . $allowed[$mime];
+    $name = 'slider_' . date('YmdHis') . '_' . bin2hex(random_bytes(3)) . '.' . $allowed[$mime];
     $dest = $uploadDir . DIRECTORY_SEPARATOR . $name;
     if (!move_uploaded_file($file['tmp_name'], $dest)) {
         return ['ok' => false, 'error' => 'Could not save image.', 'path' => null];
     }
 
-    return ['ok' => true, 'error' => null, 'path' => 'uploads/popups/' . $name];
+    return ['ok' => true, 'error' => null, 'path' => 'uploads/sliders/' . $name];
 }
 
-function website_popup_delete_file(?string $path): void
+function website_slider_delete_file(?string $path): void
 {
     $path = trim((string) $path);
-    if ($path === '' || !str_starts_with($path, 'uploads/popups/')) {
+    if ($path === '' || !str_starts_with($path, 'uploads/sliders/')) {
         return;
     }
     $base = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__);
@@ -103,8 +84,7 @@ function website_popup_delete_file(?string $path): void
     }
 }
 
-/** Public URL for popup image from current page context. */
-function website_popup_image_url(string $path): string
+function website_slider_image_url(string $path): string
 {
     $path = trim($path);
     if ($path === '') {
@@ -118,21 +98,39 @@ function website_popup_image_url(string $path): string
     return ($nested ? '../' : '') . ltrim($path, '/');
 }
 
-/** Latest active popup with image for the public website. */
-function website_popup_active(PDO $pdo): ?array
+/**
+ * Active home hero slides. Empty = landing page should use built-in defaults.
+ * @return list<array{heading:string,lead:string,image_url:string,alt:string}>
+ */
+function website_sliders_active(PDO $pdo): array
 {
-    website_popups_ensure_table($pdo);
+    website_sliders_ensure_table($pdo);
     try {
-        $row = $pdo->query("
-            SELECT * FROM website_popups
+        $rows = $pdo->query("
+            SELECT heading, lead, image_path
+            FROM website_sliders
             WHERE status = 'active'
               AND image_path IS NOT NULL
               AND TRIM(image_path) != ''
-            ORDER BY id DESC
-            LIMIT 1
-        ")->fetch();
-        return $row ?: null;
+            ORDER BY sort_order ASC, id ASC
+        ")->fetchAll() ?: [];
     } catch (Throwable $e) {
-        return null;
+        return [];
     }
+
+    $out = [];
+    foreach ($rows as $row) {
+        $url = website_slider_image_url((string) ($row['image_path'] ?? ''));
+        if ($url === '') {
+            continue;
+        }
+        $heading = trim((string) ($row['heading'] ?? ''));
+        $out[] = [
+            'heading' => $heading,
+            'lead' => trim((string) ($row['lead'] ?? '')),
+            'image_url' => $url,
+            'alt' => $heading !== '' ? $heading : 'Home slider',
+        ];
+    }
+    return $out;
 }

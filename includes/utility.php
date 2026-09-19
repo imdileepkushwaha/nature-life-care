@@ -8,7 +8,7 @@ function utility_toggle_status(PDO $pdo, string $table, int $id): void
     $allowed = [
         'countries','states','cities','banks','bank_accounts','deductions','news','plans','package_plans',
         'product_categories','product_subcategories','product_sizes','product_colors','subcategory_settings',
-        'products','product_vendors','commodity_prices','website_popups',
+        'products','product_vendors','commodity_prices','website_popups','website_sliders',
     ];
     if (!in_array($table, $allowed, true) || $id < 1) {
         flash('error', 'Invalid request.');
@@ -24,7 +24,7 @@ function utility_delete(PDO $pdo, string $table, int $id): bool
     $allowed = [
         'countries','states','cities','banks','bank_accounts','deductions','news','plans','package_plans',
         'product_categories','product_subcategories','product_sizes','product_colors','subcategory_settings',
-        'products','product_vendors','commodity_prices','stock_purchases','website_popups',
+        'products','product_vendors','commodity_prices','stock_purchases','website_popups','website_sliders',
     ];
     if (!in_array($table, $allowed, true) || $id < 1) {
         flash('error', 'Invalid request.');
@@ -224,6 +224,74 @@ function products_ensure_columns(PDO $pdo): void
         // ignore
     }
     $done = true;
+}
+
+/**
+ * Active products for the public website catalogue.
+ * @return list<array{name:string,category:string,price:string,note:string,image:string,alt:string}>
+ */
+function products_public_list(PDO $pdo): array
+{
+    products_ensure_columns($pdo);
+    try {
+        $rows = $pdo->query("
+            SELECT p.name, p.price, p.thumbnail, p.description,
+                   c.name AS category_name,
+                   (
+                       SELECT pi.image_path
+                       FROM product_images pi
+                       WHERE pi.product_id = p.id
+                       ORDER BY pi.sort_order ASC, pi.id ASC
+                       LIMIT 1
+                   ) AS gallery_image
+            FROM products p
+            LEFT JOIN product_categories c ON c.id = p.category_id
+            WHERE p.status = 'active'
+            ORDER BY p.id DESC
+        ")->fetchAll() ?: [];
+    } catch (Throwable $e) {
+        return [];
+    }
+
+    $out = [];
+    foreach ($rows as $row) {
+        $img = trim((string) ($row['thumbnail'] ?? ''));
+        if ($img === '') {
+            $img = trim((string) ($row['gallery_image'] ?? ''));
+        }
+        if ($img !== '') {
+            $img = ltrim(str_replace('\\', '/', $img), '/');
+        }
+
+        $note = trim(preg_replace('/\s+/u', ' ', strip_tags((string) ($row['description'] ?? ''))) ?? '');
+        if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+            if (mb_strlen($note) > 120) {
+                $note = rtrim(mb_substr($note, 0, 117)) . '...';
+            }
+        } elseif (strlen($note) > 120) {
+            $note = rtrim(substr($note, 0, 117)) . '...';
+        }
+
+        $price = (float) ($row['price'] ?? 0);
+        $priceLabel = abs($price - round($price)) < 0.001
+            ? number_format($price, 0)
+            : number_format($price, 2);
+
+        $name = trim((string) ($row['name'] ?? ''));
+        if ($name === '') {
+            continue;
+        }
+
+        $out[] = [
+            'name' => $name,
+            'category' => trim((string) ($row['category_name'] ?? '')) ?: 'Product',
+            'price' => $priceLabel,
+            'note' => $note,
+            'image' => $img,
+            'alt' => $name,
+        ];
+    }
+    return $out;
 }
 
 /**

@@ -363,8 +363,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Website popup image upload UI (same soft-upload pattern)
-    (function initSuUpload(boxId, inputId, previewId, thumbId, emptyId, nameId, dropId) {
+    // Soft-upload preview (popup + slider)
+    const initSuUpload = function (boxId, inputId, previewId, thumbId, emptyId, nameId, dropId) {
         const box = document.getElementById(boxId);
         const input = document.getElementById(inputId);
         if (!box || !input) return;
@@ -426,7 +426,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 showFile(file);
             });
         }
-    })('popupImgUpload', 'popupImgInput', 'popupImgPreview', 'popupImgThumb', 'popupImgEmpty', 'popupImgName', 'popupImgDrop');
+    };
+    initSuUpload('popupImgUpload', 'popupImgInput', 'popupImgPreview', 'popupImgThumb', 'popupImgEmpty', 'popupImgName', 'popupImgDrop');
+    initSuUpload('sliderImgUpload', 'sliderImgInput', 'sliderImgPreview', 'sliderImgThumb', 'sliderImgEmpty', 'sliderImgName', 'sliderImgDrop');
 
     // Color hex picker sync (Soft UI Soft style)
     const hexPicker = document.getElementById('hexColorPicker');
