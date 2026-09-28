@@ -76,6 +76,10 @@ function session_clear_scope(string $scope): void
             'member_id', 'member_code', 'member_name',
             'member_login_by_admin', 'member_login_admin_id', 'member_last_activity',
         ],
+        'franchise' => [
+            'franchise_id', 'franchise_code', 'franchise_name', 'franchise_type',
+            'franchise_login_by_admin', 'franchise_last_activity',
+        ],
     ];
     foreach ($map[$scope] ?? [] as $key) {
         unset($_SESSION[$key]);
@@ -419,6 +423,7 @@ require_once __DIR__ . '/../includes/features.php';
 require_once __DIR__ . '/../includes/matrix.php';
 require_once __DIR__ . '/../includes/plan_incentives.php';
 require_once __DIR__ . '/../includes/income_tables.php';
+require_once __DIR__ . '/../includes/franchise.php';
 
 // Ensure feature defaults + super_admins when DB is ready (no-op if tables missing).
 try {
@@ -428,6 +433,7 @@ try {
     settings_mojibake_heal($pdo);
     plan_incentives_ensure($pdo);
     income_tables_ensure($pdo);
+    franchise_ensure_tables($pdo);
 } catch (Throwable $e) {
     // ignore during early install
 }

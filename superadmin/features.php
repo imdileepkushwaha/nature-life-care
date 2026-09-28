@@ -135,6 +135,11 @@ $switch = static function (string $name, string $label, string $hint, bool $on, 
                 'ico' => '<path d="M4 7h16l-1.2 11.2A2 2 0 0116.81 20H7.19a2 2 0 01-1.99-1.8L4 7z"/><path d="M9 7V5a3 3 0 016 0v2"/>',
                 'tags' => ['Shop only', 'No plans', 'Value activate'],
             ],
+            'franchise_only' => [
+                'tone' => 'amber',
+                'ico' => '<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+                'tags' => ['Franchise Only', 'BHEO & Distributer', 'Stock & Billing'],
+            ],
         ];
         $defaultMeta = [
             'tone' => 'rose',
@@ -312,6 +317,8 @@ $switch = static function (string $name, string $label, string $hint, bool $on, 
             <?= $switch('feature_withdraw_require_kyc', 'Withdrawal requires KYC', 'Block withdrawal requests until member KYC is fully approved', feature_enabled('feature_withdraw_require_kyc', false)) ?>
             <?= $switch('feature_utility_enabled', 'Utility management', 'Geo, banks, news & helpers', feature_enabled('feature_utility_enabled')) ?>
             <?= $switch('feature_reports_enabled', 'Reports', 'Admin commission & activity reports', feature_enabled('feature_reports_enabled')) ?>
+            <?= $switch('feature_franchise_enabled', 'Franchisee Master', 'Show Franchisee Master module in Client Admin (types, add, report, purchase, stock) and enable Franchise portal', feature_enabled('feature_franchise_enabled')) ?>
+            <?= $switch('feature_franchise_only', 'Franchise Only mode', 'Exclusive Franchise business: Stock, multi-tier hierarchy & margins active; MLM packages/network off', feature_franchise_only()) ?>
         </div>
 
         <div class="sa-form-actions">

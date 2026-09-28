@@ -68,6 +68,8 @@ function mlm_expected_tables(): array
         'plan_ranks', 'plan_rewards', 'member_rank_history', 'member_rewards',
         'bv_lots', 'weekly_reconciliations', 'ops_cron_logs',
         'member_nominee_settlements', 'member_nominee_documents',
+        'franchisee_types', 'franchisees', 'franchisee_purchases', 'franchisee_purchase_items',
+        'franchisee_stock', 'franchisee_sales', 'franchisee_sale_items', 'franchisee_commissions',
     ];
 }
 
@@ -169,6 +171,8 @@ function mlm_run_schema_setup(PDO $pdo): array
         ops_ensure_tables($pdo);
         require_once dirname(__DIR__) . '/includes/nominee.php';
         nominee_ensure_schema($pdo);
+        require_once dirname(__DIR__) . '/includes/franchise.php';
+        franchise_ensure_tables($pdo);
     } catch (Throwable $e) {
         // ignore
     }

@@ -23,6 +23,7 @@ $featUtility = feature_module_allowed('utility');
 $featReports = feature_module_allowed('reports');
 $featBinaryClosing = feature_module_allowed('binary_closing');
 $featRewards = feature_module_allowed('rewards');
+$featFranchise = feature_module_allowed('franchise');
 
 $utilityPages = [
     'countries', 'states', 'cities', 'banks', 'bank-accounts',
@@ -45,6 +46,12 @@ $productPages = [
     'product-orders', 'stock-report', 'vendors', 'stock-purchase', 'purchase-details',
 ];
 $productOpen = in_array($currentPage, $productPages, true);
+
+$franchisePages = [
+    'franchisee-types', 'franchisee-add', 'franchisee-report',
+    'franchisee-purchase', 'franchisee-purchase-report', 'franchisee-stock',
+];
+$franchiseOpen = in_array($currentPage, $franchisePages, true);
 
 $packagePages = ['packages', 'package-assign-products'];
 $packageOpen = in_array($currentPage, $packagePages, true);
@@ -105,6 +112,7 @@ $icoCard = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-wi
 $icoChart = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>';
 $icoGear = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>';
 $icoWeb = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>';
+$icoFranchise = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/><path d="M9 10h.01M15 10h.01"/></svg>';
 
 $chevronDown = '<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>';
 ?>
@@ -260,6 +268,26 @@ $chevronDown = '<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke=
                         <a href="vendors.php" class="<?= $currentPage === 'vendors' ? 'active' : '' ?>"><span class="dot"></span>Vendor Master</a>
                         <a href="stock-purchase.php" class="<?= $currentPage === 'stock-purchase' ? 'active' : '' ?>"><span class="dot"></span>Stock Purchase</a>
                         <a href="purchase-details.php" class="<?= $currentPage === 'purchase-details' ? 'active' : '' ?>"><span class="dot"></span>Purchase Details</a>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <?php if ($featFranchise): ?>
+                <div class="nav-group <?= $franchiseOpen ? 'open' : '' ?>" data-nav-group>
+                    <button type="button" class="nav-link nav-group-toggle <?= $franchiseOpen ? 'active' : '' ?>" data-nav-toggle>
+                        <span class="nav-link-left">
+                            <?= nav_ico($icoFranchise) ?>
+                            <span class="nav-label">Franchisee Master</span>
+                        </span>
+                        <?= $chevronDown ?>
+                    </button>
+                    <div class="nav-submenu">
+                        <a href="franchisee-types.php" class="<?= $currentPage === 'franchisee-types' ? 'active' : '' ?>"><span class="dot"></span>Franchisee Type Master</a>
+                        <a href="franchisee-add.php" class="<?= $currentPage === 'franchisee-add' ? 'active' : '' ?>"><span class="dot"></span>Franchisee Add</a>
+                        <a href="franchisee-report.php" class="<?= $currentPage === 'franchisee-report' ? 'active' : '' ?>"><span class="dot"></span>Franchisee Report</a>
+                        <a href="franchisee-purchase.php" class="<?= $currentPage === 'franchisee-purchase' ? 'active' : '' ?>"><span class="dot"></span>Product Purchase</a>
+                        <a href="franchisee-purchase-report.php" class="<?= $currentPage === 'franchisee-purchase-report' ? 'active' : '' ?>"><span class="dot"></span>Product Purchase Report</a>
+                        <a href="franchisee-stock.php" class="<?= $currentPage === 'franchisee-stock' ? 'active' : '' ?>"><span class="dot"></span>Stock Details</a>
                     </div>
                 </div>
                 <?php endif; ?>

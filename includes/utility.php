@@ -9,6 +9,7 @@ function utility_toggle_status(PDO $pdo, string $table, int $id): void
         'countries','states','cities','banks','bank_accounts','deductions','news','plans','package_plans',
         'product_categories','product_subcategories','product_sizes','product_colors','subcategory_settings',
         'products','product_vendors','commodity_prices','website_popups','website_sliders',
+        'franchisee_types','franchisees',
     ];
     if (!in_array($table, $allowed, true) || $id < 1) {
         flash('error', 'Invalid request.');
@@ -25,6 +26,7 @@ function utility_delete(PDO $pdo, string $table, int $id): bool
         'countries','states','cities','banks','bank_accounts','deductions','news','plans','package_plans',
         'product_categories','product_subcategories','product_sizes','product_colors','subcategory_settings',
         'products','product_vendors','commodity_prices','stock_purchases','website_popups','website_sliders',
+        'franchisee_types','franchisees',
     ];
     if (!in_array($table, $allowed, true) || $id < 1) {
         flash('error', 'Invalid request.');
