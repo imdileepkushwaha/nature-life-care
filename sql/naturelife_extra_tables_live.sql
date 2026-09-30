@@ -1,5 +1,5 @@
--- Extra tables for LIVE (run after binarymlm_db_live.sql)
--- Select database binarymlm_db in phpMyAdmin first, then Import this file.
+-- Extra tables for LIVE (run after naturelife_db_live.sql)
+-- Select database naturelife_db in phpMyAdmin first, then Import this file.
 -- Safe to re-run: uses CREATE TABLE IF NOT EXISTS / INSERT IGNORE.
 
 -- ========== Utility ==========

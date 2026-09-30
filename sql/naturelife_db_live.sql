@@ -1,9 +1,9 @@
 -- Binary MLM Database Schema (LIVE / shared hosting)
--- Import this file in phpMyAdmin with database `binarymlm_db` already selected.
+-- Import this file in phpMyAdmin with database `naturelife_db` already selected.
 -- Do NOT import a local phpMyAdmin export (it contains DEFINER=root and fails on shared hosting).
 -- Stored procedures are auto-created by the app (includes/procedures.php) — not in this file.
 -- Binary MLM Database Schema
--- Database: binarymlm_db
+-- Database: naturelife_db
 
 
 -- Admin users
@@ -131,7 +131,7 @@ CREATE TABLE IF NOT EXISTS activity_logs (
 
 -- Default admin (username: admin / password: admin123)
 INSERT INTO admins (username, email, password, full_name) VALUES
-('admin', 'admin@binarymlm.com', '$2y$10$HV.v4CvAhCF8iW4CkhlaB.NCNXIvGP1agMwXKubzBKDusDlSNLHbi', 'Super Admin');
+('admin', 'admin@naturelifecare.com', '$2y$10$HV.v4CvAhCF8iW4CkhlaB.NCNXIvGP1agMwXKubzBKDusDlSNLHbi', 'Super Admin');
 
 -- Default packages
 INSERT INTO packages (name, amount, bv, daily_roi, validity_days, description) VALUES
@@ -173,7 +173,7 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('contact_person', 'Support Team'),
 ('contact_phone', '+91 98765 43210'),
 ('contact_whatsapp', '919876543210'),
-('contact_email', 'support@binarymlm.com'),
+('contact_email', 'support@naturelifecare.com'),
 ('contact_alt_phone', ''),
 ('contact_address', 'Office No. 12, Business Hub'),
 ('contact_city', 'Mumbai'),
@@ -188,7 +188,7 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('contact_youtube', ''),
 ('contact_telegram', ''),
 ('contact_form_enabled', '1'),
-('contact_form_notify_email', 'support@binarymlm.com'),
+('contact_form_notify_email', 'support@naturelifecare.com'),
 ('plan_mode', 'hybrid'),
 ('feature_preset', 'hybrid_full'),
 ('feature_package_enabled', '1'),
@@ -254,5 +254,5 @@ CREATE TABLE IF NOT EXISTS topup_pin_transfers (
 
 -- Sample root member (password: member123)
 INSERT INTO members (member_id, username, email, password, full_name, phone, package_id, status) VALUES
-('MLM00001', 'rootuser', 'root@binarymlm.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Root Member', '9999999999', 4, 'active');
+('MLM00001', 'rootuser', 'root@naturelifecare.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Root Member', '9999999999', 4, 'active');
 

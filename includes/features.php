@@ -1088,7 +1088,7 @@ function feature_ensure_superadmin_table(PDO $pdo): void
             $count = (int) $pdo->query('SELECT COUNT(*) FROM super_admins')->fetchColumn();
             if ($count === 0) {
                 $pdo->prepare('INSERT INTO super_admins (username, email, password, full_name, status) VALUES (?, ?, ?, ?, ?)')
-                    ->execute(['superadmin', 'superadmin@binarymlm.com', $hash, 'Platform Super Admin', 'active']);
+                    ->execute(['superadmin', 'superadmin@naturelifecare.com', $hash, 'Platform Super Admin', 'active']);
             }
         }
     } catch (Throwable $e) {

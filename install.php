@@ -14,7 +14,7 @@ $pass = $savedDb['pass'];
 $dbName = $savedDb['name'];
 $adminUser = 'admin';
 $adminPass = 'admin123';
-$adminEmail = 'admin@binarymlm.com';
+$adminEmail = 'admin@naturelifecare.com';
 
 $error = '';
 $success = '';
@@ -24,10 +24,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $host = trim($_POST['db_host'] ?? 'localhost');
     $user = trim($_POST['db_user'] ?? 'root');
     $pass = $_POST['db_pass'] ?? '';
-    $dbName = trim($_POST['db_name'] ?? 'bharatseva_db');
+    $dbName = trim($_POST['db_name'] ?? 'naturelife_db');
     $adminUser = trim($_POST['admin_user'] ?? 'admin');
     $adminPass = $_POST['admin_pass'] ?? 'admin123';
-    $adminEmail = trim($_POST['admin_email'] ?? 'admin@binarymlm.com');
+    $adminEmail = trim($_POST['admin_email'] ?? 'admin@naturelifecare.com');
 
     try {
         $pdo = new PDO("mysql:host=$host;dbname=$dbName;charset=utf8mb4", $user, $pass, [
@@ -186,7 +186,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <span class="auth-input-ico" aria-hidden="true">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16v10a2 2 0 01-2 2H6a2 2 0 01-2-2V7z"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
                                 </span>
-                                <input type="text" id="db_name" name="db_name" value="<?= htmlspecialchars($dbName) ?>" placeholder="bharatseva_db" required>
+                                <input type="text" id="db_name" name="db_name" value="<?= htmlspecialchars($dbName) ?>" placeholder="naturelife_db" required>
                             </div>
                         </div>
                         <div class="auth-field">

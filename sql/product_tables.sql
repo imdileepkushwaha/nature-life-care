@@ -1,5 +1,5 @@
 -- Product Management tables
-USE binarymlm_db;
+USE naturelife_db;
 
 CREATE TABLE IF NOT EXISTS product_categories (
     id INT AUTO_INCREMENT PRIMARY KEY,

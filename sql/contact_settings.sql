@@ -1,4 +1,4 @@
-USE binarymlm_db;
+USE naturelife_db;
 
 CREATE TABLE IF NOT EXISTS contact_inquiries (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -17,7 +17,7 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('contact_person', 'Support Team'),
 ('contact_phone', '+91 98765 43210'),
 ('contact_whatsapp', '919876543210'),
-('contact_email', 'support@binarymlm.com'),
+('contact_email', 'support@naturelifecare.com'),
 ('contact_alt_phone', ''),
 ('contact_address', 'Office No. 12, Business Hub'),
 ('contact_city', 'Mumbai'),
@@ -32,5 +32,5 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('contact_youtube', ''),
 ('contact_telegram', ''),
 ('contact_form_enabled', '1'),
-('contact_form_notify_email', 'support@binarymlm.com')
+('contact_form_notify_email', 'support@naturelifecare.com')
 ON DUPLICATE KEY UPDATE setting_key = setting_key;

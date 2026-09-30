@@ -1,4 +1,4 @@
-USE binarymlm_db;
+USE naturelife_db;
 
 ALTER TABLE members
     ADD COLUMN kyc_status ENUM('pending','approved','rejected','not_submitted') DEFAULT 'not_submitted' AFTER status,

@@ -26,15 +26,15 @@ function app_db_slot_defaults(string $env): array
         return [
             'host' => 'localhost',
             'port' => '3306',
-            'name' => 'bharatseva_db',
-            'user' => 'bharatseva_db',
-            'pass' => '&dT1v!tq4QgdHrc6',
+            'name' => 'naturelife_db',
+            'user' => 'naturelife_db',
+            'pass' => 'yciRo6^FR@z07eif',
         ];
     }
     return [
         'host' => 'localhost',
         'port' => '3306',
-        'name' => 'bharatseva_db',
+        'name' => 'naturelife_db',
         'user' => 'root',
         'pass' => '',
     ];

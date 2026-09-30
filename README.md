@@ -1,6 +1,6 @@
 # Binary MLM Admin Panel (PHP + MySQL)
 
-PHP admin panel for a **Binary MLM** plan using database **`binarymlm_db`**.
+PHP admin panel for a **Binary MLM** plan using database **`naturelife_db`**.
 
 ## Requirements
 
@@ -31,7 +31,7 @@ Put this folder in your web root, e.g.:
 **Option B — Manual**
 
 ```bash
-mysql -u root -p < sql/binarymlm_db.sql
+mysql -u root -p < sql/naturelife_db.sql
 ```
 
 Then open `install.php` once only to set a real password hash, or update admin password from Settings after fixing login via a one-time PHP `password_hash`.
@@ -40,7 +40,7 @@ Update `config/database.php` if needed:
 
 ```php
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'binarymlm_db');
+define('DB_NAME', 'naturelife_db');
 define('DB_USER', 'root');
 define('DB_PASS', '');
 ```

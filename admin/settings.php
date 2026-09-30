@@ -346,7 +346,7 @@ require_once __DIR__ . '/../includes/header.php';
                     </div>
                     <div class="form-group">
                         <label>Support Email</label>
-                        <input type="email" name="support_email" value="<?= e($settings['support_email'] ?? 'support@binarymlm.com') ?>">
+                        <input type="email" name="support_email" value="<?= e($settings['support_email'] ?? 'support@naturelifecare.com') ?>">
                     </div>
                     <div class="form-group">
                         <label>Currency</label>
@@ -621,7 +621,7 @@ require_once __DIR__ . '/../includes/header.php';
                     </div>
                     <div class="form-group">
                         <label>Support Email</label>
-                        <input type="email" name="contact_email" value="<?= e($c($settings, 'contact_email', $c($settings, 'support_email', 'support@binarymlm.com'))) ?>">
+                        <input type="email" name="contact_email" value="<?= e($c($settings, 'contact_email', $c($settings, 'support_email', 'support@naturelifecare.com'))) ?>">
                     </div>
                     <div class="form-group">
                         <label>Phone</label>
