@@ -254,5 +254,5 @@ CREATE TABLE IF NOT EXISTS topup_pin_transfers (
 
 -- Sample root member (password: member123)
 INSERT INTO members (member_id, username, email, password, full_name, phone, package_id, status) VALUES
-('MLM00001', 'rootuser', 'root@naturelifecare.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Root Member', '9999999999', 4, 'active');
+('NLC000001', 'rootuser', 'root@naturelifecare.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Root Member', '9999999999', 4, 'active');
 

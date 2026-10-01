@@ -157,7 +157,7 @@ $envLabel = app_is_local() ? 'LOCAL' : 'LIVE';
     <div class="sa-panel-body" style="display:flex;flex-wrap:wrap;gap:0.75rem;align-items:flex-end">
         <div class="form-group" style="margin:0">
             <label>Direct (who earned binary)</label>
-            <input type="text" name="direct" value="<?= e($code) ?>" placeholder="BS000002">
+            <input type="text" name="direct" value="<?= e($code) ?>" placeholder="Member ID">
         </div>
         <div class="form-group" style="margin:0">
             <label>Sponsor (optional — blank = their sponsor / root)</label>

@@ -11,7 +11,7 @@ $root = null;
 if ($search !== '') {
     $stmt = $pdo->prepare('SELECT id, member_id, full_name, username, status FROM members WHERE member_id = ? LIMIT 1');
     if (!preg_match('/^[A-Z]{2,10}\d{3,8}$/', $search)) {
-        $searchError = 'Enter a valid Member ID (example: BS000002).';
+        $searchError = 'Enter a valid Member ID.';
     } else {
         $stmt->execute([$search]);
         $root = $stmt->fetch() ?: null;

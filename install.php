@@ -94,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
             </div>
             <p class="auth-kicker">One-time setup</p>
-            <h1 class="auth-company">Bharat Seva Install</h1>
+            <h1 class="auth-company">DB Setup</h1>
             <p class="auth-tagline">Connect your MySQL database, create tables, and set the first admin account in one step.</p>
 
             <ol class="install-checklist">

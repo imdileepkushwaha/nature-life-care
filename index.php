@@ -1,18 +1,18 @@
 <?php
 require_once __DIR__ . '/config/database.php';
 
-$rawCompany = setting('company_name', 'Bharat Seva');
+$rawCompany = setting('company_name', 'Nature Life Care');
 $company = ($rawCompany === '' || strcasecmp($rawCompany, 'Binary MLM') === 0)
-    ? 'Bharat Seva'
+    ? 'Nature Life Care'
     : $rawCompany;
 $logoUrl = company_logo_url();
 $favUrl = company_favicon_url();
-$tagline = setting('company_tagline', 'स्वास्थ्य भी · रोजगार भी · सम्मान भी');
+$tagline = setting('company_tagline', 'Nourishing Life Naturally');
 
 $phone = setting('contact_phone', '');
 $whatsapp = preg_replace('/\D+/', '', (string) setting('contact_whatsapp', ''));
 $email = setting('contact_email', setting('support_email', ''));
-$siteUrl = 'www.bharatsevamart.com';
+$siteUrl = 'naturelifecare.com';
 $rupee = currency_symbol_html();
 
 $products = products_public_list($pdo);
@@ -39,19 +39,19 @@ $heroSlides = website_sliders_active($pdo);
 if (!$heroSlides) {
     $heroSlides = [
         [
-            'heading' => "Nurturing Health\nGrowing Prosperity",
-            'lead' => 'स्वास्थ्य भी · रोजगार भी · सम्मान भी',
+            'heading' => "Nourishing Life Naturally",
+            'lead' => 'Introducing NATURE RASAYAN™ – 19-in-1 Berries & Herbs',
             'image_url' => 'assets/img/lp-hero-1.png',
             'alt' => 'Organic Ayurvedic wellness products on a wooden table',
         ],
         [
-            'heading' => "Rooted in Nature\nRising with Purpose",
-            'lead' => 'Wellness · Organic · Natural products, सही जानकारी के साथ।',
+            'heading' => "Discover • Nourish • Grow",
+            'lead' => 'Natural wellness, nutrition education, and growth opportunities centered on healthy living.',
             'image_url' => 'assets/img/lp-hero-2.png',
             'alt' => 'Wellness mart with organic kits and natural products',
         ],
         [
-            'heading' => "Harvesting Health\nBuilding Futures",
+            'heading' => "Healthy Living, Natural Growth",
             'lead' => $tagline,
             'image_url' => 'assets/img/lp-hero-3.png',
             'alt' => 'Fresh organic harvest from farm fields at golden hour',
@@ -59,566 +59,575 @@ if (!$heroSlides) {
     ];
 }
 ?>
-<!DOCTYPE html>
-<html lang="hi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= e($company) ?> — Wellness · Organic · Natural</title>
-    <meta name="description" content="<?= e($company) ?> — भरोसेमंद wellness और organic products के साथ product-led व्यवसाय। स्वास्थ्य भी, रोजगार भी, सम्मान भी।">
-    <?php if ($favUrl): ?><link rel="icon" href="<?= e($favUrl) ?>"><?php endif; ?>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&family=Manrope:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/landing.css?v=<?= (int) @filemtime(__DIR__ . '/assets/css/landing.css') ?>">
-</head>
-<body class="lp">
-    <div class="lp-grain" aria-hidden="true"></div>
+<?php require_once __DIR__ . '/includes/public_header.php'; ?>
 
-    <div class="lp-topbar">
-        <div class="lp-shell lp-topbar-inner">
-            <p class="lp-topbar-tag">Wellness · Organic · Natural</p>
-            <div class="lp-topbar-links">
-                <?php if ($phone !== ''): ?>
-                <a href="tel:<?= e(preg_replace('/\s+/', '', $phone)) ?>"><?= e($phone) ?></a>
-                <?php endif; ?>
-                <?php if ($email !== ''): ?>
-                <a class="lp-topbar-mail" href="mailto:<?= e($email) ?>"><?= e($email) ?></a>
-                <?php endif; ?>
-                <span class="lp-topbar-web"><?= e($siteUrl) ?></span>
-            </div>
-        </div>
-    </div>
+    <main id="top">
 
-    <header class="lp-header" id="lpHeader">
-        <div class="lp-shell lp-header-inner">
-            <div class="lp-nav">
-                <a class="lp-brand" href="index.php">
-                    <?php if ($logoUrl): ?>
-                    <img src="<?= e($logoUrl) ?>" alt="<?= e($company) ?>" class="lp-brand-logo">
-                    <?php else: ?>
-                    <span class="lp-brand-mark" aria-hidden="true"></span>
-                    <span class="lp-brand-name"><?= e($company) ?></span>
-                    <?php endif; ?>
-                </a>
-                <nav class="lp-nav-links" aria-label="Primary">
-                    <a href="index.php" aria-current="page">Home</a>
-                    <a href="#about">About</a>
-                    <a href="#how">How</a>
-                    <a href="#products">Products</a>
-                    <a href="#stories">Stories</a>
-                    <a href="contact.php">Contact</a>
-                    <a href="user/login.php" class="lp-nav-ghost">Sign In</a>
-                    <a href="user/register.php" class="lp-nav-cta">Join Us</a>
-                </nav>
-                <button type="button" class="lp-nav-toggle" id="lpNavToggle" aria-label="Open menu" aria-expanded="false" aria-controls="lpDrawer">
-                    <span></span><span></span><span></span>
-                </button>
-            </div>
-            <div class="lp-drawer" id="lpDrawer" hidden>
-                <nav class="lp-drawer-nav" aria-label="Mobile">
-                    <a href="index.php" aria-current="page">Home</a>
-                    <a href="#about">About</a>
-                    <a href="#how">How it works</a>
-                    <a href="#products">Products</a>
-                    <a href="#vision">Vision</a>
-                    <a href="#stories">Stories</a>
-                    <a href="contact.php">Contact</a>
-                </nav>
-                <div class="lp-drawer-actions">
-                    <a href="user/login.php" class="lp-nav-ghost">Sign In</a>
-                    <a href="user/register.php" class="lp-nav-cta">Join Us</a>
+        <section class="hero">
+            <div class="hero-overlay"></div>
+            <div class="container hero-grid">
+                <div class="hero-copy reveal">
+                    <p class="eyebrow">NATURE LIFE CARE™</p>
+                    <h1>Nourishing Life Naturally</h1>
+                    <p class="lead">Introducing <strong>NATURE RASAYAN™</strong>
+                        <span class="product-highlight">
+                            – 19-in-1 Berries & Herbs
+                        </span>
+                    </p>
+                    <div class="tagline">Discover • Nourish • Grow</div>
+                    <div class="hero-actions">
+                        <a href="#products" class="btn btn-primary">Explore Product</a>
+                        <a href="user/register.php" class="btn btn-secondary">Join Our Business</a>
+                        <a href="user/login.php" class="btn btn-ghost">Login</a>
+                    </div>
                 </div>
             </div>
-        </div>
-    </header>
+        </section>
 
-    <main>
-        <section class="lp-hero" id="lpHero">
-            <div class="lp-hero-stage" aria-hidden="true">
-                <div class="lp-hero-wash"></div>
-                <div class="lp-hero-sun"></div>
-                <div class="lp-hero-leaf lp-hero-leaf-a"></div>
-                <div class="lp-hero-leaf lp-hero-leaf-b"></div>
+        <section>
+            <div class="container">
+
+                <div class="hero-after-grid">
+                    <div class="hero-after-card reveal">
+                        <i class="fa-solid fa-seedling"></i>
+                        <h3>Quality</h3>
+
+                    </div>
+
+                    <div class="hero-after-card reveal">
+                        <i class="fa-solid fa-bullseye"></i>
+                        <h3>Wellness</h3>
+
+                    </div>
+                    <div class="hero-after-card reveal">
+                        <i class="fa-solid fa-bullseye"></i>
+                        <h3>Transparency</h3>
+                    </div>
+
+                    <div class="hero-after-card reveal">
+                        <i class="fa-solid fa-heart-pulse"></i>
+                        <h3>Growth</h3>
+                    </div>
+                </div>
             </div>
+        </section>
 
-            <div class="lp-slides" id="lpSlides">
-                <?php foreach ($heroSlides as $i => $slide): ?>
-                <article class="lp-slide<?= $i === 0 ? ' is-on' : '' ?>">
-                    <div class="lp-shell lp-hero-shell">
-                        <div class="lp-hero-copy">
-                            <p class="lp-hero-brand"><?= e($company) ?></p>
-                            <?php if (trim((string) ($slide['heading'] ?? '')) !== ''): ?>
-                            <h1><?= nl2br(e((string) $slide['heading']), false) ?></h1>
-                            <?php endif; ?>
-                            <?php if (trim((string) ($slide['lead'] ?? '')) !== ''): ?>
-                            <p class="lp-hero-lead"><?= e((string) $slide['lead']) ?></p>
-                            <?php endif; ?>
-                            <a href="user/register.php" class="lp-btn lp-btn-primary lp-btn-lg">Join Us</a>
+        <section id="about" class="section about-section">
+            <div class="container">
+                <div class="section-heading reveal">
+                    <p class="eyebrow green">About Nature Life Care</p>
+
+                </div>
+
+                <div class="about-layout">
+                    <div class="about-intro reveal">
+                        <p class="eyebrow green">Why people choose us</p>
+                        <h3>One Stop Health &amp; Business Solutions</h3>
+                        <p>
+                            NATURE LIFE CARE™ is a wellness-focused brand dedicated to making quality wellness products,
+                            nutrition education, healthy lifestyle guidance, and business opportunities more accessible
+                            to people.
+                        </p>
+                        <p>
+                            Our approach brings together Ayurveda, Nutrition, Diet Management and Exercise to encourage
+                            people to make informed choices for a healthier and more balanced lifestyle.
+                        </p>
+                    </div>
+
+                    <article class="about-card reveal about-feature">
+                        <i class="fa-solid fa-seedling"></i>
+                        <h3>Our Approach</h3>
+                        <p>
+                            We combine traditional knowledge with modern nutrition and lifestyle practices while
+                            maintaining transparency about products, ingredients, usage, and certifications.
+                        </p>
+                    </article>
+
+                    <div class="about-subcards">
+                        <article class="about-card reveal">
+                            <i class="fa-solid fa-bullseye"></i>
+                            <h3>Vision</h3>
+                            <p>
+                                To build a trusted wellness community where people can discover better lifestyle
+                                choices, quality wellness products and opportunities for personal and professional
+                                growth.
+                            </p>
+                        </article>
+
+                        <article class="about-card reveal">
+                            <i class="fa-solid fa-bullseye"></i>
+                            <h3>Mission</h3>
+                            <p>
+                                To deliver quality wellness products, practical nutrition education, healthy lifestyle
+                                guidance, and business opportunities through a clear and supportive network.
+                            </p>
+                        </article>
+
+                        <article class="about-card reveal">
+                            <i class="fa-solid fa-heart-pulse"></i>
+                            <h3>Our Philosophy</h3>
+                            <p>
+                                We believe wellness is not about one product or one habit. It is a combination of
+                                balanced nutrition, physical activity, healthy routines and informed lifestyle choices.
+                            </p>
+                        </article>
+                        <article class="about-card reveal approach-card">
+                            <i class="fa-solid fa-seedling"></i>
+                            <h3>Our Approach</h3>
+                            <p>
+                                We combine traditional knowledge with modern nutrition and lifestyle practices while
+                                maintaining transparency about products, ingredients, usage, and certifications.
+                            </p>
+                        </article>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="products" class="section product-section">
+            <div class="container">
+                <div class="section-heading reveal">
+                    <p class="eyebrow green">Our Products</p>
+                    <h2>Natural products designed for daily vitality</h2>
+                </div>
+
+                <div class="image-carousel reveal" data-image-carousel aria-label="Nature Life Care product images">
+                    <button class="image-carousel-arrow previous" type="button" aria-label="Previous image">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <div class="image-carousel-track" id="productSlider"
+                        data-images="Images/image1.png,Images/img1.png,Images/img2.png" aria-live="polite"></div>
+                    <button class="image-carousel-arrow next" type="button" aria-label="Next image">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="featured-product" class="section featured-product-section" aria-label="Featured Product">
+            <div class="container">
+                <div class="section-heading reveal">
+                    <p class="eyebrow green">Nature Life Care</p>
+                    <h2>Featured Product</h2>
+                </div>
+
+                <!-- Part 1: product card with eye-button compliance points -->
+                <article class="featured-product-card reveal">
+                    <div class="featured-product-image">
+                        <img src="Images/image1.png" alt="NATURE RASAYAN™ product pack" />
+                    </div>
+                    <div class="featured-product-content">
+                        <h3>NATURE RASAYAN™</h3>
+                        <p class="featured-tagline">19-in-1 Berries &amp; Herbs</p>
+                        <p class="featured-price">₹1,999</p>
+
+                        <div class="quality-summary">
+                            <h4><i class="fa-solid fa-shield-heart"></i> Quality &amp; Compliance</h4>
+                            <ul class="quality-points">
+                                <li>
+                                    <span class="point-label">WHO-GMP</span>
+                                    <button class="eye-btn" type="button" aria-expanded="false"
+                                        aria-label="View WHO-GMP details"><i class="fa-solid fa-eye"></i></button>
+                                    <div class="desc-pane" role="region" aria-label="WHO-GMP details">
+                                        <button class="close-pane" type="button" aria-label="Close"><i
+                                                class="fa-solid fa-xmark"></i></button>
+
+                                        <p>Manufacturing is carried out in facilities following applicable Good
+                                            Manufacturing Practices (GMP) requirements. WHO-GMP principles emphasize
+                                            controlled manufacturing processes, hygiene, quality control, documentation,
+                                            and consistency of products.</p>
+                                    </div>
+                                </li>
+                                <li>
+                                    <span class="point-label">ISO 22000:2005</span>
+                                    <button class="eye-btn" type="button" aria-expanded="false"
+                                        aria-label="View ISO 22000 details"><i class="fa-solid fa-eye"></i></button>
+                                    <div class="desc-pane" role="region" aria-label="ISO 22000 details">
+                                        <button class="close-pane" type="button" aria-label="Close"><i
+                                                class="fa-solid fa-xmark"></i></button>
+
+                                        <p>Where applicable, manufacturing facilities follow ISO 22000:2005 requirements
+                                            relating to food-safety management systems. These systems are designed to
+                                            support systematic identification, control, monitoring, and management of
+                                            food-safety hazards throughout relevant processes.</p>
+                                    </div>
+                                </li>
+                                <li>
+                                    <span class="point-label">US FDA Registered/Compliant</span>
+                                    <button class="eye-btn" type="button" aria-expanded="false"
+                                        aria-label="View US FDA details"><i class="fa-solid fa-eye"></i></button>
+                                    <div class="desc-pane" role="region" aria-label="US FDA details">
+                                        <button class="close-pane" type="button" aria-label="Close"><i
+                                                class="fa-solid fa-xmark"></i></button>
+
+                                        <p>Where applicable, the manufacturing facility/product may have relevant US FDA
+                                            registration or regulatory compliance. The exact status depends on the
+                                            product category, facility, intended market, and applicable US regulatory
+                                            requirements.</p>
+                                    </div>
+                                </li>
+                                <li>
+                                    <span class="point-label">AYUSH Licensed/Approved</span>
+                                    <button class="eye-btn" type="button" aria-expanded="false"
+                                        aria-label="View AYUSH details"><i class="fa-solid fa-eye"></i></button>
+                                    <div class="desc-pane" role="region" aria-label="AYUSH details">
+                                        <button class="close-pane" type="button" aria-label="Close"><i
+                                                class="fa-solid fa-xmark"></i></button>
+
+                                        <p>For applicable Ayurvedic products, manufacturing is undertaken through
+                                            facilities holding the required AYUSH licence/approval under the applicable
+                                            Indian regulatory framework.</p>
+                                    </div>
+                                </li>
+                                <li>
+                                    <span class="point-label">FSSAI Licensed</span>
+                                    <button class="eye-btn" type="button" aria-expanded="false"
+                                        aria-label="View FSSAI details"><i class="fa-solid fa-eye"></i></button>
+                                    <div class="desc-pane" role="region" aria-label="FSSAI details">
+                                        <button class="close-pane" type="button" aria-label="Close"><i
+                                                class="fa-solid fa-xmark"></i></button>
+
+                                        <p>For products falling under the applicable food, nutraceutical, or
+                                            health-supplement regulations, the relevant FSSAI licence/registration and
+                                            regulatory requirements are followed.</p>
+                                    </div>
+                                </li>
+                                <li>
+                                    <span class="point-label">Organic Certified</span>
+                                    <button class="eye-btn" type="button" aria-expanded="false"
+                                        aria-label="View Organic Certification details"><i
+                                            class="fa-solid fa-eye"></i></button>
+                                    <div class="desc-pane" role="region" aria-label="Organic certification details">
+                                        <button class="close-pane" type="button" aria-label="Close"><i
+                                                class="fa-solid fa-xmark"></i></button>
+
+                                        <p>For products marketed as organic, the applicable organic certification is
+                                            maintained by the relevant certified manufacturer/supplier, wherever
+                                            required. Organic claims are made only where supported by the appropriate
+                                            certification and documentation.</p>
+                                    </div>
+                                </li>
+                            </ul>
+                            <p class="compliance-caveat">Applicable certifications and licences vary by product and
+                                manufacturing facility.</p>
                         </div>
-                        <figure class="lp-hero-visual">
-                            <img src="<?= e((string) $slide['image_url']) ?>" alt="<?= e((string) ($slide['alt'] ?? 'Home slider')) ?>" width="960" height="720">
-                        </figure>
                     </div>
                 </article>
-                <?php endforeach; ?>
-            </div>
 
-            <?php if (count($heroSlides) > 1): ?>
-            <div class="lp-slide-nav" aria-label="Hero slides">
-                <?php foreach ($heroSlides as $i => $_slide): ?>
-                <button type="button"<?= $i === 0 ? ' class="is-on"' : '' ?> data-slide="<?= (int) $i ?>" aria-label="Slide <?= (int) ($i + 1) ?>"></button>
-                <?php endforeach; ?>
-            </div>
-            <?php endif; ?>
-        </section>
+                <!-- Part 2: split layout -->
+                <div class="featured-split">
+                    <!-- LEFT -->
+                    <div class="split-col split-left reveal">
+                        <div class="quality-commitment">
+                            <p class="eyebrow green">Our Quality Commitment</p>
+                            <h3>Care in every step</h3>
+                            <ul>
+                                <li>Carefully selected ingredients</li>
+                                <li>Controlled, hygienic manufacturing</li>
+                                <li>Appropriate quality testing</li>
+                                <li>Batch-wise quality controls, where applicable</li>
+                                <li>Proper documentation and traceability</li>
+                                <li>Compliance with applicable Indian regulations</li>
+                            </ul>
+                        </div>
 
-        <section class="lp-section lp-welcome" id="about">
-            <div class="lp-shell lp-welcome-grid">
-                <figure class="lp-welcome-visual">
-                    <img src="assets/img/lp-about.png" alt="Ayurvedic wellness studio with organic herbs and natural products" width="900" height="1200">
-                    <figcaption class="lp-welcome-badge">सबका साथ · सबका विकास</figcaption>
-                </figure>
-                <div class="lp-welcome-copy">
-                    <p class="lp-kicker lp-kicker-dark">About us</p>
-                    <h2>Welcome to <?= e($company) ?></h2>
-                    <p class="lp-welcome-mantra">एक product-led सेवा व्यवसाय</p>
-                    <p class="lp-about-lead">
-                        <?= e($company) ?> हर वर्ग तक भरोसेमंद Wellness और Organic products पहुँचाना चाहता है —
-                        सही उत्पाद, सही जानकारी और सही व्यवसाय पद्धति से।
-                    </p>
-                    <p>
-                        यह एक emerging, innovation-driven direct selling अवसर है: Ayurvedic और organic
-                        catalogue के साथ ग्राहक को स्पष्ट invoice, MRP और support मिलता है। Joining मुफ्त है;
-                        व्यवसाय वास्तविक products और eligible sales volume पर आधारित है।
-                    </p>
-                    <p>
-                        हम केवल membership नहीं बेचते। ग्राहक का भरोसा हमारी सबसे बड़ी पूँजी है —
-                        <strong>स्वास्थ्य के साथ समृद्धि की ओर।</strong>
-                    </p>
-                    <ul class="lp-welcome-values">
-                        <li>Quality</li>
-                        <li>Transparency</li>
-                        <li>Service</li>
-                        <li>Training</li>
-                        <li>Integrity</li>
-                    </ul>
-                    <a href="#products" class="lp-btn lp-btn-primary">Discover products</a>
-                </div>
-            </div>
-        </section>
-
-        <section class="lp-section lp-how" id="how">
-            <div class="lp-shell">
-                <header class="lp-sec-head lp-how-head">
-                    <p class="lp-kicker lp-kicker-dark">How it works</p>
-                    <h2>चार कदम — register से benefits तक</h2>
-                    <p>पहले Product · फिर Customer Service · फिर Business Expansion</p>
-                </header>
-                <ol class="lp-steps">
-                    <li>
-                        <span class="lp-step-mark" aria-hidden="true">
-                            <span class="lp-step-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M16 11h6"/></svg>
-                            </span>
-                        </span>
-                        <div class="lp-step-body">
-                            <span>01</span>
-                            <h3>Online Register</h3>
-                            <p>Sign up for free</p>
-                        </div>
-                    </li>
-                    <li>
-                        <span class="lp-step-mark" aria-hidden="true">
-                            <span class="lp-step-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                            </span>
-                        </span>
-                        <div class="lp-step-body">
-                            <span>02</span>
-                            <h3>Purchase Product</h3>
-                            <p>Activate your account</p>
-                        </div>
-                    </li>
-                    <li>
-                        <span class="lp-step-mark" aria-hidden="true">
-                            <span class="lp-step-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                            </span>
-                        </span>
-                        <div class="lp-step-body">
-                            <span>03</span>
-                            <h3>Refer Products</h3>
-                            <p>Grow your team</p>
-                        </div>
-                    </li>
-                    <li>
-                        <span class="lp-step-mark" aria-hidden="true">
-                            <span class="lp-step-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 14.5 8.5 20.5 9.5 16 13.8 17.2 20 12 17 6.8 20 8 13.8 3.5 9.5 9.5 8.5Z"/></svg>
-                            </span>
-                        </span>
-                        <div class="lp-step-body">
-                            <span>04</span>
-                            <h3>Get Benefits</h3>
-                            <p>Earn unlimited</p>
-                        </div>
-                    </li>
-                </ol>
-            </div>
-        </section>
-
-        <section class="lp-section lp-products" id="products">
-            <div class="lp-shell">
-                <header class="lp-sec-head lp-sec-head-light">
-                    <p class="lp-kicker">Our catalogue</p>
-                    <h2>Wellness products for everyday health</h2>
-                    <p>Ayurvedic and organic essentials, curated for everyday wellness.</p>
-                </header>
-                <?php if (!$products): ?>
-                <p class="lp-products-empty">Our catalogue is being updated. Please check back shortly.</p>
-                <?php else: ?>
-                <div class="lp-product-grid">
-                    <?php foreach ($products as $product): ?>
-                    <article class="lp-product">
-                        <figure class="lp-product-media<?= $product['image'] === '' ? ' is-empty' : '' ?>">
-                            <?php if ($product['image'] !== ''): ?>
-                            <img src="<?= e($product['image']) ?>" alt="<?= e($product['alt']) ?>" width="600" height="600">
-                            <?php endif; ?>
-                        </figure>
-                        <div class="lp-product-body">
-                            <p class="lp-product-cat"><?= e($product['category']) ?></p>
-                            <h3><?= e($product['name']) ?></h3>
-                            <?php if ($product['note'] !== ''): ?>
-                            <p><?= e($product['note']) ?></p>
-                            <?php endif; ?>
-                            <div class="lp-product-row">
-                                <p class="lp-product-price"><span><?= $rupee ?></span><?= e($product['price']) ?></p>
-                                <a href="user/register.php">View</a>
+                        <aside class="transparency-note">
+                            <i class="fa-solid fa-circle-info"></i>
+                            <div>
+                                <h3>Transparency Matters</h3>
+                                <p>Certifications and licences differ by product, facility, and country of sale. We use
+                                    only claims supported by valid documentation.</p>
+                                <strong>NATURE LIFE CARE™ <span>Nourishing Life Naturally</span></strong>
                             </div>
-                        </div>
-                    </article>
-                    <?php endforeach; ?>
+                        </aside>
+                    </div>
+
+                    <!-- RIGHT -->
+                    <div class="split-col split-right reveal">
+                        <p class="eyebrow green">Why Nature Rasayan</p>
+                        <h3>Product Benefits</h3>
+                        <ul class="benefit-list">
+                            <li><strong>Rich in Antioxidants</strong> – Helps fight free radicals</li>
+                            <li><strong>Immune Support</strong> – Strengthens natural defence</li>
+                            <li><strong>Natural Energy</strong> – Supports stamina &amp; vitality</li>
+                            <li><strong>Heart Wellness</strong> – Supports healthy circulation</li>
+                            <li><strong>Digestive Balance</strong> – Supports gut health</li>
+                            <li><strong>Overall Well-Being</strong> – For a healthier, active life</li>
+                        </ul>
+                        <p class="compliance-caveat">Not intended to diagnose, treat, cure, or prevent any disease and not a substitute for medical
+                            advice or a balanced diet. Consult a healthcare professional if you are pregnant, nursing,
+                            taking medication, or have a medical condition.</p>
+                    </div>
                 </div>
-                <?php endif; ?>
             </div>
         </section>
 
-        <section class="lp-section lp-vm" id="vision">
-            <div class="lp-shell">
-                <header class="lp-sec-head lp-vm-head">
-                    <p class="lp-kicker lp-kicker-dark">Purpose</p>
-                    <h2>Vision &amp; Mission</h2>
-                    <p>स्वास्थ्य भी · रोजगार भी · सम्मान भी</p>
-                </header>
-                <div class="lp-vm-grid">
-                    <article class="lp-vm-card lp-vm-card-vision">
-                        <div class="lp-vm-card-top">
-                            <span class="lp-vm-icon" aria-hidden="true">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
-                            </span>
-                            <span class="lp-vm-n">01</span>
-                        </div>
-                        <p class="lp-kicker">Our Vision</p>
-                        <h3>भरोसेमंद Wellness हर वर्ग तक</h3>
-                        <p>भारत के हर वर्ग तक भरोसेमंद Wellness और Organic products पहुँचाना — सरल, उत्पाद-केंद्रित अवसर के साथ।</p>
+
+
+        <section id="wellness" class="section wellness-section">
+            <div class="container">
+                <div class="section-heading reveal">
+                    <p class="eyebrow green">Wellness Knowledge</p>
+                    <h2>Learning for everyday health</h2>
+                </div>
+
+                <div class="wellness-grid">
+                    <article class="wellness-card reveal">
+                        <i class="fa-solid fa-apple-whole"></i>
+                        <h3>Nutrition</h3>
+                        <p>Balanced eating habits, wholesome foods, and nutrient-rich routines for long-term wellness.
+                        </p>
                     </article>
-                    <article class="lp-vm-card lp-vm-card-mission">
-                        <div class="lp-vm-card-top">
-                            <span class="lp-vm-icon" aria-hidden="true">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-                            </span>
-                            <span class="lp-vm-n">02</span>
-                        </div>
-                        <p class="lp-kicker lp-kicker-dark">Our Mission</p>
-                        <h3>सही उत्पाद, सही पद्धति</h3>
-                        <p>सही उत्पाद, सही जानकारी और सही व्यवसाय पद्धति से लोगों को सक्षम बनाना। Training, transparency और quality नींव हैं।</p>
+                    <article class="wellness-card reveal">
+                        <i class="fa-solid fa-leaf"></i>
+                        <h3>Ayurveda</h3>
+                        <p>Traditional principles that support natural balance, digestion, and vitality.</p>
+                    </article>
+                    <article class="wellness-card reveal">
+                        <i class="fa-solid fa-utensils"></i>
+                        <h3>Diet Management</h3>
+                        <p>Smart food choices and lifestyle patterns that complement health goals.</p>
+                    </article>
+                    <article class="wellness-card reveal">
+                        <i class="fa-solid fa-dumbbell"></i>
+                        <h3>Exercise</h3>
+                        <p>Movement routines designed to improve energy, immunity, and stress resilience.</p>
+                    </article>
+                    <article class="wellness-card reveal">
+                        <i class="fa-solid fa-heart"></i>
+                        <h3>Healthy Lifestyle</h3>
+                        <p>Simple daily habits that nurture mind, body, and sustainable wellness.</p>
+                    </article>
+                    <article class="wellness-card reveal">
+                        <i class="fa-solid fa-book-open-reader"></i>
+                        <h3>Articles & Guides</h3>
+                        <p>Educational resources covering prevention, nutrition, and daily health rituals.</p>
                     </article>
                 </div>
             </div>
         </section>
 
-        <section class="lp-section lp-stories" id="stories">
-            <div class="lp-shell">
-                <header class="lp-stories-head">
-                    <div class="lp-stories-head-copy">
-                        <p class="lp-kicker lp-kicker-dark">Testimonials</p>
-                        <h2>What our partners say</h2>
-                        <p class="lp-stories-sub">Product quality, training और transparent payouts — <?= e($company) ?> partners की आवाज़।</p>
+        <section id="business" class="section business-section">
+            <div class="container">
+                <div class="section-heading reveal">
+                    <p class="eyebrow green">Business Opportunity</p>
+                    <h2>Build your wellness business with confidence</h2>
+                </div>
+
+                <div class="business-layout">
+                    <div class="business-copy reveal">
+                        <p class="eyebrow green">Your Next Step</p>
+
+                        <p>
+                            Nature Life Care gives individuals a simple path to build a wellness-focused business with
+                            natural products, education, and support.
+                        </p>
+                        <ul>
+                            <li>Become a distributor or business partner</li>
+                            <li>Understand the onboarding and registration process</li>
+                            <li>Access product purchase and retail opportunities</li>
+                            <li>Learn the compensation and growth pathway clearly</li>
+                            <li>Build trusted customer relationships through health education</li>
+                        </ul>
                     </div>
-                    <div class="lp-stories-nav" aria-label="Scroll testimonials">
-                        <button type="button" class="lp-stories-btn" id="lpStoriesPrev" aria-label="Previous">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
-                        </button>
-                        <button type="button" class="lp-stories-btn" id="lpStoriesNext" aria-label="Next">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
-                        </button>
-                    </div>
-                </header>
-                <div class="lp-stories-track-wrap">
-                    <div class="lp-stories-track" id="lpStoriesTrack" tabindex="0">
-                        <blockquote class="lp-story">
-                            <div class="lp-story-top">
-                                <span class="lp-story-mark" aria-hidden="true">“</span>
-                                <span class="lp-story-stars" aria-label="5 out of 5">★★★★★</span>
-                            </div>
-                            <p class="lp-story-quote">Invoice साफ़ है — MRP, quantity, सब दिखता है। Customer को समझाना आसान हो गया।</p>
-                            <footer class="lp-story-meta">
-                                <span class="lp-story-avatar" aria-hidden="true">RK</span>
-                                <div>
-                                    <strong>Ravi Kumar</strong>
-                                    <span>Wellness partner · Lucknow</span>
-                                </div>
-                            </footer>
-                        </blockquote>
-                        <blockquote class="lp-story">
-                            <div class="lp-story-top">
-                                <span class="lp-story-mark" aria-hidden="true">“</span>
-                                <span class="lp-story-stars" aria-label="5 out of 5">★★★★★</span>
-                            </div>
-                            <p class="lp-story-quote">Registration मुफ्त है, और training से product knowledge मिली। Income claims की जगह real sales पर फ़ोकस है।</p>
-                            <footer class="lp-story-meta">
-                                <span class="lp-story-avatar" aria-hidden="true">PS</span>
-                                <div>
-                                    <strong>Priya Sharma</strong>
-                                    <span>Direct partner · Jaipur</span>
-                                </div>
-                            </footer>
-                        </blockquote>
-                        <blockquote class="lp-story">
-                            <div class="lp-story-top">
-                                <span class="lp-story-mark" aria-hidden="true">“</span>
-                                <span class="lp-story-stars" aria-label="5 out of 5">★★★★★</span>
-                            </div>
-                            <p class="lp-story-quote">Matching volume समझने लायक है। Return के बाद net eligible volume पर settlement — यही transparency चाहिए थी।</p>
-                            <footer class="lp-story-meta">
-                                <span class="lp-story-avatar" aria-hidden="true">AM</span>
-                                <div>
-                                    <strong>Amit Mehta</strong>
-                                    <span>Star rank · Indore</span>
-                                </div>
-                            </footer>
-                        </blockquote>
-                        <blockquote class="lp-story">
-                            <div class="lp-story-top">
-                                <span class="lp-story-mark" aria-hidden="true">“</span>
-                                <span class="lp-story-stars" aria-label="5 out of 5">★★★★★</span>
-                            </div>
-                            <p class="lp-story-quote">Weekly closing और bank payout की प्रक्रिया साफ़ बताई गई। TDS statement से trust बना।</p>
-                            <footer class="lp-story-meta">
-                                <span class="lp-story-avatar" aria-hidden="true">NS</span>
-                                <div>
-                                    <strong>Neha Singh</strong>
-                                    <span>Team builder · Pune</span>
-                                </div>
-                            </footer>
-                        </blockquote>
+
+                    <div class="business-card reveal">
+                        <div class="mini-stat">
+                            <span class="mini-step">01</span>
+                            <strong>Register</strong>
+                            <small>Begin your onboarding</small>
+                        </div>
+                        <div class="mini-stat">
+                            <span class="mini-step">02</span>
+                            <strong>Purchase</strong>
+                            <small>Choose your products</small>
+                        </div>
+                        <div class="mini-stat">
+                            <span class="mini-step">03</span>
+                            <strong>Grow</strong>
+                            <small>Build your network</small>
+                        </div>
+                        <div class="mini-stat">
+                            <span class="mini-step">04</span>
+                            <strong>Earn</strong>
+                            <small>Coach and scale</small>
+                        </div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <section class="lp-cta-band">
-            <div class="lp-shell">
-                <div class="lp-cta-panel">
-                    <div class="lp-cta-glow" aria-hidden="true"></div>
-                    <div class="lp-cta-copy">
-                        <p class="lp-kicker">Get started</p>
-                        <h2>Ready to build with <?= e($company) ?>?</h2>
-                        <p>मुफ्त ID बनाएँ, wellness products देखें, और product-led व्यवसाय शुरू करें — स्वास्थ्य के साथ समृद्धि की ओर।</p>
-                        <div class="lp-cta-actions">
-                            <a href="user/register.php" class="lp-btn lp-btn-primary lp-btn-lg">Sign Up free</a>
-                            <a href="user/login.php" class="lp-btn lp-btn-line lp-btn-lg">Sign In</a>
+        <section class="section faq-section">
+            <div class="container">
+                <div class="section-heading reveal">
+                    <p class="eyebrow green">FAQs</p>
+                    <h2>Quick answers about NATURE RASAYAN™</h2>
+                </div>
+
+                <div class="faq-list reveal">
+                    <details open>
+                        <summary>What is NATURE RASAYAN™?</summary>
+                        <p>It is a holistic wellness supplement featuring 19 ingredient blends centered on berries and
+                            herbs for natural daily support.</p>
+                    </details>
+                    <details>
+                        <summary>Does it contain artificial ingredients?</summary>
+                        <p>No. The product positioning highlights natural ingredients, no added sugar, and no artificial
+                            colours.</p>
+                    </details>
+                    <details>
+                        <summary>How should it be used?</summary>
+                        <p>Use as directed on the product label as part of a balanced routine and healthy lifestyle.</p>
+                    </details>
+                    <details>
+                        <summary>Is it suitable for daily consumption?</summary>
+                        <p>It is designed for daily dietary support, though individual needs may vary. Please consult a
+                            professional for medical guidance if needed.</p>
+                    </details>
+                </div>
+            </div>
+        </section>
+
+        <section class="section certificates-section">
+            <div class="container">
+                <div class="section-heading reveal">
+                    <p class="eyebrow green">Certificates & Compliance</p>
+                    <h2>Verified documentation and registrations</h2>
+                </div>
+
+                <div class="certificate-grid reveal">
+                    <div class="certificate-card" data-pdf="PDFs/AYUSH LICENCE (2).pdf" data-title="AYUSH Licence">
+                        <i class="fa-solid fa-certificate"></i>
+                        <h3>AYUSH Licence</h3>
+                        <div class="card-actions">
+                            <button class="link-btn view-pdf">View PDF</button>
+                            <a href="PDFs/AYUSH LICENCE (2).pdf" target="_blank" rel="noopener noreferrer"
+                                download>Download</a>
                         </div>
                     </div>
-                    <ul class="lp-cta-perks" aria-label="What you get">
-                        <li>
-                            <span class="lp-cta-perk-n">01</span>
-                            <div>
-                                <strong>Free joining</strong>
-                                <span>कोई registration fee नहीं — products से शुरुआत।</span>
-                            </div>
-                        </li>
-                        <li>
-                            <span class="lp-cta-perk-n">02</span>
-                            <div>
-                                <strong>Organic catalogue</strong>
-                                <span>Tulsi, Haldi, Amla aur honey — everyday wellness range.</span>
-                            </div>
-                        </li>
-                        <li>
-                            <span class="lp-cta-perk-n">03</span>
-                            <div>
-                                <strong>Weekly payout</strong>
-                                <span>Daily midnight closing, Saturday verified bank credit.</span>
-                            </div>
-                        </li>
+
+                    <div class="certificate-card" data-pdf="PDFs/ISO- OMS (2) (1) (1) (3) (2)_page-0001.pdf"
+                        data-title="ISO / OMS Certificate">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        <h3>ISO / OMS Certificate</h3>
+                        <div class="card-actions">
+                            <button class="link-btn view-pdf">View PDF</button>
+                            <a href="PDFs/ISO- OMS (2) (1) (1) (3) (2)_page-0001.pdf" target="_blank"
+                                rel="noopener noreferrer" download>Download</a>
+                        </div>
+                    </div>
+
+                    <div class="certificate-card" data-pdf="PDFs/organic certificate 02 (1) (1) (2)_page-0001 (1).pdf"
+                        data-title="Organic Certificate">
+                        <i class="fa-solid fa-leaf"></i>
+                        <h3>Organic Certificate</h3>
+                        <div class="card-actions">
+                            <button class="link-btn view-pdf">View PDF</button>
+                            <a href="PDFs/organic certificate 02 (1) (1) (2)_page-0001 (1).pdf" target="_blank"
+                                rel="noopener noreferrer" download>Download</a>
+                        </div>
+                    </div>
+
+                    <div class="certificate-card" data-pdf="PDFs/SHAKUMBHRI HERBALS PVT. LTD WHO-GMP FINAL (1).pdf"
+                        data-title="WHO-GMP Certificate">
+                        <i class="fa-solid fa-medal"></i>
+                        <h3>WHO-GMP Certificate</h3>
+                        <div class="card-actions">
+                            <button class="link-btn view-pdf">View PDF</button>
+                            <a href="PDFs/SHAKUMBHRI HERBALS PVT. LTD WHO-GMP FINAL (1).pdf" target="_blank"
+                                rel="noopener noreferrer" download>Download</a>
+                        </div>
+                    </div>
+
+                    <div class="certificate-card" data-pdf="PDFs/updateFacilityRegistration-2026.pdf"
+                        data-title="Facility Registration">
+                        <i class="fa-solid fa-file-lines"></i>
+                        <h3>Facility Registration</h3>
+                        <div class="card-actions">
+                            <button class="link-btn view-pdf">View PDF</button>
+                            <a href="PDFs/updateFacilityRegistration-2026.pdf" target="_blank" rel="noopener noreferrer"
+                                download>Download</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="testimonials" class="section testimonial-section">
+            <div class="container">
+                <div class="section-heading reveal">
+                    <p class="eyebrow green">Customer Experiences</p>
+                    <h2>Real stories from healthy living journeys</h2>
+                </div>
+
+                <div class="testimonial-grid">
+                    <blockquote class="testimonial reveal">
+                        “I started using Nature Rasayan as part of my daily routine and noticed better energy and
+                        consistency in my wellness habits.”
+                        <footer>— Rina S., Asansol</footer>
+                    </blockquote>
+                    <blockquote class="testimonial reveal">
+                        “The natural ingredients and the business opportunity made it easy for me to believe in the
+                        brand and its purpose.”
+                        <footer>— Amit K., Durgapur</footer>
+                    </blockquote>
+                    <blockquote class="testimonial reveal">
+                        “Nature Life Care brings together health, education, and entrepreneurship in one model that
+                        feels meaningful and practical.”
+                        <footer>— Priya M., Kolkata</footer>
+                    </blockquote>
+                </div>
+            </div>
+        </section>
+
+        <!-- <section id="contact" class="section contact-section">
+            <div class="container">
+                <div class="section-heading reveal">
+                    <p class="eyebrow green">Contact Us</p>
+                    <h2>Get in Touch</h2>
+                </div>
+            </div>
+            <div class="container contact-grid">
+                <div class="contact-info reveal">
+                    <h2>NATURE LIFE CARE™</h2>
+                    <ul>
+                        <li><i class="fa-solid fa-location-dot"></i> Shiv Nagar Lane-2, Gurunanak Pally, Asansol, West
+                            Bengal – 713301</li>
+                        <li><i class="fa-solid fa-phone"></i> <a href="tel:8900407342">8900407342</a></li>
+                        <li><i class="fa-solid fa-envelope"></i> <a
+                                href="mailto:naturelifecaretm@gmail.com">naturelifecaretm@gmail.com</a></li>
+                        <li><i class="fa-solid fa-globe"></i> <a href="https://naturelifecare.com" target="_blank"
+                                rel="noopener noreferrer">naturelifecare.com</a></li>
+                        <li><i class="fa-solid fa-file-invoice"></i> GSTIN: 19AZIPB1251D1ZV</li>
                     </ul>
                 </div>
+
+                <div class="contact-form reveal">
+                    <form>
+                        <div class="form-row">
+                            <label>
+                                Name
+                                <input type="text" name="name" placeholder="Your name" />
+                            </label>
+                        </div>
+                        <div class="form-row">
+                            <label>
+                                Phone
+                                <input type="tel" name="phone" placeholder="Your phone number" />
+                            </label>
+                        </div>
+                        <div class="form-row">
+                            <label>
+                                Message
+                                <textarea name="message" rows="4" placeholder="Tell us about your interest"></textarea>
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Send Message</button>
+                    </form>
+                </div>
             </div>
-        </section>
+        </section> -->
     </main>
 
-    <footer class="lp-foot">
-        <div class="lp-foot-glow" aria-hidden="true"></div>
-        <div class="lp-shell">
-            <div class="lp-foot-grid">
-                <div class="lp-foot-brand-col">
-                    <?php if ($logoUrl): ?>
-                    <img src="<?= e($logoUrl) ?>" alt="<?= e($company) ?>" class="lp-foot-logo">
-                    <?php endif; ?>
-                    <strong class="lp-foot-brand"><?= e($company) ?></strong>
-                    <p class="lp-foot-mantra"><?= e($tagline) ?></p>
-                    <p class="lp-foot-lead">स्वास्थ्य के साथ समृद्धि की ओर — Wellness, Organic और Natural products के साथ एक Direct Selling अवसर।</p>
-                    <a href="user/register.php" class="lp-foot-join">
-                        <span>Join Us</span>
-                        <span class="lp-foot-join-arrow" aria-hidden="true">→</span>
-                    </a>
-                </div>
-                <nav class="lp-foot-col" aria-label="Explore">
-                    <h3>Explore</h3>
-                    <a href="#about">About</a>
-                    <a href="#how">How it works</a>
-                    <a href="#products">Products</a>
-                    <a href="#vision">Vision</a>
-                    <a href="#stories">Stories</a>
-                    <a href="contact.php">Contact</a>
-                </nav>
-                <nav class="lp-foot-col" aria-label="Members">
-                    <h3>Members</h3>
-                    <a href="user/register.php">Sign Up</a>
-                    <a href="user/login.php">Sign In</a>
-                    <a href="contact.php">Support</a>
-                    <a href="admin/login.php">Admin login</a>
-                </nav>
-                <div class="lp-foot-col lp-foot-reach">
-                    <h3>Contact</h3>
-                    <?php if ($phone !== ''): ?>
-                    <a href="tel:<?= e(preg_replace('/\s+/', '', $phone)) ?>">
-                        <span class="lp-foot-reach-label">Phone</span>
-                        <span class="lp-foot-reach-value"><?= e($phone) ?></span>
-                    </a>
-                    <?php endif; ?>
-                    <?php if ($whatsapp !== ''): ?>
-                    <a href="https://wa.me/<?= e($whatsapp) ?>" target="_blank" rel="noopener">
-                        <span class="lp-foot-reach-label">WhatsApp</span>
-                        <span class="lp-foot-reach-value">Chat with support</span>
-                    </a>
-                    <?php endif; ?>
-                    <?php if ($email !== ''): ?>
-                    <a href="mailto:<?= e($email) ?>">
-                        <span class="lp-foot-reach-label">Email</span>
-                        <span class="lp-foot-reach-value"><?= e($email) ?></span>
-                    </a>
-                    <?php endif; ?>
-                    <a href="https://<?= e($siteUrl) ?>" target="_blank" rel="noopener">
-                        <span class="lp-foot-reach-label">Web</span>
-                        <span class="lp-foot-reach-value"><?= e($siteUrl) ?></span>
-                    </a>
-                </div>
-            </div>
+<?php require_once __DIR__ . '/includes/public_footer.php'; ?>
 
-            <div class="lp-foot-bottom">
-                <span>&copy; <?= date('Y') ?> <?= e($company) ?>. All rights reserved.</span>
-                <a href="contact.php">Need help? Contact support</a>
-            </div>
-        </div>
-    </footer>
-
-    <script>
-    (function () {
-        var header = document.getElementById('lpHeader');
-        var btn = document.getElementById('lpNavToggle');
-        var drawer = document.getElementById('lpDrawer');
-
-        function onScroll() {
-            if (!header) return;
-            header.classList.toggle('is-scrolled', window.scrollY > 12);
-        }
-        onScroll();
-        window.addEventListener('scroll', onScroll, { passive: true });
-
-        if (btn && drawer) {
-            function setMenu(open) {
-                if (open) drawer.removeAttribute('hidden');
-                else drawer.setAttribute('hidden', '');
-                btn.classList.toggle('is-open', open);
-                btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-                btn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
-                document.body.classList.toggle('lp-menu-open', open);
-                if (header && open) header.classList.add('is-scrolled');
-            }
-            btn.addEventListener('click', function () {
-                setMenu(drawer.hasAttribute('hidden'));
-            });
-            drawer.querySelectorAll('a').forEach(function (a) {
-                a.addEventListener('click', function () { setMenu(false); });
-            });
-            document.addEventListener('keydown', function (e) {
-                if (e.key === 'Escape') setMenu(false);
-            });
-        }
-
-        var slides = document.querySelectorAll('.lp-slide');
-        var dots = document.querySelectorAll('.lp-slide-nav button');
-        var hero = document.getElementById('lpHero');
-        var idx = 0;
-        var timer;
-        function go(n) {
-            if (!slides.length) return;
-            slides[idx].classList.remove('is-on');
-            if (dots[idx]) dots[idx].classList.remove('is-on');
-            idx = (n + slides.length) % slides.length;
-            slides[idx].classList.add('is-on');
-            if (dots[idx]) dots[idx].classList.add('is-on');
-        }
-        function stop() {
-            if (timer) {
-                clearInterval(timer);
-                timer = null;
-            }
-        }
-        function start() {
-            stop();
-            if (slides.length < 2) return;
-            timer = setInterval(function () { go(idx + 1); }, 5600);
-        }
-        dots.forEach(function (d) {
-            d.addEventListener('click', function () {
-                go(parseInt(d.getAttribute('data-slide'), 10) || 0);
-                start();
-            });
-        });
-        if (hero) {
-            hero.addEventListener('mouseenter', stop);
-            hero.addEventListener('mouseleave', start);
-        }
-        document.addEventListener('visibilitychange', function () {
-            if (document.hidden) stop();
-            else start();
-        });
-        start();
-
-        var track = document.getElementById('lpStoriesTrack');
-        var prev = document.getElementById('lpStoriesPrev');
-        var next = document.getElementById('lpStoriesNext');
-        if (track && prev && next) {
-            function storyStep() {
-                var card = track.querySelector('.lp-story');
-                if (!card) return 320;
-                var styles = window.getComputedStyle(track);
-                var gap = parseFloat(styles.columnGap || styles.gap) || 18;
-                return card.getBoundingClientRect().width + gap;
-            }
-            prev.addEventListener('click', function () {
-                track.scrollBy({ left: -storyStep(), behavior: 'smooth' });
-            });
-            next.addEventListener('click', function () {
-                track.scrollBy({ left: storyStep(), behavior: 'smooth' });
-            });
-        }
-    })();
-    </script>
-    <?php require_once __DIR__ . '/includes/public_popup.php'; ?>
-</body>
-</html>

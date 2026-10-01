@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($login === '' || $password === '') {
             $error = 'Member ID and password are required.';
         } elseif (!preg_match('/^[A-Z]{2,10}\d{3,8}$/', $login)) {
-            $error = 'Enter a valid Member ID, like BS000002.';
+            $error = 'Enter a valid Member ID.';
         } elseif (strlen($password) < 6) {
             $error = 'Password must be at least 6 characters.';
         } else {
@@ -167,7 +167,7 @@ if ($flash && $flash['type'] === 'error' && (
         <form method="post" class="ulog-form" autocomplete="off"<?= $portalLocked ? ' inert' : '' ?>>
             <div class="ulog-field">
                 <label for="login">Member ID</label>
-                <input type="text" id="login" name="login" value="<?= e(strtoupper((string) ($_POST['login'] ?? ''))) ?>" placeholder="BS000002" required<?= $portalLocked ? ' disabled' : ' autofocus' ?> style="text-transform:uppercase">
+                <input type="text" id="login" name="login" value="<?= e(strtoupper((string) ($_POST['login'] ?? ''))) ?>" placeholder="Member ID" required<?= $portalLocked ? ' disabled' : ' autofocus' ?> style="text-transform:uppercase">
             </div>
 
             <div class="ulog-field">

@@ -165,7 +165,7 @@ try {
                 </button>
             </form>
 
-            <p class="sa-hint">Default: <code>superadmin</code> / <code>superadmin123</code> — change after first login.</p>
+            <!-- <p class="sa-hint">Default: <code>superadmin</code> / <code>superadmin123</code> — change after first login.</p> -->
             <p class="sa-hint"><a href="../admin/login.php">Open Client Admin login →</a></p>
         </div>
     </div>

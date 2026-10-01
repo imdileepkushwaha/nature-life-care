@@ -66,7 +66,7 @@ $render = static function (array $branch) use (&$render, $width): void {
         <form method="get" class="form-grid" style="margin-bottom:1rem;max-width:420px">
             <div class="form-group">
                 <label>Root member ID</label>
-                <input type="text" name="member" value="<?= e($root['member_id'] ?? $rootCode) ?>" placeholder="MLM00001">
+                <input type="text" name="member" value="<?= e($root['member_id'] ?? $rootCode) ?>" placeholder="Member ID">
             </div>
             <div class="form-actions">
                 <button class="btn btn-primary" type="submit">View</button>

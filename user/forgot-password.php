@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($login === '') {
         $error = 'Enter your Member ID.';
     } elseif (!preg_match('/^[A-Z]{2,10}\d{3,8}$/', $login)) {
-        $error = 'Enter a valid Member ID, like BS000002.';
+        $error = 'Enter a valid Member ID.';
     } else {
         $member = pw_reset_find_member($pdo, $login);
 
@@ -131,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <form method="post" class="ulog-form" autocomplete="off">
                 <div class="ulog-field">
                     <label for="login">Member ID</label>
-                    <input type="text" id="login" name="login" value="<?= e(strtoupper((string) ($_POST['login'] ?? ''))) ?>" placeholder="BS000002" required autofocus style="text-transform:uppercase">
+                    <input type="text" id="login" name="login" value="<?= e(strtoupper((string) ($_POST['login'] ?? ''))) ?>" placeholder="Member ID" required autofocus style="text-transform:uppercase">
                 </div>
                 <button type="submit" class="ulog-submit">
                     <span>Send reset link</span>

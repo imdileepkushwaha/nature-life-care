@@ -86,4 +86,4 @@ Default after installer:
 
 - New members under a sponsor are placed on the chosen **left/right** leg (first free slot).
 - Referral commission uses `referral_commission_percent` from Settings when a package is selected.
-- Sample root member: `MLM00001` / `rootuser` (password set by installer: `member123`).
+- Sample root member: `NLC000001` / `rootuser` (password set by installer: `member123`).

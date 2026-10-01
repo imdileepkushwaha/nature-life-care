@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($memberCode === '') {
             $errors[] = 'Enter or select the member ID to activate.';
         } elseif (!preg_match('/^[A-Z]{2,10}\d{3,8}$/', $memberCode)) {
-            $errors[] = 'Enter a valid Member ID (example: BS000002).';
+            $errors[] = 'Enter a valid Member ID.';
         } else {
             $lookup = $pdo->prepare('SELECT * FROM members WHERE member_id = ? LIMIT 1');
             $lookup->execute([$memberCode]);

@@ -1574,3 +1574,207 @@ body.lp-menu-open { overflow: hidden; }
         display: none !important;
     }
 }
+
+/* Nature Life Care reference styling override */
+body.lp {
+    font-family: "Inter", "Manrope", sans-serif;
+    background: #f6f8f5;
+    color: #2b312d;
+}
+
+.lp-topbar {
+    background: #0d4b35;
+    color: rgba(255,255,255,0.85);
+}
+
+.lp-topbar-tag {
+    color: #d9b44a;
+}
+
+.lp-header {
+    border-bottom: 1px solid rgba(13, 75, 53, 0.08);
+    background: rgba(255,255,255,0.94);
+}
+
+.lp-brand-name,
+.lp-nav-links a:hover,
+.lp-nav-links a[aria-current="page"] {
+    color: #146c49;
+}
+
+.lp-nav-cta,
+.lp-btn-primary {
+    background: linear-gradient(135deg, #0d4b35, #1d8a59);
+    box-shadow: 0 12px 28px rgba(19, 97, 66, 0.25);
+}
+
+.lp-hero {
+    min-height: 680px;
+    background:
+        linear-gradient(rgba(14, 41, 29, 0.45), rgba(14, 41, 29, 0.3)),
+        url("https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?auto=format&fit=crop&w=1600&q=80") center/cover no-repeat;
+}
+
+.lp-hero-stage {
+    background: linear-gradient(145deg, rgba(3, 27, 18, 0.8), rgba(10, 62, 44, 0.8));
+}
+
+.lp-hero-copy .lp-hero-brand {
+    color: #f6e9bf;
+    font-size: 0.78rem;
+    letter-spacing: 0.18em;
+}
+
+.lp-hero h1 {
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 0.96;
+    text-transform: none;
+}
+
+.lp-hero-lead {
+    font-family: "Inter", sans-serif;
+    font-size: clamp(1.05rem,1.5vw,1.08rem);
+    color: rgba(255,255,255,0.9);
+    max-width: 30rem;
+}
+
+.lp-slide-nav button.is-on {
+    background: #d9b44a;
+}
+
+.lp-welcome-grid {
+    grid-template-columns: minmax(0, 1.45fr) minmax(220px, 0.55fr);
+    gap: 22px;
+}
+
+.lp-welcome-visual {
+    width: min(100%, 280px);
+}
+
+.lp-welcome-copy h2,
+.lp-sec-head h2,
+.lp-vm-head h2,
+.lp-stories-head-copy h2,
+.lp-cta-copy h2 {
+    font-family: "Cormorant Garamond", Georgia, serif;
+    letter-spacing: 0.01em;
+    font-weight: 700;
+}
+
+.lp-steps {
+    grid-template-columns: repeat(4, minmax(0,1fr));
+}
+
+.lp-step-body {
+    background: rgba(255,255,255,0.72);
+    border: 1px solid rgba(13, 75, 53, 0.06);
+}
+
+.lp-products {
+    background: linear-gradient(180deg, #f8fbf8 0%, #eff7f0 100%);
+    color: #15241b;
+}
+
+.lp-sec-head-light {
+    color: #f4f5ee;
+}
+
+.lp-product-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.lp-product {
+    background: rgba(255,255,255,0.94);
+    border: 1px solid rgba(13,75,53,0.08);
+    color: #15241b;
+    box-shadow: 0 18px 45px rgba(16,69,47,0.08);
+}
+
+.lp-product-body > p {
+    color: #68756f;
+}
+
+.lp-product-price {
+    color: #0d4b35;
+}
+
+.lp-product a,
+.lp-product-price {
+    color: #0d4b35;
+}
+
+.lp-vm-card-vision {
+    background: linear-gradient(160deg, #1f6b4a 0%, #134e38 48%, #0c1c14 100%);
+    box-shadow: 0 22px 44px rgba(19, 78, 56, 0.18);
+}
+
+.lp-vm-card-mission {
+    background: #ffffff;
+    border: 1px solid rgba(13, 75, 53, 0.08);
+}
+
+.lp-story {
+    flex-basis: calc((100% - 2.2rem) / 3);
+    border-radius: 22px;
+    box-shadow: 0 18px 45px rgba(16, 69, 47, 0.12);
+}
+
+.lp-story-meta span {
+    color: #68756f;
+}
+
+.lp-cta-panel {
+    background: linear-gradient(145deg, #0c1c14 0%, #134e38 46%, #1a3a28 78%, #3f2a12 120%);
+}
+
+.lp-foot {
+    background: #0c1c14;
+}
+
+.lp-foot-col > a,
+.lp-foot-reach-value,
+.lp-foot-brand,
+.lp-foot-lead,
+.lp-foot-mantra,
+.lp-foot-bottom,
+.lp-foot-bottom a {
+    color: rgba(255,255,255,0.82);
+}
+
+.lp-foot-brand,
+.lp-foot-mantra,
+.lp-foot-reach-value {
+    font-family: "Inter", sans-serif;
+}
+
+@media (max-width: 980px) {
+    .lp-hero-shell {
+        grid-template-columns: 1fr;
+    }
+    .lp-hero h1 {
+        max-width: 15ch;
+    }
+    .lp-steps,
+    .lp-product-grid,
+    .lp-vm-grid,
+    .lp-foot-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .lp-steps,
+    .lp-product-grid,
+    .lp-vm-grid,
+    .lp-foot-grid {
+        grid-template-columns: 1fr;
+    }
+    .lp-hero h1 {
+        font-size: 2.15rem;
+    }
+    .lp-story {
+        flex-basis: min(78%, 340px);
+    }
+}
